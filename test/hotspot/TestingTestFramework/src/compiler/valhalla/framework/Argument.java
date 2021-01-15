@@ -46,9 +46,8 @@ class Argument {
         ArgumentValue[] values = argumentsAnno.value();
         Argument[] arguments = new Argument[values.length];
         Class<?>[] declaredParameters = m.getParameterTypes();
-        if (values.length != declaredParameters.length) {
-            throw new TestFormatException("Number of argument values provided in @Arguments does not match the number of actual arguments in " + m);
-        }
+        TestFormat.check(values.length == declaredParameters.length,
+                         "Number of argument values provided in @Arguments does not match the number of actual arguments in " + m);
 
         for (int i = 0; i < values.length; i++) {
             ArgumentValue specifiedArg = values[i];
@@ -56,53 +55,43 @@ class Argument {
             switch (specifiedArg) {
                 case DEFAULT -> arguments[i] = createDefault(parameter);
                 case NUMBER_42 -> {
-                    if (isNumber(parameter)) {
-                        arguments[i] = create((byte) 42);
-                    } else {
-                        throw new TestFormatException("Provided invalid NUMBER_42 argument for non-number " + parameter + " for " + m);
-                    }
+                    TestFormat.check(isNumber(parameter),
+                                     "Provided invalid NUMBER_42 argument for non-number " + parameter + " for " + m);
+                    arguments[i] = create((byte) 42);
                 }
                 case NUMBER_MINUS_42 -> {
-                    if (isNumber(parameter)) {
-                        arguments[i] = create((byte) -42);
-                    } else {
-                        throw new TestFormatException("Provided invalid NUMBER_MINUS_42 argument for non-number " + parameter + " for " + m);
-                    }
+                    TestFormat.check(isNumber(parameter),
+                                     "Provided invalid NUMBER_MINUS_42 argument for non-number " + parameter + " for " + m);
+                    arguments[i] = create((byte) -42);
                 }
                 case BOOLEAN_TOGGLE_FIRST_FALSE -> {
-                    if (!isBoolean(parameter)) {
-                        throw new TestFormatException("Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameter + " for " + m);
-                    }
+                    TestFormat.check(isBoolean(parameter),
+                                     "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameter + " for " + m);
                     arguments[i] = createToggleBoolean(false);
                 }
                 case BOOLEAN_TOGGLE_FIRST_TRUE -> {
-                    if (!Argument.isBoolean(parameter)) {
-                        throw new TestFormatException("Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameter + " for " + m);
-                    }
+                    TestFormat.check(Argument.isBoolean(parameter),
+                                     "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameter + " for " + m);
                     arguments[i] = createToggleBoolean(true);
                 }
                 case TRUE -> {
-                    if (!Argument.isBoolean(parameter)) {
-                        throw new TestFormatException("Provided invalid TRUE argument for non-boolean " + parameter + " for " + m);
-                    }
+                    TestFormat.check(Argument.isBoolean(parameter),
+                                     "Provided invalid TRUE argument for non-boolean " + parameter + " for " + m);
                     arguments[i] = create(true);
                 }
                 case FALSE -> {
-                    if (!isBoolean(parameter)) {
-                        throw new TestFormatException("Provided invalid FALSE argument for non-boolean " + parameter + " for " + m);
-                    }
+                    TestFormat.check(Argument.isBoolean(parameter),
+                                     "Provided invalid FALSE argument for non-boolean " + parameter + " for " + m);
                     arguments[i] = create(false);
                 }
                 case RANDOM_ONCE -> {
-                    if (isNotPrimitiveType(parameter)) {
-                        throw new TestFormatException("Provided invalid RANDOM_ONCE argument for non-primitive type " + parameter + " for " + m);
-                    }
+                    TestFormat.check(isPrimitiveType(parameter),
+                                     "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameter + " for " + m);
                     arguments[i] = createRandom(parameter);
                 }
                 case RANDOM_EACH -> {
-                    if (isNotPrimitiveType(parameter)) {
-                        throw new TestFormatException("Provided invalid RANDOM_ONCE argument for non-primitive type " + parameter + " for " + m);
-                    }
+                    TestFormat.check(isPrimitiveType(parameter),
+                                     "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameter + " for " + m);
                     arguments[i] = createRandomEach(parameter);
                 }
             }
@@ -128,7 +117,8 @@ class Argument {
                 constructor.setAccessible(true);
                 return Argument.create(constructor.newInstance());
             } catch (Exception e) {
-                throw new TestFormatException("Cannot create new default instance of " + c, e);
+                TestFormat.fail("Cannot create new default instance of " + c, e);
+                return null;
             }
         }
     }
@@ -159,8 +149,8 @@ class Argument {
         }
     }
 
-    private static boolean isNotPrimitiveType(Class<?> c) {
-        return !isNumber(c) && !isBoolean(c) && !isChar(c);
+    private static boolean isPrimitiveType(Class<?> c) {
+        return isNumber(c) || isBoolean(c) || isChar(c);
     }
 
     private static boolean isBoolean(Class<?> c) {
@@ -205,7 +195,8 @@ class Argument {
             // Get number between 0 and 1000.
             return random.nextDouble() * 1000;
         } else {
-            throw new TestFormatException("Cannot generate random value for non-primitive type");
+            TestFormat.fail("Cannot generate random value for non-primitive type");
+            return null;
         }
     }
 }

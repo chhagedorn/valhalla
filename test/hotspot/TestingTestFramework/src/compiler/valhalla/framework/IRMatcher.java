@@ -84,19 +84,11 @@ class IRMatcher {
         for (Method m : testClass.getDeclaredMethods()) {
             IR[] irAnnos =  m.getAnnotationsByType(IR.class);
             if (irAnnos.length > 0) {
-                if (!m.isAnnotationPresent(Test.class)) {
-                    throw new TestFormatException("Found IR annotation at non-@Test method " + m);
-                }
+                TestFormat.check(m.isAnnotationPresent(Test.class), "Found @IR annotation at non-@Test method " + m);
                 Integer[] ids = irRulesMap.get(m.getName());
-                if (ids == null) {
-                    throw new TestFrameworkException("Should find method name in validIrRulesMap for " + m);
-                }
-                if (ids.length < 1) {
-                    throw new TestFrameworkException("Did not find any rule indices for " + m);
-                }
-                if (ids[ids.length - 1] >= irAnnos.length) {
-                    throw new TestFrameworkException("Invalid IR rule index found in validIrRulesMap for " + m);
-                }
+                TestFramework.check(ids != null, "Should find method name in validIrRulesMap for " + m);
+                TestFramework.check(ids.length > 0, "Did not find any rule indices for " + m);
+                TestFramework.check(ids[ids.length - 1] < irAnnos.length, "Invalid IR rule index found in validIrRulesMap for " + m);
                 if (ids[0] != IREncodingPrinter.NO_RULE_APPLIED) {
                     // If -1, than there was no matching IR rule for given conditions.
                     applyRuleToMethod(m, irAnnos, ids);
@@ -147,15 +139,13 @@ class IRMatcher {
             final List<String> nodesWithCount = IRNode.mergeNodes(irAnno.counts());
             for (int i = 0; i < nodesWithCount.size(); i += 2) {
                 String node = nodesWithCount.get(i);
-                if (i + 1 == nodesWithCount.size()) {
-                    throw new TestFormatException("Missing count for IR node \"" + node + "\" at " + m);
-                }
+                TestFormat.check(i + 1 < nodesWithCount.size(), "Missing count for IR node \"" + node + "\" at " + m);
                 String countString = nodesWithCount.get(i + 1);
-                long expectedCount;
+                long expectedCount = 0;
                 try {
                     expectedCount = Long.parseLong(countString);
                 } catch (NumberFormatException e) {
-                    throw new TestFormatException("Provided invalid count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
+                    TestFormat.fail("Provided invalid count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
                 }
                 Pattern pattern = Pattern.compile(node);
                 Matcher matcher = pattern.matcher(testOutput);

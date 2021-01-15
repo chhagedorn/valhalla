@@ -84,40 +84,32 @@ class IREncodingPrinter {
         int applyRules = 0;
         if (irAnnotation.applyIfAnd().length != 0) {
             applyRules++;
-            if (irAnnotation.applyIfAnd().length <= 2) {
-                throw new TestFormatException("Use [applyIf|applyIfNot] or at least 2 conditions for applyIfAnd in @IR at " + m);
-            }
+            TestFormat.check(irAnnotation.applyIfAnd().length > 2,
+                             "Use [applyIf|applyIfNot] or at least 2 conditions for applyIfAnd in @IR at " + m);
         }
         if (irAnnotation.applyIfOr().length != 0) {
             applyRules++;
-            if (irAnnotation.applyIfOr().length <= 2) {
-                throw new TestFormatException("Use [applyIf|applyIfNot] or at least 2 conditions for applyIfOr in @IR at " + m);
-            }
+            TestFormat.check(irAnnotation.applyIfOr().length > 2,
+                             "Use [applyIf|applyIfNot] or at least 2 conditions for applyIfOr in @IR at " + m);
         }
         if (irAnnotation.applyIf().length != 0) {
             applyRules++;
-            if (irAnnotation.applyIf().length > 2) {
-                throw new TestFormatException("Use [applyIfAnd|applyIfOr] or only 1 condition for applyIf in @IR at " + m);
-            }
+            TestFormat.check(irAnnotation.applyIf().length <= 2,
+                             "Use [applyIfAnd|applyIfOr] or only 1 condition for applyIf in @IR at " + m);
         }
         if (irAnnotation.applyIfNot().length != 0) {
             applyRules++;
-            if (irAnnotation.applyIfNot().length > 2) {
-                throw new TestFormatException("Use [applyIfAnd|applyIfOr] or only 1 condition for applyIfNot in @IR at " + m);
-            }
+            TestFormat.check(irAnnotation.applyIfNot().length <= 2,
+                             "Use [applyIfAnd|applyIfOr] or only 1 condition for applyIfNot in @IR at " + m);
         }
-        if (applyRules > 1) {
-            throw new TestFormatException("Can only use one of [applyIf|applyIfNot|applyIfAnd|applyIfOr] in @IR at " + m);
-        }
+        TestFormat.check(applyRules <= 1, "Can only use one of [applyIf|applyIfNot|applyIfAnd|applyIfOr] in @IR at " + m);
     }
 
     private boolean hasAllRequiredFlags(Method m, String[] andRules, String ruleType) {
         for (int i = 0; i < andRules.length; i++) {
             String flag = andRules[i];
             i++;
-            if (i == andRules.length) {
-                throw new TestFormatException("Missing value for flag " + flag + " in " + ruleType + " for @IR at " + m);
-            }
+            TestFormat.check(i < andRules.length, "Missing value for flag " + flag + " in " + ruleType + " for @IR at " + m);
             String value = andRules[i];
             if (!check(m, flag, value)) {
                 return false;
@@ -130,9 +122,7 @@ class IREncodingPrinter {
         for (int i = 0; i < orRules.length; i++) {
             String flag = orRules[i];
             i++;
-            if (i == orRules.length) {
-                throw new TestFormatException("Missing value for flag " + flag + " in " + ruleType + " for @IR at " + m);
-            }
+            TestFormat.check(i < orRules.length, "Missing value for flag " + flag + " in " + ruleType + " for @IR at " + m);
             String value = orRules[i];
             if (check(m, flag, value)) {
                 return false;
@@ -142,51 +132,48 @@ class IREncodingPrinter {
     }
 
     private boolean check(Method m, String flag, String value) {
-        if (value.length() == 0) {
-            throw new TestFormatException("Provided empty value for flag " + flag + " at " + m);
-        }
+        TestFormat.check(!value.isEmpty(), "Provided empty value for flag " + flag + " at " + m);
         Object actualFlagValue = longGetters.stream()
                 .map(f -> f.apply(flag))
                 .filter(Objects::nonNull)
                 .findAny().orElse(null);
         if (actualFlagValue != null) {
             long actualLongFlagValue = (Long) actualFlagValue;
-            long longValue;
-            ParsedComparator<Long> parsedComparator;
+            long longValue = 0;
+            ParsedComparator<Long> parsedComparator = null;
             try {
                 parsedComparator = parseComparator(value.trim());
                 longValue = Long.parseLong(parsedComparator.getStrippedString());
             } catch (NumberFormatException e) {
-                throw new TestFormatException("Invalid value " + value + " for number based flag " + flag);
+                TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
             } catch (Exception e) {
-                throw new TestFormatException("Invalid comparator in \"" + value + "\" for number based flag " + flag, e);
+                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag, e);
             }
             return parsedComparator.getPredicate().test(actualLongFlagValue, longValue);
         }
         actualFlagValue = WHITE_BOX.getBooleanVMFlag(flag);
         if (actualFlagValue != null) {
             boolean actualBooleanFlagValue = (Boolean) actualFlagValue;
-            boolean booleanValue;
+            boolean booleanValue = false;
             try {
                 booleanValue = Boolean.parseBoolean(value);
             } catch (Exception e) {
-                throw new TestFormatException("Invalid value " + value + " for boolean flag " + flag);
+                TestFormat.fail("Invalid value " + value + " for boolean flag " + flag);
             }
             return booleanValue == actualBooleanFlagValue;
         }
         actualFlagValue = WHITE_BOX.getDoubleVMFlag(flag);
         if (actualFlagValue != null) {
             double actualDoubleFlagValue = (Double) actualFlagValue;
-            double doubleValue;
-            ParsedComparator<Double> parsedComparator;
-
+            double doubleValue = 0;
+            ParsedComparator<Double> parsedComparator = null;
             try {
                 parsedComparator = parseComparator(value);
                 doubleValue = Double.parseDouble(parsedComparator.getStrippedString());
             } catch (NumberFormatException e) {
-                throw new TestFormatException("Invalid value " + value + " for number based flag " + flag);
+                TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
             } catch (Exception e) {
-                throw new TestFormatException("Invalid comparator in \"" + value + "\" for number based flag " + flag, e);
+                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag, e);
             }
             return parsedComparator.getPredicate().test(actualDoubleFlagValue, doubleValue);
         }
@@ -195,11 +182,12 @@ class IREncodingPrinter {
             String actualStringFlagValue = (String) actualFlagValue;
             return actualStringFlagValue.equals(value);
         }
-        throw new TestFormatException("Could not find flag " + flag);
+        TestFormat.fail("Could not find flag " + flag);
+        return false;
     }
 
     private <T extends Comparable<T>> ParsedComparator<T> parseComparator(String value) {
-        BiPredicate<T, T> comparison;
+        BiPredicate<T, T> comparison = null;
         try {
             switch (value.charAt(0)) {
                 case '<':
@@ -221,12 +209,9 @@ class IREncodingPrinter {
                     }
                     break;
                 case '!':
-                    if (value.charAt(1) == '=') {
-                        comparison = (x, y) -> x.compareTo(y) != 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        throw new TestFormatException("Invalid comparator sign used.");
-                    }
+                    TestFormat.check(value.charAt(1) == '=', "Invalid comparator sign used.");
+                    comparison = (x, y) -> x.compareTo(y) != 0;
+                    value = value.substring(2).trim();
                     break;
                 case '=': // Allowed syntax, equivalent to not using any symbol.
                     value = value.substring(1).trim();
@@ -236,7 +221,7 @@ class IREncodingPrinter {
                     break;
             }
         } catch (IndexOutOfBoundsException e) {
-            throw new TestFormatException("Invalid value format.");
+            TestFormat.fail("Invalid value format.");
         }
         return new ParsedComparator<>(value, comparison);
     }

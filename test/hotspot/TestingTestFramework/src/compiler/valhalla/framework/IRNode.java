@@ -94,9 +94,7 @@ public class IRNode {
     }
 
     private static void mergeCompositeNodes(String[] nodes, List<String> mergedNodes, int i, String node, String postFix, String varName) {
-        if (i + 1 == nodes.length) {
-            throw new TestFormatException("Must provide class name at index " + (i + 1) + " right after " + varName);
-        }
+        TestFormat.check(i + 1 < nodes.length, "Must provide class name at index " + (i + 1) + " right after " + varName);
         mergedNodes.add(node + Pattern.quote(nodes[i + 1]) + postFix);
     }
 }

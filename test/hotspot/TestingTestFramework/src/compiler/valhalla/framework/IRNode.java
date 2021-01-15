@@ -5,34 +5,39 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class IRNode {
-    private static final String START = "(\\d+(\\s|\\t)(";
-    private static final String MID = ".*)+(\\s|\\t)===.*";
+    private static final String START = "(\\d+(\\s){2}(";
+    private static final String MID = ".*)+(\\s){2}===.*";
     private static final String END = ")";
 
-    // Generic allocation
-    public static final String ALLOC_G  = "(.*call,static  wrapper for: _new_instance_Java" + END;
-    public static final String ALLOCA_G = "(.*call,static  wrapper for: _new_array_Java" + END;
-
-    public static final String ALLOC  = "(.*precise klass .*\\R(.*(movl|xorl|nop|spill).*\\R)*.*_new_instance_Java" + END;
+    public static final String ALLOC = "(.*precise klass .*\\R(.*(movl|xorl|nop|spill).*\\R)*.*call,static  wrapper for: _new_instance_Java" + END;
     public static final String ALLOC_OF = "(.*precise klass .*";
-    private static final String ALLOC_OF_POSTFIX =  ":.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*_new_instance_Java" + END;
+    private static final String ALLOC_OF_POSTFIX =  ":.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*call,static  wrapper for: _new_instance_Java" + END;
 
-    public static final String STORE  = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + END;
-    public static final String STORE_OF_CLASS  = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*";
+    public static final String ALLOC_ARRAY = "(.*precise klass \\[L.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*call,static  wrapper for: _new_array_Java" + END;
+    public static final String ALLOC_ARRAY_OF = "(.*precise klass \\[L.*";
+    private static final String ALLOC_ARRAY_OF_POSTFIX = ";:.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*call,static  wrapper for: _new_array_Java" + END;
+
+    public static final String STORE = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + END;
+    public static final String STORE_OF_CLASS = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*";
     private static final String STORE_OF_CLASS_POSTFIX = "(\\+|:).*" + END;
-    public static final String STORE_OF_FIELD  = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
+    public static final String STORE_OF_FIELD = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
     private static final String STORE_OF_FIELD_POSTFIX = ",.*" + END;
+    public static final String LOAD = START + "Load(B|S|I|L|F|D|P|N)" + MID + END;
+    public static final String LOAD_OF_CLASS = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@.*";
+    private static final String LOAD_OF_CLASS_POSTFIX = "(\\+|:).*" + END;
+    public static final String LOAD_OF_FIELD = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
+    private static final String LOAD_OF_FIELD_POSTFIX = ",.*" + END;
 
+
+    public static final String LOOP   = START + "Loop" + MID + "" + END;
+    public static final String COUNTEDLOOP = START + "CountedLoop\\b" + MID + "" + END;
 
     // Inline type allocation
     public static final String ALLOCA = "(.*precise klass \\[(L|Q)compiler/valhalla/inlinetypes/MyValue.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*_new_array_Java" + END;
-    public static final String LOAD   = START + "Load(B|S|I|L|F|D|P|N)" + MID + "@compiler/valhalla/inlinetypes/MyValue.*" + END;
     public static final String LOADK  = START + "LoadK" + MID + END;
-    public static final String LOOP   = START + "Loop" + MID + "" + END;
-    public static final String COUNTEDLOOP = START + "CountedLoop\\b" + MID + "" + END;
     public static final String COUNTEDLOOP_MAIN = START + "CountedLoop\\b" + MID + "main" + END;
     public static final String TRAP   = START + "CallStaticJava" + MID + "uncommon_trap.*(unstable_if|predicate)" + END;
-    public static final String RETURN = START + "Return" + MID + "returns" + END;
+    public static final String RETURN = START + "Return" + MID + END;
     public static final String LINKTOSTATIC = START + "CallStaticJava" + MID + "linkToStatic" + END;
     public static final String NPE = START + "CallStaticJava" + MID + "null_check" + END;
     public static final String CALL = START + "CallStaticJava" + MID + END;
@@ -56,37 +61,42 @@ public class IRNode {
     public static final String FIELD_ACCESS = "(.*Field: *" + END;
     public static final String SUBSTITUTABILITY_TEST = START + "CallStaticJava" + MID + "java.lang.invoke.ValueBootstrapMethods::isSubstitutable" + END;
 
-    static List<String> mergeCompositeNodes(String[] nodes) {
+    static List<String> mergeNodes(String[] nodes) {
         final List<String> mergedNodes = new ArrayList<>();
-        for (int i = 0; i < nodes.length; i++) {
+        for (int i = 0; i < nodes.length; i += 2) {
             String node = nodes[i];
             switch (node) {
                 case ALLOC_OF -> {
-                    if (i + 1 == nodes.length) {
-                        throw new TestFormatException("Must provide class name at index " + (i + 1) + " right after ALLOC_OF");
-                    }
-                    mergedNodes.add(node + Pattern.quote(nodes[i + 1]) + ALLOC_OF_POSTFIX);
-                    i++;
+                    mergeCompositeNodes(nodes, mergedNodes, i, node, ALLOC_OF_POSTFIX, "ALLOC_OF");
+                }
+                case ALLOC_ARRAY_OF -> {
+                    mergeCompositeNodes(nodes, mergedNodes, i, node, ALLOC_ARRAY_OF_POSTFIX, "ALLOC_ARRAY_OF");
                 }
                 case STORE_OF_CLASS -> {
-                    if (i + 1 == nodes.length) {
-                        throw new TestFormatException("Must provide class name at index " + (i + 1) + " right after STORE_OF_CLASS");
-                    }
-                    mergedNodes.add(node + Pattern.quote(nodes[i + 1]) + STORE_OF_CLASS_POSTFIX);
-                    i++;
+                    mergeCompositeNodes(nodes, mergedNodes, i, node, STORE_OF_CLASS_POSTFIX, "STORE_OF_CLASS");
                 }
                 case STORE_OF_FIELD -> {
-                    if (i + 1 == nodes.length) {
-                        throw new TestFormatException("Must provide field name at index " + (i + 1) + " right after STORE_OF_FIELD");
-                    }
-                    mergedNodes.add(node + Pattern.quote(nodes[i + 1]) + STORE_OF_FIELD_POSTFIX);
-                    i++;
+                    mergeCompositeNodes(nodes, mergedNodes, i, node, STORE_OF_FIELD_POSTFIX, "STORE_OF_FIELD");
+                }
+                case LOAD_OF_CLASS -> {
+                    mergeCompositeNodes(nodes, mergedNodes, i, node, LOAD_OF_CLASS_POSTFIX, "LOAD_OF_CLASS");
+                }
+                case LOAD_OF_FIELD -> {
+                    mergeCompositeNodes(nodes, mergedNodes, i, node, LOAD_OF_FIELD_POSTFIX, "LOAD_OF_FIELD");
                 }
                 default -> {
+                    i--; // No composite node, do not increment by 2.
                     mergedNodes.add(node);
                 }
             }
         }
         return mergedNodes;
+    }
+
+    private static void mergeCompositeNodes(String[] nodes, List<String> mergedNodes, int i, String node, String postFix, String varName) {
+        if (i + 1 == nodes.length) {
+            throw new TestFormatException("Must provide class name at index " + (i + 1) + " right after " + varName);
+        }
+        mergedNodes.add(node + Pattern.quote(nodes[i + 1]) + postFix);
     }
 }

@@ -4,10 +4,8 @@ import jdk.test.lib.Asserts;
 
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 class IRMatcher {
     private final Map<String, Integer[]> irRulesMap;
@@ -133,10 +131,11 @@ class IRMatcher {
 
     private void applyFailOn(Method m, String testOutput, IR irAnno, int annoId) {
         if (irAnno.failOn().length != 0) {
-            String failOnRegex = String.join("|", IRNode.mergeCompositeNodes(irAnno.failOn()));
+            String failOnRegex = String.join("|", IRNode.mergeNodes(irAnno.failOn()));
             Pattern pattern = Pattern.compile(failOnRegex);
             Matcher matcher = pattern.matcher(testOutput);
             boolean found = matcher.find();
+            System.out.println(failOnRegex);
             if (found) {
                 addFail(m, irAnno, annoId, matcher, "contains forbidden node");
             }
@@ -145,7 +144,7 @@ class IRMatcher {
 
     private void applyCount(Method m, String testOutput, IR irAnno, int annoId) {
         if (irAnno.counts().length != 0) {
-            final List<String> nodesWithCount = IRNode.mergeCompositeNodes(irAnno.counts());
+            final List<String> nodesWithCount = IRNode.mergeNodes(irAnno.counts());
             for (int i = 0; i < nodesWithCount.size(); i += 2) {
                 String node = nodesWithCount.get(i);
                 if (i + 1 == nodesWithCount.size()) {

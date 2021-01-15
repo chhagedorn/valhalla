@@ -514,7 +514,11 @@ public class TestFramework {
         Check checkAnno = getAnnotation(m, Check.class);
         Run runAnno = getAnnotation(m, Run.class);
         if (checkAnno != null || runAnno != null) {
-            throw new TestFormatException(m.getName() + " has invalid @compiler.valhalla.new_inlinetypes.Check or @compiler.valhalla.new_inlinetypes.Run annotation while @compiler.valhalla.new_inlinetypes.Test annotation is present.");
+            throw new TestFormatException(m + " has invalid @Check or @Run annotation while @Test annotation is present.");
+        }
+
+        if (Arrays.asList(m.getParameterTypes()).contains(TestInfo.class)) {
+            throw new TestFormatException("Forbidden use of " + TestInfo.class + " as parameter at @Test method " + m);
         }
 
         Warmup warmup = getAnnotation(m, Warmup.class);
@@ -538,7 +542,10 @@ public class TestFramework {
         for (Method m : clazz.getDeclaredMethods()) {
             Check checkAnno = getAnnotation(m, Check.class);
             Run runAnno = getAnnotation(m, Run.class);
-
+            Arguments argumentsAnno = getAnnotation(m, Arguments.class);
+            if ((checkAnno != null || runAnno != null) && argumentsAnno != null) {
+                throw new TestFormatException("Cannot have @Argument annotation in combination with @Run or @Check at " + m);
+            }
             if (checkAnno != null) {
                 addCheckedTest(m, checkAnno, runAnno);
             } else if (runAnno != null) {
@@ -549,25 +556,52 @@ public class TestFramework {
 
     private void addCheckedTest(Method m, Check checkAnno, Run runAnno) {
         if (runAnno != null) {
-            throw new TestFormatException(m.getName() + " has invalid @compiler.valhalla.new_inlinetypes.Run annotation while @compiler.valhalla.new_inlinetypes.Check annotation is present.");
+            throw new TestFormatException(m + " has invalid @Run annotation while @Check annotation is present.");
         }
         Method testMethod = testMethodMap.get(checkAnno.test());
         if (testMethod == null) {
-            throw new TestFormatException("Did not find associated test method " + checkAnno.test() + " for @compiler.valhalla.new_inlinetypes.Check at " + m.getName());
+            throw new TestFormatException("Did not find associated test method " + checkAnno.test() + " for @Check at " + m);
         }
+
+        boolean firstParameterTestInfo = m.getParameterCount() > 0 && m.getParameterTypes()[0].equals(TestInfo.class);
+        boolean secondParameterTestInfo = m.getParameterCount() > 1 && m.getParameterTypes()[1].equals(TestInfo.class);
+
+        CheckedTest.Parameter parameter;
+        Class<?> testReturnType = testMethod.getReturnType();
+        switch (m.getParameterCount()) {
+            case 0 -> {
+                parameter = CheckedTest.Parameter.NONE;
+            }
+            case 1 -> {
+                if (!firstParameterTestInfo && m.getParameterTypes()[0] != testReturnType) {
+                    throw new TestFormatException("Single-parameter version of @Check method " + m + " must match return type of @Test " + testMethod);
+                }
+                parameter = firstParameterTestInfo ? CheckedTest.Parameter.TEST_INFO_ONLY : CheckedTest.Parameter.RETURN_ONLY;
+            }
+            case 2 -> {
+                if (!secondParameterTestInfo ||  m.getParameterTypes()[0] != testReturnType) {
+                    throw new TestFormatException("Two-parameter version of @Check method " + m + " must provide as first parameter the same" +
+                                                  " return type as @Test method " + testMethod + " and as second parameter an object of " + TestInfo.class);
+                }
+                parameter = CheckedTest.Parameter.BOTH;
+            }
+            default -> {
+                throw new TestFormatException("@Check method " + m + " must provide either a none, single or two-parameter variant.");
+            }
+        }
+
         if (allTests.containsKey(testMethod)) {
             BaseTest baseTest = allTests.get(testMethod);
-            throw new TestFormatException("Method " + m.getName() + " and " + baseTest.getAssociatedTestName() +
-                    " cannot both reference test method " + testMethod.getName());
+            throw new TestFormatException("Method " + m + " and " + baseTest.getAssociatedTestName() + " cannot both reference test method " + testMethod);
         }
         DeclaredTest test = declaredTests.remove(testMethod);
         if (test == null) {
-            throw new TestFormatException("Missing @compiler.valhalla.new_inlinetypes.Test annotation for associated test method " + checkAnno.test() + " for @compiler.valhalla.new_inlinetypes.Check at " + m.getName());
+            throw new TestFormatException("Missing @Test annotation for associated test method " + checkAnno.test() + " for @Check at " + m);
         }
         applyCompileCommands(m);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        CheckedTest checkedTest = new CheckedTest(test, m, checkAnno);
+        CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter);
         allTests.put(testMethod, checkedTest);
     }
 
@@ -588,17 +622,17 @@ public class TestFramework {
     private void addCustomRunTest(Method m, Run runAnno) {
         Method testMethod = testMethodMap.get(runAnno.test());
         if (testMethod == null) {
-            throw new TestFormatException("Did not find associated test method " + runAnno.test() + " for @Run at " + m.getName());
+            throw new TestFormatException("Did not find associated test method " + runAnno.test() + " for @Run at " + m);
         }
         DeclaredTest test = declaredTests.remove(testMethod);
         if (test == null) {
-            throw new TestFormatException("Missing @Test annotation for associated test method " + runAnno.test() + " for @Run at " + m.getName());
+            throw new TestFormatException("Missing @Test annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         }
         if (test.hasArguments()) {
-            throw new TestFormatException("Invalid @Arguments annotation for associated test method " + runAnno.test() + " for @Run at " + m.getName());
+            throw new TestFormatException("Invalid @Arguments annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         }
-        if (m.getParameterCount() != 1 || !m.getParameterTypes()[0].equals(TestInfo.class)) {
-            throw new TestFormatException("@Run method " + m.getName() + " must specify exactly one TestInfo parameter");
+        if (m.getParameterCount() > 1 || (m.getParameterCount() == 1 && !m.getParameterTypes()[0].equals(TestInfo.class))) {
+            throw new TestFormatException("@Run method " + m + " must specify either no TestInfo parameter or exactly one");
         }
         applyCompileCommands(m);
         // Don't inline run methods
@@ -819,10 +853,12 @@ class BaseTest {
 
     protected final DeclaredTest test;
     protected final TestInfo testInfo;
+    protected final Object invocationTarget;
 
     public BaseTest(DeclaredTest test) {
         this.test = test;
         this.testInfo = new TestInfo();
+        this.invocationTarget = test.getInvocationTarget();
     }
     public String getAssociatedTestName() {
         return test.getTestMethod().getName();
@@ -926,15 +962,21 @@ class BaseTest {
 }
 
 class CheckedTest extends BaseTest {
-    Method checkMethod;
-    Check checkSpecification;
+    private final Method checkMethod;
+    private final Check checkSpecification;
+    private final Parameter parameter;
 
-    public CheckedTest(DeclaredTest test, Method checkMethod, Check checkSpecification) {
+    enum Parameter {
+        NONE, RETURN_ONLY, TEST_INFO_ONLY, BOTH
+    }
+
+    public CheckedTest(DeclaredTest test, Method checkMethod, Check checkSpecification, Parameter parameter) {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         checkMethod.setAccessible(true);
         this.checkMethod = checkMethod;
         this.checkSpecification = checkSpecification;
+        this.parameter = parameter;
     }
 
     @Override
@@ -946,7 +988,12 @@ class CheckedTest extends BaseTest {
         }
         if (shouldVerify) {
             try {
-                checkMethod.invoke(test.getInvocationTarget(), testInfo, result);
+                switch (parameter) {
+                    case NONE -> checkMethod.invoke(invocationTarget);
+                    case RETURN_ONLY -> checkMethod.invoke(invocationTarget, result);
+                    case TEST_INFO_ONLY -> checkMethod.invoke(invocationTarget, testInfo);
+                    case BOTH -> checkMethod.invoke(invocationTarget, result, testInfo);
+                }
             } catch (Exception e) {
                 throw new TestRunException("There was an error while invoking @Check method " + checkMethod, e);
             }
@@ -955,8 +1002,8 @@ class CheckedTest extends BaseTest {
 }
 
 class CustomRunTest extends BaseTest {
-    Method runMethod;
-    Run runSpecification;
+    private final Method runMethod;
+    private final Run runSpecification;
 
     public CustomRunTest(DeclaredTest test, Method runMethod, Run runSpecification) {
         super(test);
@@ -972,7 +1019,11 @@ class CustomRunTest extends BaseTest {
     @Override
     protected void runMethod() {
         try {
-            runMethod.invoke(test.getInvocationTarget(), testInfo);
+            if (runMethod.getParameterCount() == 1) {
+                runMethod.invoke(invocationTarget, testInfo);
+            } else {
+                runMethod.invoke(invocationTarget);
+            }
         } catch (Exception e) {
             throw new TestRunException("There was an error while invoking @Run method " + runMethod, e);
         }

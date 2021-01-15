@@ -12,7 +12,7 @@ public class TestBasics {
         framework.runTestsOnSameVM();
 
         if (wasExecuted) {
-            throw new RuntimeException("Executed non @Test method");
+            throw new RuntimeException("Executed non @Test method or a method that was not intended to be run");
         }
         for (int i = 0; i < testExecuted.length; i++) {
             int value = testExecuted[i];
@@ -20,6 +20,13 @@ public class TestBasics {
                 // Warmups + 1 C2 compiled invocation
                 throw new RuntimeException("Test " + i + "  was executed " + value + " times stead of "
                         + TestFramework.WARMUP_ITERATIONS + 1 + " times." );
+            }
+        }
+
+        for (int i = 0; i < checkExecuted.length; i++) {
+            int value = checkExecuted[i];
+            if (value != 1) {
+                throw new RuntimeException("Check function should have been executed exactly once");
             }
         }
     }
@@ -65,7 +72,8 @@ public class TestBasics {
 //    }
 
     static boolean wasExecuted = false;
-    static int[] testExecuted = new int[61];
+    static int[] testExecuted = new int[75];
+    static int[] checkExecuted = new int[4];
     boolean lastToggleBoolean = true;
     long[] nonFloatingRandomNumbers = new long[10];
     double[] floatingRandomNumbers = new double[10];
@@ -680,6 +688,137 @@ public class TestBasics {
         }
         lastToggleBoolean = b1;
         testExecuted[60]++;
+    }
+
+    @Test
+    public void testRun() {
+        testExecuted[61]++;
+    }
+
+    @Run(test="testRun")
+    public void runTestRun(TestInfo info) {
+        testRun();
+    }
+
+    @Test
+    public void testRunNoTestInfo(int i) {
+        testExecuted[62]++;
+    }
+
+    @Run(test="testRunNoTestInfo")
+    public void runTestRunNoTestInfo() {
+        testRunNoTestInfo(3);
+    }
+
+    @Test
+    public void testNotRun() {
+        wasExecuted = true;
+    }
+
+    @Run(test="testNotRun")
+    public void runTestNotRun() {
+        // Do not execute the test. Pointless but need to test that as well.
+    }
+
+    @Test
+    public int testCheck() {
+        testExecuted[63]++;
+        return 1;
+    }
+
+    @Check(test="testCheck")
+    public void checkTestCheck() {
+        testExecuted[64]++; // Executed on each invocation
+    }
+
+    @Test
+    public int testCheckReturn() {
+        testExecuted[65]++;
+        return 2;
+    }
+
+    @Check(test="testCheckReturn")
+    public void checkTestCheckReturn(int returnValue) {
+        if (returnValue != 2) {
+            throw new RuntimeException("Must be 2");
+        }
+        testExecuted[66]++; // Executed on each invocation
+    }
+
+    @Test
+    public int testCheckTestInfo() {
+        testExecuted[67]++;
+        return 3;
+    }
+
+    @Check(test="testCheckTestInfo")
+    public void checkTestCheckTestInfo(TestInfo testInfo) {
+        testExecuted[68]++; // Executed on each invocation
+    }
+
+
+    @Test
+    public int testCheckBoth() {
+        testExecuted[69]++;
+        return 4;
+    }
+
+    @Check(test="testCheckBoth")
+    public void checkTestCheckTestInfo(int returnValue, TestInfo testInfo) {
+        if (returnValue != 4) {
+            throw new RuntimeException("Must be 4");
+        }
+        testExecuted[70]++; // Executed on each invocation
+    }
+
+    @Test
+    public int testCheckOnce() {
+        testExecuted[71]++;
+        return 1;
+    }
+
+    @Check(test="testCheckOnce", when=CheckAt.C2_COMPILED)
+    public void checkTestCheckOnce() {
+        checkExecuted[0]++; // Executed once
+    }
+
+    @Test
+    public int testCheckReturnOnce() {
+        testExecuted[72]++;
+        return 2;
+    }
+
+    @Check(test="testCheckReturnOnce", when=CheckAt.C2_COMPILED)
+    public void checkTestCheckReturnOnce(int returnValue) {
+        if (returnValue != 2) {
+            throw new RuntimeException("Must be 2");
+        }
+        checkExecuted[1]++; // Executed once
+    }
+
+    @Test
+    public int testCheckTestInfoOnce() {
+        testExecuted[73]++;
+        return 3;
+    }
+
+    @Check(test="testCheckTestInfoOnce", when=CheckAt.C2_COMPILED)
+    public void checkTestCheckTestInfoOnce(TestInfo testInfo) {
+        checkExecuted[2]++; // Executed once
+    }
+
+    @Test
+    public int testCheckBothOnce() {
+        testExecuted[74]++;
+        return 4;
+    }
+
+    @Check(test="testCheckBothOnce", when=CheckAt.C2_COMPILED)
+    public void checkTestCheckBothOnce(int returnValue, TestInfo testInfo) {
+        if (returnValue != 4) {
+            throw new RuntimeException("Must be 4");
+        }
+        checkExecuted[3]++; // Executed once
     }
 }
 

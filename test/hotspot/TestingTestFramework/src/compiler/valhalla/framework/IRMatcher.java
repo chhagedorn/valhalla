@@ -96,7 +96,7 @@ class IRMatcher {
             }
         }
         if (!fails.isEmpty()) {
-            StringBuilder builder = new StringBuilder("\n\n");
+            StringBuilder builder = new StringBuilder("\n");
             builder.append("One or more @IR rules failed:\n");
             builder.append("-----------------------------\n");
             fails.forEach((method, list) -> {
@@ -127,7 +127,6 @@ class IRMatcher {
             Pattern pattern = Pattern.compile(failOnRegex);
             Matcher matcher = pattern.matcher(testOutput);
             boolean found = matcher.find();
-            System.out.println(failOnRegex);
             if (found) {
                 addFail(m, irAnno, annoId, matcher, "contains forbidden node");
             }

@@ -14,37 +14,37 @@ public class TestIRMatching {
 
     public static void main(String[] args) {
         // Run with -DPrintValidIRRules=true to simulate TestVM
-//        runFailOnTests(Constraint.failOnNodes(AndOr1.class, "test1(int)", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:+UsePerfData", "-XX:+UseTLAB");
-//        runFailOnTests(Constraint.failOnNodes(AndOr1.class, "test2()", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:-UsePerfData", "-XX:+UseTLAB");
-//
-//        TestFramework.runWithArguments(AndOr1.class, "-XX:SuspendRetryCount=52", "-XX:+UsePerfData", "-XX:+UseTLAB");
-//
-//        TestFramework.runWithArguments(Comparisons.class, "-XX:SuspendRetryCount=50");
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
-//
-//        TestFramework.runWithArguments(Comparisons.class, "-XX:SuspendRetryCount=49");
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
-//
-//        TestFramework.runWithArguments(Comparisons.class, "-XX:SuspendRetryCount=51");
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
-//
-//        TestFramework.runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
-//
-//        runFailOnTests(Constraint.failOnNodes(MultipleFailOnBad.class, "fail1()", 1,true, "Store"),
-//                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail2()", 1,true, "CallStaticJava"),
-//                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail3()", 1,true, "Store"),
-//                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail4()", 1,true, "Store"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail5()", 1,true, "Store", "iFld"),
-//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail6()", 1,true, "MyClass"),
-//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail7()", 1,true, "MyClass"),
-//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail8()", 1,true, "MyClass"),
-//                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail9()", 1,true, "Store", "CallStaticJava"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail10()", 1,true, "Store", "iFld"));
-//
-//        TestFramework.runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
+        runFailOnTests(Constraint.failOnNodes(AndOr1.class, "test1(int)", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:+UsePerfData", "-XX:+UseTLAB");
+        runFailOnTests(Constraint.failOnNodes(AndOr1.class, "test2()", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:-UsePerfData", "-XX:+UseTLAB");
+
+        runWithArguments(AndOr1.class, "-XX:SuspendRetryCount=52", "-XX:+UsePerfData", "-XX:+UseTLAB");
+
+        runWithArguments(Comparisons.class, "-XX:SuspendRetryCount=50");
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
+
+        runWithArguments(Comparisons.class, "-XX:SuspendRetryCount=49");
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
+
+        runWithArguments(Comparisons.class, "-XX:SuspendRetryCount=51");
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
+
+        runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
+
+        runFailOnTests(Constraint.failOnNodes(MultipleFailOnBad.class, "fail1()", 1,true, "Store"),
+                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail2()", 1,true, "CallStaticJava"),
+                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail3()", 1,true, "Store"),
+                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail4()", 1,true, "Store"),
+                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail5()", 1,true, "Store", "iFld"),
+                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail6()", 1,true, "MyClass"),
+                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail7()", 1,true, "MyClass"),
+                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail8()", 1,true, "MyClass"),
+                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail9()", 1,true, "Store", "CallStaticJava"),
+                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail10()", 1,true, "Store", "iFld"));
+
+        runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
 
         runFailOnTests(Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 1,true, "MyClass"),
                        Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 2,true, "MyClass"),
@@ -66,6 +66,10 @@ public class TestIRMatching {
 
     }
 
+    private static void runWithArguments(Class<?> clazz, String... args) {
+        TestFramework.runWithScenarios(clazz, new Scenario(0, args));
+    }
+
     private static void runFailOnTests(Constraint... constraints) {
         try {
             TestFramework.run(constraints[0].getKlass()); // All constraints have the same class.
@@ -83,11 +87,12 @@ public class TestIRMatching {
     // Single constraint
     private static void runFailOnTests(Constraint constraint, String... args) {
         try {
-            TestFramework.runWithArguments(constraint.getKlass(), args); // All constraints have the same class.
+            Scenario scenario = new Scenario(0, args);
+            TestFramework.runWithScenarios(constraint.getKlass(), scenario); // All constraints have the same class.
             shouldNotReach();
         } catch (ShouldNotReachException e) {
            throw e;
-        } catch (RuntimeException e) {
+        } catch (TestRunException e) {
             System.out.println(e.getMessage());
             constraint.checkConstraint(e);
         }

@@ -11,7 +11,7 @@ public enum CompLevel {
     C1_SIMPLE(1), // C1
     C1_LIMITED_PROFILE(2), // C1, invocation & backedge counters
     C1_FULL_PROFILE(3), // C1, invocation & backedge counters + mdo
-    C2_FULL_OPTIMIZATION(4); // C2 or JVMCI
+    C2(4); // C2 or JVMCI
 
 
     private static final Map<Integer, CompLevel> typesByValue = new HashMap<>();

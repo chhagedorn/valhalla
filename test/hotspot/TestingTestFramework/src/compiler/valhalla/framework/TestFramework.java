@@ -66,11 +66,40 @@ public class TestFramework {
     // "jtreg -DXcomp=true" runs all the scenarios with -Xcomp. This is faster than "jtreg -javaoptions:-Xcomp".
     static final boolean RUN_WITH_XCOMP = Boolean.parseBoolean(System.getProperty("Xcomp", "false"));
 
+    static final boolean TESTING_TEST_FRAMEWORK = Boolean.parseBoolean(System.getProperty("TestingTestFramework", "false"));
+
     private final String[] fixedDefaultFlags;
     private final String[] compileCommandFlags;
     private final String[] printFlags;
     private final String[] verifyFlags;
     private static String lastVmOutput; // Only used to test TestFramework
+
+    static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
+    static final boolean VERIFY_OOPS = (Boolean)WHITE_BOX.getVMFlag("VerifyOops");
+
+    private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
+    private final LinkedHashMap<Method, BaseTest> allTests = new LinkedHashMap<>(); // Keep order
+    private final HashMap<String, Method> testMethodMap = new HashMap<>();
+
+    // Index into this array is the scenario ID.
+    protected final List<Scenario> scenarios = new ArrayList<>();
+
+    private final IREncodingPrinter irMatchRulePrinter;
+
+    // Used to run scenarios
+    TestFramework() {
+        // These flags can be overridden
+        fixedDefaultFlags = setupDefaultFlags();
+        compileCommandFlags = setupCompileCommandFlags();
+        printFlags = setupPrintFlags();
+        verifyFlags = setupVerifyFlags();
+        setupDefaultScenarios();
+        if (PRINT_VALID_IR_RULES) {
+            irMatchRulePrinter = new IREncodingPrinter();
+        } else {
+            irMatchRulePrinter = null;
+        }
+    }
 
     protected String[] setupDefaultFlags() {
         return new String[] {"-XX:-BackgroundCompilation"};
@@ -90,37 +119,6 @@ public class TestFramework {
                 "-XX:+VerifyAfterGC", "-XX:+VerifyDuringGC", "-XX:+VerifyAdapterSharing"};
     }
 
-    static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
-    static final boolean PRINT_IDEAL  = WHITE_BOX.getBooleanVMFlag("PrintIdeal");
-
-    static final boolean G1GC = (Boolean)WHITE_BOX.getVMFlag("UseG1GC");
-    static final boolean ZGC = (Boolean)WHITE_BOX.getVMFlag("UseZGC");
-    static final boolean VerifyOops = (Boolean)WHITE_BOX.getVMFlag("VerifyOops");
-
-    private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
-    private final LinkedHashMap<Method, BaseTest> allTests = new LinkedHashMap<>(); // Keep order
-    private final HashMap<String, Method> testMethodMap = new HashMap<>();
-
-    // Index into this array is the scenario ID.
-    protected final List<Scenario> scenarios = new ArrayList<>();
-
-    private final IREncodingPrinter irMatchRulePrinter;
-
-    // Used to run scenarios
-    public TestFramework() {
-        // These flags can be overridden
-        fixedDefaultFlags = setupDefaultFlags();
-        compileCommandFlags = setupCompileCommandFlags();
-        printFlags = setupPrintFlags();
-        verifyFlags = setupVerifyFlags();
-        setupDefaultScenarios();
-        if (PRINT_VALID_IR_RULES) {
-            irMatchRulePrinter = new IREncodingPrinter();
-        } else {
-            irMatchRulePrinter = null;
-        }
-    }
-
     public static void main(String[] args) {
         String testClassName = args[0];
         System.out.println("Framework main(), about to run test class " + testClassName);
@@ -131,6 +129,11 @@ public class TestFramework {
             throw new TestRunException("Could not find test class " + testClassName, e);
         }
 
+        TestFramework framework = new TestFramework();
+        framework.runTestsOnSameVM(testClass, getHelperClasses(args));
+    }
+
+    private static ArrayList<Class<?>> getHelperClasses(String[] args) {
         ArrayList<Class<?>> helperClasses = new ArrayList<>();
         for (int i = 1; i < args.length; i++) {
             String helperClassName = args[i];
@@ -140,10 +143,13 @@ public class TestFramework {
                 throw new TestRunException("Could not find helper class " + helperClassName, e);
             }
         }
-        TestFramework framework = new TestFramework();
-        framework.runTestsOnSameVM(testClass, helperClasses);
+        return helperClasses;
     }
 
+
+    /*
+     * Public interface methods
+     */
     public static void run() {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
         doRun(walker.getCallerClass(), null, null);
@@ -153,8 +159,12 @@ public class TestFramework {
         doRun(testClass, null, null);
     }
 
-    public static void run(Class<?> testClass, Class<?>... helperClasses) {
+    public static void runWithHelperClasses(Class<?> testClass, Class<?>... helperClasses) {
         doRun(testClass, Arrays.asList(helperClasses), null);
+    }
+
+    public static void run(Class<?> testClass, List<Class<?>> helperClasses) {
+        doRun(testClass, helperClasses, null);
     }
 
     public static void runWithArguments(String... commandLineArgs) {
@@ -171,10 +181,9 @@ public class TestFramework {
         framework.startTestVM(null, testClass, helperClasses, commandLineArgs);
     }
 
-    public void runTestsOnSameVM() {
-        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runTestsOnSameVM(walker.getCallerClass());
-    }
+    /*
+     * End of public interface
+     */
 
     private void runTestsOnSameVM(Class<?> testClass, ArrayList<Class<?>> helperClasses) {
         for (Class<?> helperClass : helperClasses) {
@@ -187,6 +196,13 @@ public class TestFramework {
     private void runTestsOnSameVM(Class<?> testClass) {
         parseTestClass(testClass);
         runTests();
+    }
+
+    // Only called by tests testing the framework itself. Accessed by reflection. Do not expose this to normal users.
+    private static void runTestsOnSameVM() {
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        TestFramework framework = new TestFramework();
+        framework.runTestsOnSameVM(walker.getCallerClass());
     }
 
     private String startTestVM(ArrayList<String> scenarioFlags, Class<?> testClass, List<Class<?>> helperClasses,
@@ -262,7 +278,10 @@ public class TestFramework {
             System.out.println(output);
         }
         lastVmOutput = output;
-        oa.shouldHaveExitValue(0);
+        if (!TESTING_TEST_FRAMEWORK) {
+            // Tests for the framework itself might expect certain exceptions.
+            oa.shouldHaveExitValue(0);
+        }
 
         if (VERIFY_IR) {
             IRMatcher irMatcher = new IRMatcher(output, testClass);
@@ -447,7 +466,7 @@ public class TestFramework {
             // Exclude some methods from compilation with C2 to stress test the calling convention
             if (Utils.getRandomInstance().nextBoolean()) {
                 System.out.println("Excluding from C2 compilation: " + m);
-                WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2_FULL_OPTIMIZATION.getValue(), false);
+                WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2.getValue(), false);
             }
         }
     }
@@ -461,7 +480,7 @@ public class TestFramework {
     private void applyForceCompileCommand(Method m) {
         ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
         if (forceCompileAnno != null) {
-            enqueueMethodForCompilation(m, forceCompileAnno.compLevel());
+            enqueueMethodForCompilation(m, forceCompileAnno.value());
         }
     }
 
@@ -469,7 +488,7 @@ public class TestFramework {
     public static void enqueueMethodForCompilation(Method m, CompLevel compLevel) {
         TestFormat.check(getAnnotation(m, Test.class) == null,
                          "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
-        TestFrameworkUtils.enqueueMethodForCompilation(m ,compLevel);
+        TestFrameworkUtils.enqueueMethodForCompilation(m,  compLevel);
     }
 
     private void setupTests(Class<?> clazz) {
@@ -648,6 +667,40 @@ public class TestFramework {
             throw new TestFrameworkException("Internal TestFramework exception:\n" + failureMessage);
         }
     }
+
+    enum TriState {
+        Maybe,
+        Yes,
+        No
+    }
+
+    public static boolean isC2Compiled(Method m) {
+        return compiledByC2(m) == TriState.Yes;
+    }
+
+    public static void assertDeoptimizedByC2(Method m) {
+        if (compiledByC2(m) == TriState.Yes) {
+            throw new TestRunException(m + " should have been deoptimized");
+        }
+    }
+
+    public static void assertCompiledByC2(Method m) {
+        if (compiledByC2(m) == TriState.No) {
+            throw new TestRunException(m + " should have been compiled");
+        }
+    }
+
+    private static TriState compiledByC2(Method m) {
+        if (!TestFramework.USE_COMPILER || TestFramework.XCOMP || TestFramework.TEST_C1 ||
+                (TestFramework.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, CompLevel.C2.getValue(), false))) {
+            return TriState.Maybe;
+        }
+        if (WHITE_BOX.isMethodCompiled(m, false) &&
+                WHITE_BOX.getMethodCompilationLevel(m, false) >= CompLevel.C2.getValue()) {
+            return TriState.Yes;
+        }
+        return TriState.No;
+    }
 }
 
 // Errors in the framework
@@ -824,7 +877,7 @@ class BaseTest {
     }
 
     private void compileOSRAndRun() {
-        final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VerifyOops);
+        final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VERIFY_OOPS);
         final long started = System.currentTimeMillis();
         boolean stateCleared = false;
         while (true) {
@@ -865,7 +918,7 @@ class BaseTest {
     }
 
     private void compileNormallyAndRun() {
-        final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VerifyOops);
+        final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VERIFY_OOPS);
         final Method testMethod = test.getTestMethod();
         TestFrameworkUtils.enqueueMethodForCompilation(test);
         if (maybeCodeBufferOverflow && !WHITE_BOX.isMethodCompiled(testMethod, false)) {
@@ -989,14 +1042,14 @@ class TestFrameworkUtils {
     // Get the appropriate level as permitted by the test scenario and VM options.
     private static CompLevel restrictCompLevel(CompLevel compLevel) {
         switch (compLevel) {
-            case ANY -> compLevel = CompLevel.C2_FULL_OPTIMIZATION;
+            case ANY -> compLevel = CompLevel.C2;
             case C1_SIMPLE, C1_LIMITED_PROFILE, C1_FULL_PROFILE -> {
                 if (FLIP_C1_C2) {
                     // Effectively treat all (compLevel = C1_*) as (compLevel = C2)
-                    compLevel = CompLevel.C2_FULL_OPTIMIZATION;
+                    compLevel = CompLevel.C2;
                 }
             }
-            case C2_FULL_OPTIMIZATION -> {
+            case C2 -> {
                 if (FLIP_C1_C2) {
                     // Effectively treat all (compLevel = C2) as (compLevel = C1_SIMPLE)
                     compLevel = CompLevel.C1_SIMPLE;
@@ -1004,8 +1057,8 @@ class TestFrameworkUtils {
             }
         }
 
-        if (!TestFramework.TEST_C1 && compLevel.getValue() < CompLevel.C2_FULL_OPTIMIZATION.getValue()) {
-            compLevel = CompLevel.C2_FULL_OPTIMIZATION;
+        if (!TestFramework.TEST_C1 && compLevel.getValue() < CompLevel.C2.getValue()) {
+            compLevel = CompLevel.C2;
         }
         if (TestFramework.TIERED_COMPILATION && compLevel.getValue() > TestFramework.TIERED_COMPILATION_STOP_AT_LEVEL.getValue()) {
             compLevel = TestFramework.TIERED_COMPILATION_STOP_AT_LEVEL;

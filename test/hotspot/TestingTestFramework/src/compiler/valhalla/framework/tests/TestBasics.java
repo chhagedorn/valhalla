@@ -2,14 +2,16 @@ package compiler.valhalla.framework.tests;
 
 import compiler.valhalla.framework.*;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class TestBasics {
-    public static void main(String[] args) {
-        TestFramework framework = new TestFramework();
+    public static void main(String[] args) throws Exception {
         // Run on same VM to make this test easier as we are not interested in any output processing.
-        framework.runTestsOnSameVM();
+        Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM");
+        runTestsOnSameVM.setAccessible(true);
+        runTestsOnSameVM.invoke(null);
 
         if (wasExecuted) {
             throw new RuntimeException("Executed non @Test method or a method that was not intended to be run");

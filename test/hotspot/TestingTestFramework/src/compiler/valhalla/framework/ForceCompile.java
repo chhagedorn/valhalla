@@ -6,5 +6,5 @@ import java.lang.annotation.RetentionPolicy;
 // Force method compilation
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ForceCompile {
-    CompLevel compLevel() default CompLevel.ANY;
+    CompLevel value() default CompLevel.ANY;
 }

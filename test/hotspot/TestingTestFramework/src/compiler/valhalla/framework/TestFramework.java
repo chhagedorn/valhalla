@@ -51,7 +51,6 @@ public class TestFramework {
     private static       boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"))
                                              && !XCOMP && !TEST_C1 && COMPILE_COMMANDS && Platform.isDebugBuild() && !Platform.isInt();
     private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
-    private static final String SCENARIOS = System.getProperty("Scenarios", "");
     private static final String TESTLIST = System.getProperty("Testlist", "");
     private static final String EXCLUDELIST = System.getProperty("Exclude", "");
     public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "251"));
@@ -59,12 +58,11 @@ public class TestFramework {
     private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
     static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
-    private static final boolean PREFER_CL_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
+    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
     private static final boolean USE_COMPILE_COMMAND_ANNOTATIONS = Boolean.parseBoolean(System.getProperty("UseCompileCommandAnnotations", "true"));
     private static final boolean PRINT_VALID_IR_RULES = Boolean.parseBoolean(System.getProperty("PrintValidIRRules", "false"));
+    private static final boolean ENABLE_DEFAULT_SCENARIO = Boolean.parseBoolean(System.getProperty("EnableDefaultScenario", "true"));
 
-    // "jtreg -DXcomp=true" runs all the scenarios with -Xcomp. This is faster than "jtreg -javaoptions:-Xcomp".
-    static final boolean RUN_WITH_XCOMP = Boolean.parseBoolean(System.getProperty("Xcomp", "false"));
 
     static final boolean TESTING_TEST_FRAMEWORK = Boolean.parseBoolean(System.getProperty("TestingTestFramework", "false"));
 
@@ -83,17 +81,15 @@ public class TestFramework {
 
     // Index into this array is the scenario ID.
     protected final List<Scenario> scenarios = new ArrayList<>();
-
     private final IREncodingPrinter irMatchRulePrinter;
 
-    // Used to run scenarios
     TestFramework() {
         // These flags can be overridden
         fixedDefaultFlags = setupDefaultFlags();
         compileCommandFlags = setupCompileCommandFlags();
         printFlags = setupPrintFlags();
         verifyFlags = setupVerifyFlags();
-        setupDefaultScenarios();
+
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter = new IREncodingPrinter();
         } else {
@@ -152,38 +148,76 @@ public class TestFramework {
      */
     public static void run() {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        doRun(walker.getCallerClass(), null, null);
+        doRun(walker.getCallerClass(), null);
     }
 
     public static void run(Class<?> testClass) {
-        doRun(testClass, null, null);
+        doRun(testClass, null);
     }
 
     public static void runWithHelperClasses(Class<?> testClass, Class<?>... helperClasses) {
-        doRun(testClass, Arrays.asList(helperClasses), null);
+        doRun(testClass, Arrays.asList(helperClasses));
+    }
+
+    public static void runWithScenarios(Scenario... scenarios) {
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        runWithScenarios(walker.getCallerClass(), scenarios);
+    }
+
+    public static void runWithScenarios(Class<?> testClass, Scenario... scenarios) {
+        runWithScenarios(testClass, null, scenarios);
+    }
+
+    public static void runWithScenarios(Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
+        TestFramework framework = new TestFramework();
+        Map<String, Exception> exceptionMap = new HashMap<>();
+        // First run without additional scenario flags.
+        if (ENABLE_DEFAULT_SCENARIO) {
+            try {
+                framework.runTestVM(testClass, helperClasses, null);
+            } catch (Exception e) {
+                exceptionMap.put("Default Scenario", e);
+            }
+        }
+
+        Set<Integer> scenarioIndecies = new HashSet<>();
+        for (Scenario scenario : scenarios) {
+            int scenarioIndex = scenario.getIndex();
+            TestFormat.check(!scenarioIndecies.contains(scenarioIndex),
+                             "Cannot define two scenarios with the same index " + scenarioIndex);
+            scenarioIndecies.add(scenarioIndex);
+            try {
+                framework.runTestVM(testClass, helperClasses, scenario);
+            } catch (Exception e) {
+                exceptionMap.put(String.valueOf(scenarioIndex), e);
+            }
+        }
+        if (!exceptionMap.isEmpty()) {
+            StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
+            builder.append(String.join(", #", exceptionMap.keySet())).append("\n\n");
+            for (Map.Entry<String, Exception> entry: exceptionMap.entrySet()) {
+                String title = "Stacktrace for Scenario #" + entry.getKey();
+                builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
+                builder.append(entry.getValue().getMessage()).append("\n");
+            }
+            throw new TestRunException(builder.toString());
+        }
     }
 
     public static void run(Class<?> testClass, List<Class<?>> helperClasses) {
-        doRun(testClass, helperClasses, null);
-    }
-
-    public static void runWithArguments(String... commandLineArgs) {
-        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        doRun(walker.getCallerClass(), null, Arrays.asList(commandLineArgs));
-    }
-
-    public static void runWithArguments(Class<?> testClass, String... commandLineArgs) {
-        doRun(testClass, null, Arrays.asList(commandLineArgs));
-    }
-
-    private static void doRun(Class<?> testClass, List<Class<?>> helperClasses, List<String> commandLineArgs) {
-        TestFramework framework = new TestFramework();
-        framework.startTestVM(null, testClass, helperClasses, commandLineArgs);
+        doRun(testClass, helperClasses);
     }
 
     /*
      * End of public interface
      */
+
+
+    private static void doRun(Class<?> testClass, List<Class<?>> helperClasses) {
+        TestFramework framework = new TestFramework();
+        framework.runTestVM(testClass, helperClasses, null);
+    }
+
 
     private void runTestsOnSameVM(Class<?> testClass, ArrayList<Class<?>> helperClasses) {
         for (Class<?> helperClass : helperClasses) {
@@ -205,69 +239,17 @@ public class TestFramework {
         framework.runTestsOnSameVM(walker.getCallerClass());
     }
 
-    private String startTestVM(ArrayList<String> scenarioFlags, Class<?> testClass, List<Class<?>> helperClasses,
-                               List<String> commandLineArgs) {
-        ArrayList<String> cmds = new ArrayList<>(Arrays.asList(InputArguments.getVmInputArgs()));
-        if (RUN_WITH_XCOMP) {
-            cmds.add( "-Xcomp");
+    private void runTestVM(Class<?> testClass, List<Class<?>> helperClasses, Scenario scenario) {
+        if (scenario != null && !scenario.isEnabled()) {
+            System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag -DScenarios and" +
+                                       "is therefore not executed.");
+            return;
         }
 
-        if (VERIFY_IR && cmds.stream().anyMatch(flag -> flag.startsWith("-XX:CompileThreshold"))) {
-            // Disable IR verification if non-default CompileThreshold is set
-            if (VERBOSE) {
-                System.out.println("Disabled IR verification due to CompileThreshold flag");
-            }
-            VERIFY_IR = false;
-        }
-
-        if (VERIFY_IR) {
-            // Add print flags for IR verification
-            cmds.addAll(Arrays.asList(printFlags));
-            addBoolOptionForClass(cmds, testClass, "PrintIdeal");
-            addBoolOptionForClass(cmds, testClass, "PrintOptoAssembly");
-            // Always trap for exception throwing to not confuse IR verification
-            cmds.add("-XX:-OmitStackTraceInFastThrow");
-            cmds.add("-DPrintValidIRRules=true");
-        } else {
-            cmds.add("-DPrintValidIRRules=false");
-        }
-        
-        if (VERIFY_VM) {
-            cmds.addAll(Arrays.asList(verifyFlags));
-        }
-
-        cmds.addAll(Arrays.asList(fixedDefaultFlags));
-        if (COMPILE_COMMANDS) {
-            cmds.addAll(Arrays.asList(compileCommandFlags));
-        }
-
-        if (scenarioFlags != null) {
-            cmds.addAll(scenarioFlags);
-        }
-
-        if (commandLineArgs != null) {
-            // Ensured to be always set. Useful for testing the framework itself, for example @IR behavior.
-            cmds.addAll(commandLineArgs);
-        }
-
-        // TODO: Only for debugging
-        if (cmds.get(0).startsWith("-agentlib")) {
-            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
-        }
-        cmds.add(getClass().getCanonicalName());
-        cmds.add(testClass.getCanonicalName());
-        if (helperClasses != null) {
-            helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
-        }
-
-        if (VERBOSE) {
-            System.out.print("Command Line: ");
-            cmds.forEach(flag -> System.out.print(flag + " "));
-        }
-
+        ArrayList<String> cmds = prepareTestVmFlags(testClass, helperClasses, scenario);
         OutputAnalyzer oa;
         try {
-            // Calls this 'main' of this class to run all specified tests with the flags specified by the scenario.
+            // Calls 'main' of this class to run all specified tests with commands 'cmds'.
             oa = ProcessTools.executeTestJvm(cmds);
         } catch (Exception e) {
             throw new TestRunException("Error while executing Test VM", e);
@@ -287,118 +269,81 @@ public class TestFramework {
             IRMatcher irMatcher = new IRMatcher(output, testClass);
             irMatcher.applyRules();
         }
-        return output;
     }
 
-    public static String getLastVmOutput() {
-        return lastVmOutput;
+    private ArrayList<String> prepareTestVmFlags(Class<?> testClass, List<Class<?>> helperClasses, Scenario scenario) {
+        String[] vmInputArguments = InputArguments.getVmInputArgs();
+        ArrayList<String> cmds = new ArrayList<>();
+        if (!PREFER_COMMAND_LINE_FLAGS) {
+            cmds.addAll(Arrays.asList(vmInputArguments));
+        }
+
+        if (scenario != null) {
+            System.out.println("Running Scenario #" + scenario.getIndex());
+            cmds.addAll(scenario.getFlags());
+        }
+        setupIrVerificationFlags(testClass, cmds);
+
+        if (VERIFY_VM) {
+            cmds.addAll(Arrays.asList(verifyFlags));
+        }
+
+        cmds.addAll(Arrays.asList(fixedDefaultFlags));
+        if (COMPILE_COMMANDS) {
+            cmds.addAll(Arrays.asList(compileCommandFlags));
+        }
+
+        // TODO: Only for debugging
+        if (cmds.get(0).startsWith("-agentlib")) {
+            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
+        }
+
+        if (PREFER_COMMAND_LINE_FLAGS) {
+            // Prefer flags set via the command line over the ones set by scenarios.
+            cmds.addAll(Arrays.asList(vmInputArguments));
+        }
+
+        cmds.add(getClass().getCanonicalName());
+        cmds.add(testClass.getCanonicalName());
+        if (helperClasses != null) {
+            helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
+        }
+
+        if (VERBOSE) {
+            System.out.print("Command Line: ");
+            cmds.forEach(flag -> System.out.print(flag + " "));
+        }
+        return cmds;
     }
+
+    private void setupIrVerificationFlags(Class<?> testClass, ArrayList<String> cmds) {
+        if (VERIFY_IR && cmds.stream().anyMatch(flag -> flag.startsWith("-XX:CompileThreshold"))) {
+            // Disable IR verification if non-default CompileThreshold is set
+            if (VERBOSE) {
+                System.out.println("Disabled IR verification due to CompileThreshold flag");
+            }
+            VERIFY_IR = false;
+        }
+
+        if (VERIFY_IR) {
+            // Add print flags for IR verification
+            cmds.addAll(Arrays.asList(printFlags));
+            addBoolOptionForClass(cmds, testClass, "PrintIdeal");
+            addBoolOptionForClass(cmds, testClass, "PrintOptoAssembly");
+            // Always trap for exception throwing to not confuse IR verification
+            cmds.add("-XX:-OmitStackTraceInFastThrow");
+            cmds.add("-DPrintValidIRRules=true");
+        } else {
+            cmds.add("-DPrintValidIRRules=false");
+        }
+    }
+
     private void addBoolOptionForClass(ArrayList<String> cmds, Class<?> testClass, String option) {
         cmds.add("-XX:CompileCommand=option," + testClass.getCanonicalName() + "::*,bool," + option + ",true");
     }
 
-//    public static void runDefaultScenarios() {
-//        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-//        Class<?> testClass = walker.getCallerClass();
-//        TestFramework frameWork = new TestFramework();
-//        frameWork.setupDefaultScenarios();
-//        frameWork.runScenarios(testClass);
-//    }
-
-    public void runScenarios() {
-        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runScenarios(walker.getCallerClass());
-    }
-
-    private void runScenarios(Class<?> testClass, Class<?>... helperClasses) {
-        if (!SCENARIOS.isEmpty()) {
-            setupFlagDefinedScenarios();
-        }
-
-        for (int i = 0; i < scenarios.size(); i++) {
-            Scenario scenario = scenarios.get(i);
-            if (scenario.isIgnored()) {
-                System.out.println("Scenario #" + i + " is ignored. Reason:" + scenario.getIgnoreReason());
-            }
-            System.out.println("Run Scenario #" + i + " -------- ");
-            ArrayList<String> scenarioFlags = new ArrayList<>(scenario.getFlags());
-            scenario.setOutput(startTestVM(scenarioFlags, testClass, Arrays.asList(helperClasses), null));
-        }
-    }
-
-    private void setupFlagDefinedScenarios() {
-        List<Integer> flagDefinedScenarios = Arrays.stream(SCENARIOS.split("\\s*,\\s*")).map(Integer::getInteger).sorted().collect(Collectors.toList());
-        scenarios.forEach(s -> s.disable("Disabled by -Dscenarios"));
-        int lastIndex = flagDefinedScenarios.get(flagDefinedScenarios.size() - 1);
-        for (int scenarioId : flagDefinedScenarios) {
-            if (scenarioId >= scenarios.size()) {
-                System.out.println("Scenario #" + scenarioId + " does not exist.");
-                continue;
-            }
-            Scenario scenario = scenarios.get(scenarioId);
-            if (scenario.isIgnored()) {
-                continue;
-            }
-
-            scenario.enable();
-        }
-
-        // All remaining flag defined scenarios are invalid
-    }
-
-    public void addScenario(Scenario scenario) {
-        scenarios.add(scenario);
-    }
-
-    public void disableDefaultScenario(int scenarioId) {
-        checkScenarioId(scenarioId);
-        scenarios.get(scenarioId).disable();
-    }
-
-    public void disableDefaultScenario(int scenarioId, String reason) {
-        checkScenarioId(scenarioId);
-        scenarios.get(scenarioId).disable(reason);
-    }
-
-    public void replaceDefaultScenario(Scenario newScenario, int scenarioId) {
-        checkScenarioId(scenarioId);
-        scenarios.set(scenarioId, newScenario);
-    }
-
-    public void replaceDefaultScenarios(Scenario[] newScenarios) {
-        scenarios.clear();
-        scenarios.addAll(Arrays.asList(newScenarios));
-    }
-
-    public void addFlagsToDefaultScenario(int scenarioId, String... flags) {
-        checkScenarioId(scenarioId);
-        Arrays.stream(flags).forEach(f -> scenarios.get(scenarioId).addFlag(f));
-    }
-
-    public String getScenarioOutput(int scenarioId) {
-        checkScenarioId(scenarioId);
-        return scenarios.get(scenarioId).getOutput();
-    }
-
-    private void checkScenarioId(int scenarioId) {
-        TestFormat.check(scenarioId >= 0 && scenarioId < scenarios.size(),
-                         "Invalid default scenario id " + scenarioId +  ". Must be in [0, " + (scenarios.size() - 1) + "].");
-    }
-
-    // Can be overridden, for example by Valhalla
-    protected void setupDefaultScenarios() {
-        scenarios.add(new Scenario(new ArrayList<>(Arrays.asList(
-                "-XX:+IgnoreUnrecognizedVMOptions"))));
-        scenarios.add(new Scenario(new ArrayList<>(Arrays.asList(
-                "-XX:CompileCommand=quiet"))));
-        scenarios.add(new Scenario(new ArrayList<>(Arrays.asList(
-                "-Xmx256m"))));
-        scenarios.add(new Scenario(new ArrayList<>(Arrays.asList(
-                "-DVerifyIR=false"))));
-        scenarios.add(new Scenario(new ArrayList<>(Arrays.asList(
-                "-XX:+StressGCM"))));
-        scenarios.add(new Scenario(new ArrayList<>(Arrays.asList(
-                "-XX:+StressLCM"))));
+    public static String getLastVmOutput() {
+        return lastVmOutput;
     }
 
     private void parseTestClass(Class<?> clazz) {

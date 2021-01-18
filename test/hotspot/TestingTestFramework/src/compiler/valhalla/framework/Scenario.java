@@ -1,54 +1,49 @@
 package compiler.valhalla.framework;
 
-import java.util.ArrayList;
+import java.util.*;
 
 public class Scenario {
-    private final ArrayList<String> flags;
-    private boolean enabled;
-    private String disableReason;
-    private String output;
+    // "jtreg -DXcomp=true" runs all the scenarios with -Xcomp. This is faster than "jtreg -javaoptions:-Xcomp".
+    static final String ADDITIONAL_SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
+    private static final String SCENARIOS = System.getProperty("Scenarios", "");
+    private static final List<String> additionalScenarioFlags = new ArrayList<>();
+    private static final Set<Integer> enabledScenarios = new HashSet<>();
 
-    public Scenario(ArrayList<String> flags) {
-        this.flags = flags;
-        this.disableReason = "";
+    private final List<String> flags;
+    private final int index;
+    boolean enabled;
+
+    static {
+        if (!SCENARIOS.isEmpty()) {
+            Arrays.stream(SCENARIOS.split("\\s*,\\s*")).map(Integer::getInteger).forEachOrdered(enabledScenarios::add);
+        }
+
+        if (!ADDITIONAL_SCENARIO_FLAGS.isEmpty()) {
+            additionalScenarioFlags.addAll(Arrays.asList(ADDITIONAL_SCENARIO_FLAGS.split("\\s*,\\s*")));
+        }
     }
 
-    public boolean isIgnored() {
-        return enabled;
+    public Scenario(int index, String... flags) {
+        this.index = index;
+        if (enabledScenarios.isEmpty() || enabledScenarios.contains(index)) {
+            this.flags = new ArrayList<>(Arrays.asList(flags));
+            this.flags.addAll(additionalScenarioFlags);
+            this.enabled = true;
+        } else {
+            this.flags = new ArrayList<>();
+            this.enabled = false;
+        }
     }
 
-    public void addFlag(String flag) {
-        flags.add(flag.trim());
-    }
-
-    public void disable() {
-        enabled = false;
-        disableReason = "Disabled by Test.";
-    }
-
-    public void disable(String reason) {
-        enabled = false;
-        disableReason = reason;
-    }
-
-    public void enable() {
-        enabled = true;
-        disableReason = "Disabled by Test.";
-    }
-
-    public String getIgnoreReason() {
-        return disableReason;
-    }
-
-    public ArrayList<String> getFlags() {
+    public List<String> getFlags() {
         return flags;
     }
 
-    public void setOutput(String output) {
-        this.output = output;
+    public int getIndex() {
+        return index;
     }
 
-    public String getOutput() {
-        return output;
+    public boolean isEnabled() {
+        return enabled;
     }
 }

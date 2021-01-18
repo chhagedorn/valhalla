@@ -385,7 +385,6 @@ public class TestFramework {
     private void parseTestClass(Class<?> clazz) {
         addReplay();
         processExplicitCompileCommands(clazz);
-        setupTestMethodMap(clazz);
         setupTests(clazz);
         setupCheckAndRunMethods(clazz);
 
@@ -399,7 +398,7 @@ public class TestFramework {
         if (DUMP_REPLAY) {
             // Generate replay compilation files
             String directive = "[{ match: \"*.*\", DumpReplay: true }]";
-            TestFormat.check(WHITE_BOX.addCompilerDirective(directive) == 1, "Failed to add DUMP_REPLAY directive");
+            TestFramework.check(WHITE_BOX.addCompilerDirective(directive) == 1, "Failed to add DUMP_REPLAY directive");
         }
     }
 
@@ -473,30 +472,24 @@ public class TestFramework {
         TestFrameworkUtils.enqueueMethodForCompilation(m ,compLevel);
     }
 
-    private void setupTestMethodMap(Class<?> clazz) {
-        Arrays.stream(clazz.getDeclaredMethods()).forEach(m -> {
+    private void setupTests(Class<?> clazz) {
+        for (Method m : clazz.getDeclaredMethods()) {
             Test testAnno = getAnnotation(m, Test.class);
             if (testAnno != null) {
                 TestFormat.check(!testMethodMap.containsKey(m.getName()),
                                  "Cannot overload two @Test methods " + m + " and " + testMethodMap.get(m.getName()));
+                addTest(m, Argument.getArguments(m));
                 testMethodMap.put(m.getName(), m);
             } else {
                 TestFormat.check(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
             }
-        });
-    }
-
-    private void setupTests(Class<?> clazz) {
-        for (Method m : testMethodMap.values()) {
-            Argument[] arguments = Argument.getArguments(m);
-            addTest(clazz, m, arguments);
         }
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter.dump();
         }
     }
 
-    private void addTest(Class<?> clazz, Method m, Argument[] arguments) {
+    private void addTest(Method m, Argument[] arguments) {
         Test testAnno = getAnnotation(m, Test.class);
         TestFormat.check(testAnno != null, m + " must be a method with a @Test annotation");
 
@@ -521,7 +514,7 @@ public class TestFramework {
         }
         // Don't inline test methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        DeclaredTest test = new DeclaredTest(m, testAnno, arguments, clazz, warmupIterations, osrOnly);
+        DeclaredTest test = new DeclaredTest(m, testAnno, arguments, warmupIterations, osrOnly);
         declaredTests.put(m, test);
     }
 
@@ -567,7 +560,7 @@ public class TestFramework {
         }
 
         if (allTests.containsKey(testMethod)) {
-            TestFormat.fail("Method " + m + " and " + allTests.get(testMethod).getAssociatedTestName()
+            TestFormat.fail("Method " + m + " and " + allTests.get(testMethod).getTestName()
                             + " cannot both reference test method " + testMethod);
         }
 
@@ -630,9 +623,9 @@ public class TestFramework {
             if (PRINT_TIMES || VERBOSE) {
                 long endTime = System.nanoTime();
                 long duration = (endTime - startTime);
-                durations.put(duration, test.getAssociatedTestName());
+                durations.put(duration, test.getTestName());
                 if (VERBOSE) {
-                    System.out.println("Done " + test.getAssociatedTestName() + ": " + duration + " ns = " + (duration / 1000000) + " ms");
+                    System.out.println("Done " + test.getTestName() + ": " + duration + " ns = " + (duration / 1000000) + " ms");
                 }
             }
             if (GC_AFTER) {
@@ -648,40 +641,6 @@ public class TestFramework {
                 System.out.format("%-10s%15d ns\n", entry.getValue() + ":", entry.getKey());
             }
         }
-    }
-
-    enum TriState {
-        Maybe,
-        Yes,
-        No
-    }
-
-    public static boolean isC2Compiled(Method m) {
-        return compiledByC2(m) == TriState.Yes;
-    }
-
-    public static void assertDeoptimizedByC2(Method m) {
-        if (compiledByC2(m) == TriState.Yes) {
-            throw new TestRunException("Expected to have deoptimized");
-        }
-    }
-
-    public static void assertCompiledByC2(Method m) {
-        if (compiledByC2(m) == TriState.No) {
-            throw new TestRunException("Expected to be compiled");
-        }
-    }
-
-    private static TriState compiledByC2(Method m) {
-        if (!USE_COMPILER || XCOMP || TEST_C1 ||
-                (STRESS_CC && !WHITE_BOX.isMethodCompilable(m, CompLevel.C2_FULL_OPTIMIZATION.getValue(), false))) {
-            return TriState.Maybe;
-        }
-        if (WHITE_BOX.isMethodCompiled(m, false) &&
-                WHITE_BOX.getMethodCompilationLevel(m, false) >= CompLevel.C2_FULL_OPTIMIZATION.getValue()) {
-            return TriState.Yes;
-        }
-        return TriState.No;
     }
 
     public static void check(boolean test, String failureMessage) {
@@ -726,12 +685,11 @@ class DeclaredTest {
     }
 
     private final Argument[] arguments;
-    private final Object invocationTarget;
     private final int warmupIterations;
     private final CompLevel requestedCompLevel;
     private final boolean osrOnly;
 
-    public DeclaredTest(Method testMethod, Test testAnnotation, Argument[] arguments, Class<?> c, int warmupIterations, boolean osrOnly) {
+    public DeclaredTest(Method testMethod, Test testAnnotation, Argument[] arguments, int warmupIterations, boolean osrOnly) {
         // Make sure we can also call non-public or public methods in package private classes
         testMethod.setAccessible(true);
         this.testMethod = testMethod;
@@ -739,18 +697,6 @@ class DeclaredTest {
         this.arguments = arguments;
         this.warmupIterations = warmupIterations;
         this.osrOnly = osrOnly;
-        if (Modifier.isStatic(testMethod.getModifiers())) {
-            invocationTarget = null;
-        } else {
-            try {
-                Constructor<?> constructor = c.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                invocationTarget = constructor.newInstance();
-            } catch (Exception e) {
-                throw new TestRunException("Could not create instance of " + c
-                        + ". Make sure there is a constructor without arguments.", e);
-            }
-        }
     }
 
     public CompLevel getRequestedCompLevel() {
@@ -767,6 +713,10 @@ class DeclaredTest {
 
     public boolean hasArguments() {
         return arguments != null;
+    }
+
+    public Object[] getArguments() {
+        return Arrays.stream(arguments).map(Argument::getArgument).toArray();
     }
 
     public void printFixedRandomArguments() {
@@ -788,29 +738,12 @@ class DeclaredTest {
         }
     }
 
-    public Object invokeWithSpecifiedArguments() {
-        try {
-            if (hasArguments()) {
-                Object[] args = Arrays.stream(arguments).map(Argument::getArgument).toArray();
-                return testMethod.invoke(invocationTarget, args);
-            } else {
-                return testMethod.invoke(invocationTarget);
-            }
-        } catch (Exception e) {
-            throw new TestRunException("There was an error while invoking @Test method " + testMethod, e);
-        }
-    }
-
     public Object invoke(Object obj, Object... args) {
         try {
             return testMethod.invoke(obj, args);
         } catch (Exception e) {
             throw new TestRunException("There was an error while invoking @Test method " + testMethod, e);
         }
-    }
-
-    public Object getInvocationTarget() {
-        return invocationTarget;
     }
 
     public void checkCompilationLevel() {
@@ -824,16 +757,30 @@ class BaseTest {
     private static final int OSR_TEST_TIMEOUT = Integer.parseInt(System.getProperty("OSRTestTimeOut", "5000"));
 
     protected final DeclaredTest test;
+    protected final Method testMethod;
     protected final TestInfo testInfo;
     protected final Object invocationTarget;
 
     public BaseTest(DeclaredTest test) {
         this.test = test;
-        this.testInfo = new TestInfo();
-        this.invocationTarget = test.getInvocationTarget();
+        this.testMethod = test.getTestMethod();
+        this.testInfo = new TestInfo(testMethod);
+        Class<?> clazz = testMethod.getDeclaringClass();
+        if (Modifier.isStatic(testMethod.getModifiers())) {
+            this.invocationTarget = null;
+        } else {
+            try {
+                Constructor<?> constructor = clazz.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                this.invocationTarget = constructor.newInstance();
+            } catch (Exception e) {
+                throw new TestRunException("Could not create instance of " + clazz
+                                                   + ". Make sure there is a constructor without arguments.", e);
+            }
+        }
     }
-    public String getAssociatedTestName() {
-        return test.getTestMethod().getName();
+    public String getTestName() {
+        return testMethod.getName();
     }
 
     /**
@@ -861,31 +808,32 @@ class BaseTest {
     }
 
     protected void runMethod() {
-        verify(testInfo, test.invokeWithSpecifiedArguments());
+        verify(testInfo, invokeTestMethod());
     }
 
-    protected void compileOSRAndRun() {
+    private Object invokeTestMethod() {
+        try {
+            if (test.hasArguments()) {
+                return testMethod.invoke(invocationTarget, test.getArguments());
+            } else {
+                return testMethod.invoke(invocationTarget);
+            }
+        } catch (Exception e) {
+            throw new TestRunException("There was an error while invoking @Test method " + testMethod, e);
+        }
+    }
+
+    private void compileOSRAndRun() {
         final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VerifyOops);
         final long started = System.currentTimeMillis();
         boolean stateCleared = false;
         while (true) {
             long elapsed = System.currentTimeMillis() - started;
-            Method testMethod = test.getTestMethod();
             int level = WHITE_BOX.getMethodCompilationLevel(testMethod);
             if (maybeCodeBufferOverflow && elapsed > 5000
                     && (!WHITE_BOX.isMethodCompiled(testMethod, false) || level != test.getRequestedCompLevel().getValue())) {
-                System.out.println("Temporarily disabling VerifyOops");
-                try {
-                    WHITE_BOX.setBooleanVMFlag("VerifyOops", false);
-                    if (!stateCleared) {
-                        WHITE_BOX.clearMethodState(testMethod);
-                        stateCleared = true;
-                    }
-                    runMethod();
-                } finally {
-                    WHITE_BOX.setBooleanVMFlag("VerifyOops", true);
-                    System.out.println("Re-enabled VerifyOops");
-                }
+                retryDisabledVerifyOops(stateCleared);
+                stateCleared = true;
             } else {
                 runMethod();
             }
@@ -898,7 +846,21 @@ class BaseTest {
                 // Don't control compilation if -Xcomp is enabled, or if compiler is disabled
                 break;
             }
-            Asserts.assertTrue(OSR_TEST_TIMEOUT < 0 || elapsed < OSR_TEST_TIMEOUT, test + " not compiled after " + OSR_TEST_TIMEOUT + " ms");
+            Asserts.assertTrue(OSR_TEST_TIMEOUT < 0 || elapsed < OSR_TEST_TIMEOUT, testMethod + " not compiled after " + OSR_TEST_TIMEOUT + " ms");
+        }
+    }
+
+    private void retryDisabledVerifyOops(boolean stateCleared) {
+        System.out.println("Temporarily disabling VerifyOops");
+        try {
+            WHITE_BOX.setBooleanVMFlag("VerifyOops", false);
+            if (!stateCleared) {
+                WHITE_BOX.clearMethodState(testMethod);
+            }
+            runMethod();
+        } finally {
+            WHITE_BOX.setBooleanVMFlag("VerifyOops", true);
+            System.out.println("Re-enabled VerifyOops");
         }
     }
 
@@ -935,7 +897,7 @@ class BaseTest {
 
 class CheckedTest extends BaseTest {
     private final Method checkMethod;
-    private final Check checkSpecification;
+    private final CheckAt checkAt;
     private final Parameter parameter;
 
     enum Parameter {
@@ -947,14 +909,14 @@ class CheckedTest extends BaseTest {
         // Make sure we can also call non-public or public methods in package private classes
         checkMethod.setAccessible(true);
         this.checkMethod = checkMethod;
-        this.checkSpecification = checkSpecification;
+        this.checkAt = checkSpecification.when();
         this.parameter = parameter;
     }
 
     @Override
     public void verify(TestInfo testInfo, Object result) {
         boolean shouldVerify = false;
-        switch (checkSpecification.when()) {
+        switch (checkAt) {
             case EACH_INVOCATION -> shouldVerify = true;
             case C2_COMPILED -> shouldVerify = !testInfo.isWarmUp();
         }

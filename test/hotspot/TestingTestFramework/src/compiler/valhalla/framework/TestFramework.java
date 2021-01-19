@@ -62,7 +62,8 @@ public class TestFramework {
     private static final boolean USE_COMPILE_COMMAND_ANNOTATIONS = Boolean.parseBoolean(System.getProperty("UseCompileCommandAnnotations", "true"));
     private static final boolean PRINT_VALID_IR_RULES = Boolean.parseBoolean(System.getProperty("PrintValidIRRules", "false"));
     private static final boolean ENABLE_DEFAULT_SCENARIO = Boolean.parseBoolean(System.getProperty("EnableDefaultScenario", "true"));
-
+    protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
+    protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
 
     static final boolean TESTING_TEST_FRAMEWORK = Boolean.parseBoolean(System.getProperty("TestingTestFramework", "false"));
 
@@ -200,7 +201,7 @@ public class TestFramework {
                 builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
                 builder.append(entry.getValue().getMessage()).append("\n");
             }
-            throw new TestRunException(builder.toString());
+            TestRun.fail(builder.toString());
         }
     }
 
@@ -624,15 +625,11 @@ public class TestFramework {
     }
 
     public static void assertDeoptimizedByC2(Method m) {
-        if (compiledByC2(m) == TriState.Yes) {
-            throw new TestRunException(m + " should have been deoptimized");
-        }
+        TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
     }
 
     public static void assertCompiledByC2(Method m) {
-        if (compiledByC2(m) == TriState.No) {
-            throw new TestRunException(m + " should have been compiled");
-        }
+        TestRun.check(compiledByC2(m) != TriState.No, m + " should have been compiled");
     }
 
     private static TriState compiledByC2(Method m) {
@@ -691,7 +688,7 @@ class DeclaredTest {
         // Make sure we can also call non-public or public methods in package private classes
         testMethod.setAccessible(true);
         this.testMethod = testMethod;
-        this.requestedCompLevel = testAnnotation.compLevel();
+        this.requestedCompLevel = TestFrameworkUtils.restrictCompLevel(testAnnotation.compLevel());
         this.arguments = arguments;
         this.warmupIterations = warmupIterations;
         this.osrOnly = osrOnly;
@@ -743,11 +740,6 @@ class DeclaredTest {
             throw new TestRunException("There was an error while invoking @Test method " + testMethod, e);
         }
     }
-
-    public void checkCompilationLevel() {
-        int level = WhiteBox.getWhiteBox().getMethodCompilationLevel(testMethod);
-        Asserts.assertEQ(level, TestFrameworkUtils.compLevelToInt(requestedCompLevel), "Unexpected compilation level for " + testMethod);
-    }
 }
 
 class BaseTest {
@@ -785,11 +777,6 @@ class BaseTest {
      * Run the associated test
      */
     public void run() {
-//        ByteArrayOutputStream systemOutStream = new ByteArrayOutputStream();
-//        PrintStream ps = new PrintStream(systemOutStream);
-//        PrintStream old = System.out;
-//        System.setOut(ps);
-
         test.printFixedRandomArguments();
         for (int i = 0; i < test.getWarmupIterations(); i++) {
             runMethod();
@@ -801,12 +788,10 @@ class BaseTest {
         } else {
             compileNormallyAndRun();
         }
-//        System.setOut(old);
-//        System.out.print(systemOutStream.toString());
     }
 
     protected void runMethod() {
-        verify(testInfo, invokeTestMethod());
+        verify(invokeTestMethod());
     }
 
     private Object invokeTestMethod() {
@@ -882,15 +867,21 @@ class BaseTest {
                 }
             }
             Asserts.assertTrue(WHITE_BOX.isMethodCompiled(testMethod, false), testMethod + " not compiled after waiting 1s");
-            test.checkCompilationLevel();
+            checkCompilationLevel();
         }
         runMethod();
+    }
+
+    protected void checkCompilationLevel() {
+        CompLevel level = CompLevel.forValue(WhiteBox.getWhiteBox().getMethodCompilationLevel(testMethod));
+        TestRun.check(level == test.getRequestedCompLevel(),
+                      "Compilation level should be " + test.getRequestedCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod);
     }
 
     /**
      * Verify the result
      */
-    public void verify(TestInfo testInfo, Object result) { /* no verification in BaseTests */ }
+    public void verify(Object result) { /* no verification in BaseTests */ }
 }
 
 class CheckedTest extends BaseTest {
@@ -912,7 +903,7 @@ class CheckedTest extends BaseTest {
     }
 
     @Override
-    public void verify(TestInfo testInfo, Object result) {
+    public void verify(Object result) {
         boolean shouldVerify = false;
         switch (checkAt) {
             case EACH_INVOCATION -> shouldVerify = true;
@@ -935,14 +926,22 @@ class CheckedTest extends BaseTest {
 
 class CustomRunTest extends BaseTest {
     private final Method runMethod;
-    private final Run runSpecification;
+    private final RunMode mode;
 
     public CustomRunTest(DeclaredTest test, Method runMethod, Run runSpecification) {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         runMethod.setAccessible(true);
         this.runMethod = runMethod;
-        this.runSpecification = runSpecification;
+        this.mode = runSpecification.mode();
+    }
+
+    @Override
+    public void run() {
+        switch (mode) {
+            case ONCE -> runMethod();
+            case NORMAL -> super.run();
+        }
     }
 
     /**
@@ -958,6 +957,19 @@ class CustomRunTest extends BaseTest {
             }
         } catch (Exception e) {
             throw new TestRunException("There was an error while invoking @Run method " + runMethod, e);
+        }
+    }
+
+    @Override
+    protected void checkCompilationLevel() {
+        CompLevel level = CompLevel.forValue(WhiteBox.getWhiteBox().getMethodCompilationLevel(testMethod));
+        if (level != test.getRequestedCompLevel()) {
+            String message = "Compilation level should be " + test.getRequestedCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod + ".";
+            switch (mode) {
+                case ONCE -> message = message + "\nCheck your @Run method (invoked once) " + runMethod + " to ensure that " + testMethod + " will be complied at the requested level.";
+                case NORMAL -> message = message + "\nCheck your @Run method " + runMethod + " to ensure that " + testMethod + " is called at least once in each iteration.";
+            }
+            TestRun.fail(message);
         }
     }
 }
@@ -985,7 +997,7 @@ class TestFrameworkUtils {
     }
 
     // Get the appropriate level as permitted by the test scenario and VM options.
-    private static CompLevel restrictCompLevel(CompLevel compLevel) {
+    public static CompLevel restrictCompLevel(CompLevel compLevel) {
         switch (compLevel) {
             case ANY -> compLevel = CompLevel.C2;
             case C1_SIMPLE, C1_LIMITED_PROFILE, C1_FULL_PROFILE -> {

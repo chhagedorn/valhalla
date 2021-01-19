@@ -1,16 +1,16 @@
 package compiler.valhalla.framework;
 
-public class TestFormat {
+public class TestRun {
     public static void check(boolean test, String failureMessage) {
         if (!test) {
-            throw new TestFormatException(failureMessage);
+            throw new TestRunException(failureMessage);
         }
     }
     public static void fail(String failureMessage) {
-        throw new TestFormatException(failureMessage);
+        throw new TestRunException(failureMessage);
     }
 
     public static void fail(String failureMessage, Exception e) {
-        throw new TestFormatException(failureMessage, e);
+        throw new TestRunException(failureMessage, e);
     }
 }

@@ -25,8 +25,7 @@ public class TestBasics {
             }
         }
 
-        for (int i = 0; i < checkExecuted.length; i++) {
-            int value = checkExecuted[i];
+        for (int value : checkExecuted) {
             if (value != 1) {
                 throw new RuntimeException("Check function should have been executed exactly once");
             }
@@ -74,8 +73,8 @@ public class TestBasics {
 //    }
 
     static boolean wasExecuted = false;
-    static int[] testExecuted = new int[75];
-    static int[] checkExecuted = new int[4];
+    static int[] testExecuted = new int[76];
+    static int[] checkExecuted = new int[5];
     boolean lastToggleBoolean = true;
     long[] nonFloatingRandomNumbers = new long[10];
     double[] floatingRandomNumbers = new double[10];
@@ -822,6 +821,30 @@ public class TestBasics {
         }
         checkExecuted[3]++; // Executed once
     }
+
+    @Test
+    public void testRunOnce() {
+        checkExecuted[4]++;
+    }
+
+    @Run(test="testRunOnce", mode=RunMode.ONCE)
+    public void runTestRunOnce(TestInfo info) {
+        testRunOnce();
+    }
+
+
+    @Test(compLevel = CompLevel.C2)
+    public void testRunOnce2() {
+        testExecuted[75]++;
+    }
+
+    @Run(test="testRunOnce2", mode=RunMode.ONCE)
+    public void runTestRunOnce2(TestInfo info) {
+        for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
+            testRunOnce2();
+        }
+    }
+
 }
 
 class DefaultObject {

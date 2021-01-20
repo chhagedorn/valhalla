@@ -778,7 +778,7 @@ public class TestBasics {
         return 1;
     }
 
-    @Check(test="testCheckOnce", when=CheckAt.C2_COMPILED)
+    @Check(test="testCheckOnce", when=CheckAt.COMPILED)
     public void checkTestCheckOnce() {
         checkExecuted[0]++; // Executed once
     }
@@ -789,7 +789,7 @@ public class TestBasics {
         return 2;
     }
 
-    @Check(test="testCheckReturnOnce", when=CheckAt.C2_COMPILED)
+    @Check(test="testCheckReturnOnce", when=CheckAt.COMPILED)
     public void checkTestCheckReturnOnce(int returnValue) {
         if (returnValue != 2) {
             throw new RuntimeException("Must be 2");
@@ -803,7 +803,7 @@ public class TestBasics {
         return 3;
     }
 
-    @Check(test="testCheckTestInfoOnce", when=CheckAt.C2_COMPILED)
+    @Check(test="testCheckTestInfoOnce", when=CheckAt.COMPILED)
     public void checkTestCheckTestInfoOnce(TestInfo testInfo) {
         checkExecuted[2]++; // Executed once
     }
@@ -814,7 +814,7 @@ public class TestBasics {
         return 4;
     }
 
-    @Check(test="testCheckBothOnce", when=CheckAt.C2_COMPILED)
+    @Check(test="testCheckBothOnce", when=CheckAt.COMPILED)
     public void checkTestCheckBothOnce(int returnValue, TestInfo testInfo) {
         if (returnValue != 4) {
             throw new RuntimeException("Must be 4");
@@ -833,7 +833,7 @@ public class TestBasics {
     }
 
 
-    @Test(compLevel = CompLevel.C2)
+    @Test
     public void testRunOnce2() {
         testExecuted[75]++;
     }
@@ -844,7 +844,6 @@ public class TestBasics {
             testRunOnce2();
         }
     }
-
 }
 
 class DefaultObject {

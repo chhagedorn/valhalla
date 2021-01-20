@@ -13,6 +13,10 @@ public class Scenario {
     private final int index;
     boolean enabled;
 
+    public enum Run {
+        EXCLUDE_DEFAULT, INCLUDE_DEFAULT
+    }
+
     static {
         if (!SCENARIOS.isEmpty()) {
             Arrays.stream(SCENARIOS.split("\\s*,\\s*")).map(Integer::getInteger).forEachOrdered(enabledScenarios::add);

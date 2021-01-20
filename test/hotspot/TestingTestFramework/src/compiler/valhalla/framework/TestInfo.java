@@ -8,6 +8,8 @@ import java.util.Random;
 public class TestInfo {
     private static final Random random = new Random();
     private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
+    protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
+    protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
 
     private boolean toggleBool = false;
     private boolean onWarmUp = true;
@@ -42,15 +44,29 @@ public class TestInfo {
         onWarmUp = false;
     }
 
-    public boolean isC2Compiled() {
-        return TestFramework.isC2Compiled(testMethod);
+    public Method getTest() {
+        return testMethod;
     }
 
-    public void assertDeoptimizedByC2() {
-        TestFramework.assertDeoptimizedByC2(testMethod);
+    public boolean isC2Compiled(Method m) {
+        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
+//        return compiledByC2(m) == TriState.Yes;
+    }
+
+    public boolean isCompiledAtLevel(Method m, CompLevel level) {
+        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue();
+//        return compiledByC2(m) == TriState.Yes;
+    }
+
+    public void assertDeoptimizedByC2(Method m) {
+        TestRun.check(!isC2Compiled(m) || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
     }
 
     public void assertCompiledByC2(Method m) {
-        TestFramework.assertCompiledByC2(testMethod);
+        TestRun.check(isC2Compiled(m), m + " should have been compiled");
+    }
+
+    public void assertCompiledAtLevel(Method m, CompLevel level) {
+        TestRun.check(isCompiledAtLevel(m, level), m + " should have been compiled at level " + level.name());
     }
 }

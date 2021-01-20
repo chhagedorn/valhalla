@@ -6,7 +6,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.BiPredicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jdk.test.lib.Asserts;
@@ -38,7 +37,7 @@ public class TestFramework {
 
     static final boolean TIERED_COMPILATION = (Boolean)WHITE_BOX.getVMFlag("TieredCompilation");
     static final CompLevel TIERED_COMPILATION_STOP_AT_LEVEL = CompLevel.forValue(((Long)WHITE_BOX.getVMFlag("TieredStopAtLevel")).intValue());
-    static final boolean TEST_C1 = TIERED_COMPILATION && TIERED_COMPILATION_STOP_AT_LEVEL.getValue() < Skip.C2_FULL_OPTIMIZATION.getValue();
+    static final boolean TEST_C1 = TIERED_COMPILATION && TIERED_COMPILATION_STOP_AT_LEVEL.getValue() < CompLevel.C2.getValue();
 
     // User defined settings
     static final boolean XCOMP = Platform.isComp();
@@ -61,9 +60,9 @@ public class TestFramework {
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
     private static final boolean USE_COMPILE_COMMAND_ANNOTATIONS = Boolean.parseBoolean(System.getProperty("UseCompileCommandAnnotations", "true"));
     private static final boolean PRINT_VALID_IR_RULES = Boolean.parseBoolean(System.getProperty("PrintValidIRRules", "false"));
-    private static final boolean ENABLE_DEFAULT_SCENARIO = Boolean.parseBoolean(System.getProperty("EnableDefaultScenario", "true"));
     protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
     protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
+    private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
 
     static final boolean TESTING_TEST_FRAMEWORK = Boolean.parseBoolean(System.getProperty("TestingTestFramework", "false"));
 
@@ -162,18 +161,31 @@ public class TestFramework {
 
     public static void runWithScenarios(Scenario... scenarios) {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runWithScenarios(walker.getCallerClass(), scenarios);
+        runWithScenarios(Scenario.Run.EXCLUDE_DEFAULT, walker.getCallerClass(), scenarios);
+    }
+
+    public static void runWithScenarios(Scenario.Run runMode, Scenario... scenarios) {
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        runWithScenarios(runMode, walker.getCallerClass(), scenarios);
     }
 
     public static void runWithScenarios(Class<?> testClass, Scenario... scenarios) {
-        runWithScenarios(testClass, null, scenarios);
+        runWithScenarios(Scenario.Run.EXCLUDE_DEFAULT, testClass, null, scenarios);
+    }
+
+    public static void runWithScenarios(Scenario.Run runMode, Class<?> testClass, Scenario... scenarios) {
+        runWithScenarios(runMode, testClass, null, scenarios);
     }
 
     public static void runWithScenarios(Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
+        runWithScenarios(Scenario.Run.EXCLUDE_DEFAULT, testClass, helperClasses, scenarios);
+    }
+
+    public static void runWithScenarios(Scenario.Run runMode, Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
         TestFramework framework = new TestFramework();
         Map<String, Exception> exceptionMap = new HashMap<>();
         // First run without additional scenario flags.
-        if (ENABLE_DEFAULT_SCENARIO) {
+        if (runMode == Scenario.Run.INCLUDE_DEFAULT) {
             try {
                 framework.runTestVM(testClass, helperClasses, null);
             } catch (Exception e) {
@@ -311,8 +323,7 @@ public class TestFramework {
         }
 
         if (VERBOSE) {
-            System.out.print("Command Line: ");
-            cmds.forEach(flag -> System.out.print(flag + " "));
+            System.out.println("Command Line: " + String.join(" ", cmds));
         }
         return cmds;
     }
@@ -479,8 +490,44 @@ public class TestFramework {
         }
         // Don't inline test methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        DeclaredTest test = new DeclaredTest(m, testAnno, arguments, warmupIterations, osrOnly);
+        CompLevel compLevel = testAnno.compLevel();
+        if (FLIP_C1_C2) {
+            compLevel = flipCompLevel(compLevel);
+        }
+        compLevel = restrictCompLevel(compLevel);
+        DeclaredTest test = new DeclaredTest(m, arguments, compLevel, warmupIterations, osrOnly);
         declaredTests.put(m, test);
+    }
+
+
+    // Get the appropriate level as permitted by the test scenario and VM options.
+    private static CompLevel restrictCompLevel(CompLevel compLevel) {
+        if (!USE_COMPILER) {
+            return CompLevel.SKIP;
+        }
+        if (compLevel == CompLevel.ANY) {
+            // Use C2 by default.
+            return CompLevel.C2;
+        }
+        if (!TIERED_COMPILATION && compLevel.getValue() < CompLevel.C2.getValue()) {
+            return CompLevel.SKIP;
+        }
+        if (TIERED_COMPILATION && compLevel.getValue() > TIERED_COMPILATION_STOP_AT_LEVEL.getValue()) {
+            return CompLevel.SKIP;
+        }
+        return compLevel;
+    }
+
+    private static CompLevel flipCompLevel(CompLevel compLevel) {
+        switch (compLevel) {
+            case C1, C1_LIMITED_PROFILE, C1_FULL_PROFILE -> {
+                return CompLevel.C2;
+            }
+            case C2 -> {
+                return CompLevel.C1;
+            }
+        }
+        return compLevel;
     }
 
     private void setupCheckAndRunMethods(Class<?> clazz) {
@@ -621,7 +668,8 @@ public class TestFramework {
     }
 
     public static boolean isC2Compiled(Method m) {
-        return compiledByC2(m) == TriState.Yes;
+        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
+//        return compiledByC2(m) == TriState.Yes;
     }
 
     public static void assertDeoptimizedByC2(Method m) {
@@ -633,10 +681,10 @@ public class TestFramework {
     }
 
     private static TriState compiledByC2(Method m) {
-        if (!TestFramework.USE_COMPILER || TestFramework.XCOMP || TestFramework.TEST_C1 ||
-                (TestFramework.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, CompLevel.C2.getValue(), false))) {
-            return TriState.Maybe;
-        }
+//        if (!TestFramework.USE_COMPILER || TestFramework.XCOMP || TestFramework.TEST_C1 ||
+//                (TestFramework.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, CompLevel.C2.getValue(), false))) {
+//            return TriState.Maybe;
+//        }
         if (WHITE_BOX.isMethodCompiled(m, false) &&
                 WHITE_BOX.getMethodCompilationLevel(m, false) >= CompLevel.C2.getValue()) {
             return TriState.Yes;
@@ -681,21 +729,21 @@ class DeclaredTest {
 
     private final Argument[] arguments;
     private final int warmupIterations;
-    private final CompLevel requestedCompLevel;
+    private final CompLevel compLevel;
     private final boolean osrOnly;
 
-    public DeclaredTest(Method testMethod, Test testAnnotation, Argument[] arguments, int warmupIterations, boolean osrOnly) {
+    public DeclaredTest(Method testMethod, Argument[] arguments, CompLevel compLevel, int warmupIterations, boolean osrOnly) {
         // Make sure we can also call non-public or public methods in package private classes
         testMethod.setAccessible(true);
         this.testMethod = testMethod;
-        this.requestedCompLevel = TestFrameworkUtils.restrictCompLevel(testAnnotation.compLevel());
+        this.compLevel = compLevel;
         this.arguments = arguments;
         this.warmupIterations = warmupIterations;
         this.osrOnly = osrOnly;
     }
 
-    public CompLevel getRequestedCompLevel() {
-        return requestedCompLevel;
+    public CompLevel getCompLevel() {
+        return compLevel;
     }
 
     public int getWarmupIterations() {
@@ -777,6 +825,10 @@ class BaseTest {
      * Run the associated test
      */
     public void run() {
+        if (test.getCompLevel() == CompLevel.SKIP) {
+            // Exclude test if compilation level is SKIP either set through test or by not matching the current VM flags.
+            return;
+        }
         test.printFixedRandomArguments();
         for (int i = 0; i < test.getWarmupIterations(); i++) {
             runMethod();
@@ -814,7 +866,7 @@ class BaseTest {
             long elapsed = System.currentTimeMillis() - started;
             int level = WHITE_BOX.getMethodCompilationLevel(testMethod);
             if (maybeCodeBufferOverflow && elapsed > 5000
-                    && (!WHITE_BOX.isMethodCompiled(testMethod, false) || level != test.getRequestedCompLevel().getValue())) {
+                    && (!WHITE_BOX.isMethodCompiled(testMethod, false) || level != test.getCompLevel().getValue())) {
                 retryDisabledVerifyOops(stateCleared);
                 stateCleared = true;
             } else {
@@ -874,8 +926,8 @@ class BaseTest {
 
     protected void checkCompilationLevel() {
         CompLevel level = CompLevel.forValue(WhiteBox.getWhiteBox().getMethodCompilationLevel(testMethod));
-        TestRun.check(level == test.getRequestedCompLevel(),
-                      "Compilation level should be " + test.getRequestedCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod);
+        TestRun.check(level == test.getCompLevel(),
+                      "Compilation level should be " + test.getCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod);
     }
 
     /**
@@ -907,7 +959,7 @@ class CheckedTest extends BaseTest {
         boolean shouldVerify = false;
         switch (checkAt) {
             case EACH_INVOCATION -> shouldVerify = true;
-            case C2_COMPILED -> shouldVerify = !testInfo.isWarmUp();
+            case COMPILED -> shouldVerify = !testInfo.isWarmUp();
         }
         if (shouldVerify) {
             try {
@@ -963,8 +1015,8 @@ class CustomRunTest extends BaseTest {
     @Override
     protected void checkCompilationLevel() {
         CompLevel level = CompLevel.forValue(WhiteBox.getWhiteBox().getMethodCompilationLevel(testMethod));
-        if (level != test.getRequestedCompLevel()) {
-            String message = "Compilation level should be " + test.getRequestedCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod + ".";
+        if (level != test.getCompLevel()) {
+            String message = "Compilation level should be " + test.getCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod + ".";
             switch (mode) {
                 case ONCE -> message = message + "\nCheck your @Run method (invoked once) " + runMethod + " to ensure that " + testMethod + " will be complied at the requested level.";
                 case NORMAL -> message = message + "\nCheck your @Run method " + runMethod + " to ensure that " + testMethod + " is called at least once in each iteration.";
@@ -977,49 +1029,16 @@ class CustomRunTest extends BaseTest {
 
 class TestFrameworkUtils {
     private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
-    private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
 
     public static void enqueueMethodForCompilation(DeclaredTest test) {
-        enqueueMethodForCompilation(test.getTestMethod(), test.getRequestedCompLevel());
+        enqueueMethodForCompilation(test.getTestMethod(), test.getCompLevel());
     }
 
     // Used for non-@Tests, can also be called from other places in tests.
     public static void enqueueMethodForCompilation(Method m, CompLevel compLevel) {
-        compLevel = restrictCompLevel(compLevel);
         if (TestFramework.VERBOSE) {
             System.out.println("enqueueMethodForCompilation " + m + ", level = " + compLevel);
         }
         WHITE_BOX.enqueueMethodForCompilation(m, compLevel.getValue());
-    }
-
-    public static int compLevelToInt(CompLevel compLevel) {
-        return TestFrameworkUtils.restrictCompLevel(compLevel).getValue();
-    }
-
-    // Get the appropriate level as permitted by the test scenario and VM options.
-    public static CompLevel restrictCompLevel(CompLevel compLevel) {
-        switch (compLevel) {
-            case ANY -> compLevel = CompLevel.C2;
-            case C1_SIMPLE, C1_LIMITED_PROFILE, C1_FULL_PROFILE -> {
-                if (FLIP_C1_C2) {
-                    // Effectively treat all (compLevel = C1_*) as (compLevel = C2)
-                    compLevel = CompLevel.C2;
-                }
-            }
-            case C2 -> {
-                if (FLIP_C1_C2) {
-                    // Effectively treat all (compLevel = C2) as (compLevel = C1_SIMPLE)
-                    compLevel = CompLevel.C1_SIMPLE;
-                }
-            }
-        }
-
-        if (!TestFramework.TEST_C1 && compLevel.getValue() < CompLevel.C2.getValue()) {
-            compLevel = CompLevel.C2;
-        }
-        if (TestFramework.TIERED_COMPILATION && compLevel.getValue() > TestFramework.TIERED_COMPILATION_STOP_AT_LEVEL.getValue()) {
-            compLevel = TestFramework.TIERED_COMPILATION_STOP_AT_LEVEL;
-        }
-        return compLevel;
     }
 }

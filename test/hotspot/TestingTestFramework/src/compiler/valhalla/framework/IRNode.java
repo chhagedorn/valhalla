@@ -18,13 +18,13 @@ public class IRNode {
     private static final String ALLOC_ARRAY_OF_POSTFIX = ";:.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*call,static  wrapper for: _new_array_Java" + END;
 
     public static final String STORE = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + END;
-    public static final String STORE_OF_CLASS = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*";
-    private static final String STORE_OF_CLASS_POSTFIX = "(\\+|:).*" + END;
+    public static final String STORE_OF_CLASS = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@\\S*";
+    private static final String STORE_OF_CLASS_POSTFIX = "(:|\\+)\\S* \\*" + END;
     public static final String STORE_OF_FIELD = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
     private static final String STORE_OF_FIELD_POSTFIX = ",.*" + END;
     public static final String LOAD = START + "Load(B|S|I|L|F|D|P|N)" + MID + END;
-    public static final String LOAD_OF_CLASS = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@.*";
-    private static final String LOAD_OF_CLASS_POSTFIX = "(\\+|:).*" + END;
+    public static final String LOAD_OF_CLASS = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@\\S*";
+    private static final String LOAD_OF_CLASS_POSTFIX = "(:|\\+)\\S* \\*" + END;
     public static final String LOAD_OF_FIELD = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
     private static final String LOAD_OF_FIELD_POSTFIX = ",.*" + END;
 

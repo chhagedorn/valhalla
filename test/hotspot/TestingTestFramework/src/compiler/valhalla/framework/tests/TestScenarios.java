@@ -26,20 +26,20 @@ public class TestScenarios {
     }
 
     @Test
-    @IR(applyIf={"SuspendRetryCount", "50"}, failOn={IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "50"}, failOn = {IRNode.RETURN})
     public void failDefault() {
     }
 
     @Test
-    @IR(applyIf={"SuspendRetryCount", "51"}, failOn={IRNode.RETURN})
-    @IR(applyIf={"SuspendRetryCount", "53"}, failOn={IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "51"}, failOn = {IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "53"}, failOn = {IRNode.RETURN})
     public void failS3() {
     }
 }
 
 class ScenarioTest {
     @Test
-    @IR(applyIf={"SuspendRetryCount", "54"}, failOn={IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "54"}, failOn = {IRNode.RETURN})
     public void doesNotFail() {
     }
 }

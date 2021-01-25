@@ -34,7 +34,7 @@ public class TestCompLevels {
         testExecuted[0]++;
     }
 
-    @Check(test="testC1", when = CheckAt.COMPILED)
+    @Check(test = "testC1", when = CheckAt.COMPILED)
     public void checkTestC1(TestInfo info) {
         info.assertCompiledAtLevel(info.getTest(), CompLevel.C1);
     }
@@ -44,7 +44,7 @@ public class TestCompLevels {
         testExecuted[1]++;
     }
 
-    @Check(test="testC1Limited", when = CheckAt.COMPILED)
+    @Check(test = "testC1Limited", when = CheckAt.COMPILED)
     public void checkTestLimited(TestInfo info) {
         info.assertCompiledAtLevel(info.getTest(), CompLevel.C1_LIMITED_PROFILE);
     }
@@ -54,7 +54,7 @@ public class TestCompLevels {
         testExecuted[2]++;
     }
 
-    @Check(test="testC1Full", when = CheckAt.COMPILED)
+    @Check(test = "testC1Full", when = CheckAt.COMPILED)
     public void checkTestC1Full(TestInfo info) {
         info.assertCompiledAtLevel(info.getTest(), CompLevel.C1_FULL_PROFILE);
     }
@@ -64,7 +64,7 @@ public class TestCompLevels {
         testExecuted[3]++;
     }
 
-    @Check(test="testC2", when = CheckAt.COMPILED)
+    @Check(test = "testC2", when = CheckAt.COMPILED)
     public void checkTestC2(TestInfo info) {
         info.assertCompiledAtLevel(info.getTest(), CompLevel.C2);
     }
@@ -113,7 +113,7 @@ class TestStopAtLevel1 {
         return 34;
     }
 
-    @Check(test="executed", when = CheckAt.COMPILED)
+    @Check(test = "executed", when = CheckAt.COMPILED)
     public void checkExecuted(int result) {
         System.out.println("TestStopAtLevel1=" + result);
     }

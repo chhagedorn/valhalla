@@ -78,17 +78,16 @@ public class TestFramework {
     private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
     private final LinkedHashMap<Method, BaseTest> allTests = new LinkedHashMap<>(); // Keep order
     private final HashMap<String, Method> testMethodMap = new HashMap<>();
-
-    // Index into this array is the scenario ID.
-    protected final List<Scenario> scenarios = new ArrayList<>();
+    private List<String> excludeList = null;
+    private List<String> includeList = null;
     private final IREncodingPrinter irMatchRulePrinter;
 
     TestFramework() {
         // These flags can be overridden
-        fixedDefaultFlags = setupDefaultFlags();
-        compileCommandFlags = setupCompileCommandFlags();
-        printFlags = setupPrintFlags();
-        verifyFlags = setupVerifyFlags();
+        fixedDefaultFlags = initDefaultFlags();
+        compileCommandFlags = initCompileCommandFlags();
+        printFlags = initPrintFlags();
+        verifyFlags = initVerifyFlags();
 
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter = new IREncodingPrinter();
@@ -97,22 +96,49 @@ public class TestFramework {
         }
     }
 
-    protected String[] setupDefaultFlags() {
+    // Only used by a TestVM
+    private TestFramework(Class<?> testClass) {
+        this();
+        includeList = createTestFilterList(TESTLIST, testClass);
+        excludeList = createTestFilterList(EXCLUDELIST, testClass);
+    }
+
+    protected String[] initDefaultFlags() {
         return new String[] {"-XX:-BackgroundCompilation"};
     }
 
-    protected String[] setupCompileCommandFlags() {
+    protected String[] initCompileCommandFlags() {
         return new String[] {"-XX:CompileCommand=quiet"};
     }
 
-    protected String[] setupPrintFlags() {
+    protected String[] initPrintFlags() {
         return new String[] {"-XX:+PrintCompilation", "-XX:+UnlockDiagnosticVMOptions"};
     }
 
-    protected String[] setupVerifyFlags() {
+    protected String[] initVerifyFlags() {
         return new String[] {
                 "-XX:+UnlockDiagnosticVMOptions", "-XX:+VerifyOops", "-XX:+VerifyStack", "-XX:+VerifyLastFrame", "-XX:+VerifyBeforeGC",
                 "-XX:+VerifyAfterGC", "-XX:+VerifyDuringGC", "-XX:+VerifyAdapterSharing"};
+    }
+
+    private List<String> createTestFilterList(String list, Class<?> testClass) {
+        List<String> filterList = null;
+        if (!list.isEmpty()) {
+            String classPrefix = testClass.getSimpleName() + ".";
+            filterList = new ArrayList<>(Arrays.asList(list.split(",")));
+            for (int i = filterList.size() - 1; i >= 0; i--) {
+                String test = filterList.get(i);
+                if (test.indexOf(".") > 0) {
+                    if (test.startsWith(classPrefix)) {
+                        test = test.substring(classPrefix.length());
+                        filterList.set(i, test);
+                    } else {
+                        filterList.remove(i);
+                    }
+                }
+            }
+        }
+        return filterList;
     }
 
     public static void main(String[] args) {
@@ -125,7 +151,7 @@ public class TestFramework {
             throw new TestRunException("Could not find test class " + testClassName, e);
         }
 
-        TestFramework framework = new TestFramework();
+        TestFramework framework = new TestFramework(testClass);
         framework.runTestsOnSameVM(testClass, getHelperClasses(args));
     }
 
@@ -449,13 +475,18 @@ public class TestFramework {
     }
 
     private void setupTests(Class<?> clazz) {
+        boolean hasIncludeList = includeList != null;
+        boolean hasExcludeList = excludeList != null;
         for (Method m : clazz.getDeclaredMethods()) {
             Test testAnno = getAnnotation(m, Test.class);
             if (testAnno != null) {
-                TestFormat.check(!testMethodMap.containsKey(m.getName()),
-                                 "Cannot overload two @Test methods " + m + " and " + testMethodMap.get(m.getName()));
-                addTest(m, Argument.getArguments(m));
-                testMethodMap.put(m.getName(), m);
+                if (hasIncludeList && includeList.contains(m.getName()) && (!hasExcludeList || !excludeList.contains(m.getName()))) {
+                    addTest(m);
+                } else if (hasExcludeList && !excludeList.contains(m.getName())) {
+                    addTest(m);
+                } else {
+                    addTest(m);
+                }
             } else {
                 TestFormat.check(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
             }
@@ -465,7 +496,9 @@ public class TestFramework {
         }
     }
 
-    private void addTest(Method m, Argument[] arguments) {
+    private void addTest(Method m) {
+        TestFormat.check(!testMethodMap.containsKey(m.getName()),
+                         "Cannot overload two @Test methods " + m + " and " + testMethodMap.get(m.getName()));
         Test testAnno = getAnnotation(m, Test.class);
         TestFormat.check(testAnno != null, m + " must be a method with a @Test annotation");
 
@@ -495,8 +528,9 @@ public class TestFramework {
             compLevel = flipCompLevel(compLevel);
         }
         compLevel = restrictCompLevel(compLevel);
-        DeclaredTest test = new DeclaredTest(m, arguments, compLevel, warmupIterations, osrOnly);
+        DeclaredTest test = new DeclaredTest(m, Argument.getArguments(m), compLevel, warmupIterations, osrOnly);
         declaredTests.put(m, test);
+        testMethodMap.put(m.getName(), m);
     }
 
 
@@ -700,24 +734,6 @@ class TestFrameworkException extends RuntimeException {
     }
     public TestFrameworkException(String message, Exception e) {
         super(message, e);
-    }
-}
-
-class ParsedComparator<T extends Comparable<T>>  {
-    private final String strippedString;
-    private final BiPredicate<T, T> predicate;
-
-    public ParsedComparator(String strippedString, BiPredicate<T, T> predicate) {
-        this.strippedString = strippedString;
-        this.predicate = predicate;
-    }
-
-    public String getStrippedString() {
-        return strippedString;
-    }
-
-    public BiPredicate<T, T> getPredicate() {
-        return predicate;
     }
 }
 
@@ -1026,6 +1042,66 @@ class CustomRunTest extends BaseTest {
     }
 }
 
+
+class ParsedComparator<T extends Comparable<T>>  {
+    private final String strippedString;
+    private final BiPredicate<T, T> predicate;
+
+    public ParsedComparator(String strippedString, BiPredicate<T, T> predicate) {
+        this.strippedString = strippedString;
+        this.predicate = predicate;
+    }
+
+    public String getStrippedString() {
+        return strippedString;
+    }
+
+    public BiPredicate<T, T> getPredicate() {
+        return predicate;
+    }
+
+
+    public static <T extends Comparable<T>> ParsedComparator<T> parseComparator(String value) {
+        BiPredicate<T, T> comparison = null;
+        value = value.trim();
+        try {
+            switch (value.charAt(0)) {
+                case '<':
+                    if (value.charAt(1) == '=') {
+                        comparison = (x, y) -> x.compareTo(y) <= 0;
+                        value = value.substring(2).trim();
+                    } else {
+                        comparison = (x, y) -> x.compareTo(y) < 0;
+                        value = value.substring(1).trim();
+                    }
+                    break;
+                case '>':
+                    if (value.charAt(1) == '=') {
+                        comparison = (x, y) -> x.compareTo(y) >= 0;
+                        value = value.substring(2).trim();
+                    } else {
+                        comparison = (x, y) -> x.compareTo(y) > 0;
+                        value = value.substring(1).trim();
+                    }
+                    break;
+                case '!':
+                    TestFormat.check(value.charAt(1) == '=', "Invalid comparator sign used.");
+                    comparison = (x, y) -> x.compareTo(y) != 0;
+                    value = value.substring(2).trim();
+                    break;
+                case '=': // Allowed syntax, equivalent to not using any symbol.
+                    value = value.substring(1).trim();
+                default:
+                    comparison = (x, y) -> x.compareTo(y) == 0;
+                    value = value.trim();
+                    break;
+            }
+        } catch (IndexOutOfBoundsException e) {
+            TestFormat.fail("Invalid value format.");
+        }
+        return new ParsedComparator<>(value, comparison);
+    }
+}
 
 class TestFrameworkUtils {
     private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();

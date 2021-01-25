@@ -142,7 +142,7 @@ class IREncodingPrinter {
             long longValue = 0;
             ParsedComparator<Long> parsedComparator = null;
             try {
-                parsedComparator = parseComparator(value.trim());
+                parsedComparator = ParsedComparator.parseComparator(value);
                 longValue = Long.parseLong(parsedComparator.getStrippedString());
             } catch (NumberFormatException e) {
                 TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
@@ -168,7 +168,7 @@ class IREncodingPrinter {
             double doubleValue = 0;
             ParsedComparator<Double> parsedComparator = null;
             try {
-                parsedComparator = parseComparator(value);
+                parsedComparator = ParsedComparator.parseComparator(value);
                 doubleValue = Double.parseDouble(parsedComparator.getStrippedString());
             } catch (NumberFormatException e) {
                 TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
@@ -184,46 +184,6 @@ class IREncodingPrinter {
         }
         TestFormat.fail("Could not find flag " + flag);
         return false;
-    }
-
-    private <T extends Comparable<T>> ParsedComparator<T> parseComparator(String value) {
-        BiPredicate<T, T> comparison = null;
-        try {
-            switch (value.charAt(0)) {
-                case '<':
-                    if (value.charAt(1) == '=') {
-                        comparison = (x, y) -> x.compareTo(y) <= 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        comparison = (x, y) -> x.compareTo(y) < 0;
-                        value = value.substring(1).trim();
-                    }
-                    break;
-                case '>':
-                    if (value.charAt(1) == '=') {
-                        comparison = (x, y) -> x.compareTo(y) >= 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        comparison = (x, y) -> x.compareTo(y) > 0;
-                        value = value.substring(1).trim();
-                    }
-                    break;
-                case '!':
-                    TestFormat.check(value.charAt(1) == '=', "Invalid comparator sign used.");
-                    comparison = (x, y) -> x.compareTo(y) != 0;
-                    value = value.substring(2).trim();
-                    break;
-                case '=': // Allowed syntax, equivalent to not using any symbol.
-                    value = value.substring(1).trim();
-                default:
-                    comparison = (x, y) -> x.compareTo(y) == 0;
-                    value = value.trim();
-                    break;
-            }
-        } catch (IndexOutOfBoundsException e) {
-            TestFormat.fail("Invalid value format.");
-        }
-        return new ParsedComparator<>(value, comparison);
     }
 }
 

@@ -128,7 +128,7 @@ class IRMatcher {
             Matcher matcher = pattern.matcher(testOutput);
             boolean found = matcher.find();
             if (found) {
-                addFail(m, irAnno, annoId, matcher, "contains forbidden node");
+                addFail(m, irAnno, annoId, matcher, "contains forbidden node(s)");
             }
         }
     }
@@ -141,19 +141,25 @@ class IRMatcher {
                 TestFormat.check(i + 1 < nodesWithCount.size(), "Missing count for IR node \"" + node + "\" at " + m);
                 String countString = nodesWithCount.get(i + 1);
                 long expectedCount = 0;
+
+                ParsedComparator<Long> parsedComparator = null;
                 try {
-                    expectedCount = Long.parseLong(countString);
+                    parsedComparator = ParsedComparator.parseComparator(countString);
+                    expectedCount = Long.parseLong(parsedComparator.getStrippedString());
                 } catch (NumberFormatException e) {
                     TestFormat.fail("Provided invalid count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
+                } catch (Exception e) {
+                    TestFormat.fail("Invalid comparator in \"" + countString + "\" for count of node " + node, e);
                 }
+                TestFormat.check(expectedCount >= 0,"Provided invalid negative count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
+
                 Pattern pattern = Pattern.compile(node);
                 Matcher matcher = pattern.matcher(testOutput);
                 long actualCount = matcher.results().count();
-                if (expectedCount != actualCount) {
-                    String message = "contains " + actualCount + " instead of " + expectedCount + " nodes";
+                if (!parsedComparator.getPredicate().test(actualCount, expectedCount)) {
+                    String message = "contains wrong number of nodes. Failed constraint: " + actualCount + " (found) " + countString.trim();
                     addFail(m, irAnno, annoId, matcher, message);
                 }
-
             }
         }
     }
@@ -162,6 +168,7 @@ class IRMatcher {
         matcher.reset();
         StringBuilder builder = new StringBuilder();
         builder.append("@IR rule ").append(annoId).append(": \"").append(irAnno).append("\"\n");
+        builder.append("Failing Regex: ").append(matcher.pattern().toString()).append("\n");
         builder.append("Failure: Graph for '").append(m).append(" ").append(message).append(":\n");
         matcher.results().forEach(r -> builder.append(r.group()).append("\n"));
         List<String> failsList = fails.computeIfAbsent(m, k -> new ArrayList<>());

@@ -39,8 +39,8 @@ public class TestBasics {
 //    }
 //
 //    // Useful for quick checking, nothing fancy going on. This method is optional.
-//    @Check(test="test", when=CheckAt.C2_COMPILED)
-//    // Must match method 'test' when removing '_check'. Could also think about matching in annotation, e.g. @Check(test="test2").
+//    @Check(test = "test", when=CheckAt.C2_COMPILED)
+//    // Must match method 'test' when removing '_check'. Could also think about matching in annotation, e.g. @Check(test = "test2").
 //    public void test_check(int result /* must match return argument of 'test', possible to check? */) {
 //        // This method runs in interpreter, DontCompile.
 //        // Check that there is a method 'test' with @Test, no method 'test_check' or when present no @Run at it (bad style though, better use check in annotation?),
@@ -58,8 +58,8 @@ public class TestBasics {
 //    // Optional method.
 //    // Useful when more complex/changing arguments are required. Framework calls this method in interpreter and let it handle how to call the method
 //    // 'test'. Framework could verify that this method has at least one call to 'test2'?
-//    @Run(test="test2")
-//    // Must match method 'test2' when removing '_run'. Could also think about matching in annotation, e.g. @Run(test="test2").
+//    @Run(test = "test2")
+//    // Must match method 'test2' when removing '_run'. Could also think about matching in annotation, e.g. @Run(test = "test2").
 //    public void test2_run(TestInfo info) {
 //        // This method runs in interpreter, DontCompile
 //        // Check that there is a method 'test2' with @Test.
@@ -696,7 +696,7 @@ public class TestBasics {
         testExecuted[61]++;
     }
 
-    @Run(test="testRun")
+    @Run(test = "testRun")
     public void runTestRun(TestInfo info) {
         testRun();
     }
@@ -706,7 +706,7 @@ public class TestBasics {
         testExecuted[62]++;
     }
 
-    @Run(test="testRunNoTestInfo")
+    @Run(test = "testRunNoTestInfo")
     public void runTestRunNoTestInfo() {
         testRunNoTestInfo(3);
     }
@@ -716,7 +716,7 @@ public class TestBasics {
         wasExecuted = true;
     }
 
-    @Run(test="testNotRun")
+    @Run(test = "testNotRun")
     public void runTestNotRun() {
         // Do not execute the test. Pointless but need to test that as well.
     }
@@ -727,7 +727,7 @@ public class TestBasics {
         return 1;
     }
 
-    @Check(test="testCheck")
+    @Check(test = "testCheck")
     public void checkTestCheck() {
         testExecuted[64]++; // Executed on each invocation
     }
@@ -738,7 +738,7 @@ public class TestBasics {
         return 2;
     }
 
-    @Check(test="testCheckReturn")
+    @Check(test = "testCheckReturn")
     public void checkTestCheckReturn(int returnValue) {
         if (returnValue != 2) {
             throw new RuntimeException("Must be 2");
@@ -752,7 +752,7 @@ public class TestBasics {
         return 3;
     }
 
-    @Check(test="testCheckTestInfo")
+    @Check(test = "testCheckTestInfo")
     public void checkTestCheckTestInfo(TestInfo testInfo) {
         testExecuted[68]++; // Executed on each invocation
     }
@@ -764,7 +764,7 @@ public class TestBasics {
         return 4;
     }
 
-    @Check(test="testCheckBoth")
+    @Check(test = "testCheckBoth")
     public void checkTestCheckTestInfo(int returnValue, TestInfo testInfo) {
         if (returnValue != 4) {
             throw new RuntimeException("Must be 4");
@@ -778,7 +778,7 @@ public class TestBasics {
         return 1;
     }
 
-    @Check(test="testCheckOnce", when=CheckAt.COMPILED)
+    @Check(test = "testCheckOnce", when=CheckAt.COMPILED)
     public void checkTestCheckOnce() {
         checkExecuted[0]++; // Executed once
     }
@@ -789,7 +789,7 @@ public class TestBasics {
         return 2;
     }
 
-    @Check(test="testCheckReturnOnce", when=CheckAt.COMPILED)
+    @Check(test = "testCheckReturnOnce", when=CheckAt.COMPILED)
     public void checkTestCheckReturnOnce(int returnValue) {
         if (returnValue != 2) {
             throw new RuntimeException("Must be 2");
@@ -803,7 +803,7 @@ public class TestBasics {
         return 3;
     }
 
-    @Check(test="testCheckTestInfoOnce", when=CheckAt.COMPILED)
+    @Check(test = "testCheckTestInfoOnce", when=CheckAt.COMPILED)
     public void checkTestCheckTestInfoOnce(TestInfo testInfo) {
         checkExecuted[2]++; // Executed once
     }
@@ -814,7 +814,7 @@ public class TestBasics {
         return 4;
     }
 
-    @Check(test="testCheckBothOnce", when=CheckAt.COMPILED)
+    @Check(test = "testCheckBothOnce", when=CheckAt.COMPILED)
     public void checkTestCheckBothOnce(int returnValue, TestInfo testInfo) {
         if (returnValue != 4) {
             throw new RuntimeException("Must be 4");
@@ -827,7 +827,7 @@ public class TestBasics {
         checkExecuted[4]++;
     }
 
-    @Run(test="testRunOnce", mode=RunMode.ONCE)
+    @Run(test = "testRunOnce", mode=RunMode.ONCE)
     public void runTestRunOnce(TestInfo info) {
         testRunOnce();
     }
@@ -838,7 +838,7 @@ public class TestBasics {
         testExecuted[75]++;
     }
 
-    @Run(test="testRunOnce2", mode=RunMode.ONCE)
+    @Run(test = "testRunOnce2", mode=RunMode.ONCE)
     public void runTestRunOnce2(TestInfo info) {
         for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();

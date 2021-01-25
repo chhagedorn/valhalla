@@ -5,7 +5,7 @@ import jdk.test.lib.Asserts;
 
 public class TestWithHelperClasses {
 
-    public static void main(String[] args) throws NoSuchMethodException {
+    public static void main(String[] args) {
         TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class, Helper2.class);
         try {
             TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class);

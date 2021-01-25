@@ -18,7 +18,6 @@ import jdk.test.lib.Platform;
 
 
 public class TestFramework {
-    public static final int DEFAULT_SCENARIOS = 6;
     private static final WhiteBox WHITE_BOX;
 
     static {
@@ -35,8 +34,8 @@ public class TestFramework {
         }
     }
 
-    static final boolean TIERED_COMPILATION = (Boolean)WHITE_BOX.getVMFlag("TieredCompilation");
-    static final CompLevel TIERED_COMPILATION_STOP_AT_LEVEL = CompLevel.forValue(((Long)WHITE_BOX.getVMFlag("TieredStopAtLevel")).intValue());
+    private static final boolean TIERED_COMPILATION = (Boolean)WHITE_BOX.getVMFlag("TieredCompilation");
+    private static final CompLevel TIERED_COMPILATION_STOP_AT_LEVEL = CompLevel.forValue(((Long)WHITE_BOX.getVMFlag("TieredStopAtLevel")).intValue());
     static final boolean TEST_C1 = TIERED_COMPILATION && TIERED_COMPILATION_STOP_AT_LEVEL.getValue() < CompLevel.C2.getValue();
 
     // User defined settings
@@ -247,6 +246,29 @@ public class TestFramework {
         doRun(testClass, helperClasses);
     }
 
+    // Can be called from tests for non-@Test methods
+    public static void compile(Method m, CompLevel compLevel) {
+        TestFormat.check(getAnnotation(m, Test.class) == null,
+                         "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
+        enqueueMethodForCompilation(m, compLevel);
+    }
+
+    public static boolean isC2Compiled(Method m) {
+        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
+//        return compiledByC2(m) == TriState.Yes;
+    }
+
+    public static void assertDeoptimizedByC2(Method m) {
+        TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
+    }
+
+    public static void assertCompiledByC2(Method m) {
+        TestRun.check(compiledByC2(m) != TriState.No, m + " should have been compiled");
+    }
+
+    public static String getLastVmOutput() {
+        return lastVmOutput;
+    }
     /*
      * End of public interface
      */
@@ -380,10 +402,6 @@ public class TestFramework {
         cmds.add("-XX:CompileCommand=option," + testClass.getCanonicalName() + "::*,bool," + option + ",true");
     }
 
-    public static String getLastVmOutput() {
-        return lastVmOutput;
-    }
-
     private void parseTestClass(Class<?> clazz) {
         addReplay();
         processExplicitCompileCommands(clazz);
@@ -467,11 +485,11 @@ public class TestFramework {
         }
     }
 
-    // Can be called from tests for non-@Test methods
-    public static void enqueueMethodForCompilation(Method m, CompLevel compLevel) {
-        TestFormat.check(getAnnotation(m, Test.class) == null,
-                         "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
-        TestFrameworkUtils.enqueueMethodForCompilation(m,  compLevel);
+    static void enqueueMethodForCompilation(Method m, CompLevel compLevel) {
+        if (TestFramework.VERBOSE) {
+            System.out.println("enqueueMethodForCompilation " + m + ", level = " + compLevel);
+        }
+        WHITE_BOX.enqueueMethodForCompilation(m, compLevel.getValue());
     }
 
     private void setupTests(Class<?> clazz) {
@@ -648,13 +666,13 @@ public class TestFramework {
         allTests.put(m, customRunTest);
     }
 
-    public static <T extends Annotation> T getAnnotation(Method m, Class<T> c) {
+    private static <T extends Annotation> T getAnnotation(Method m, Class<T> c) {
         T[] annos =  m.getAnnotationsByType(c);
         TestFormat.check(annos.length < 2, m + " has duplicated annotations");
         return Arrays.stream(annos).findFirst().orElse(null);
     }
 
-    public void runTests() {
+    private void runTests() {
         TreeMap<Long, String> durations = (PRINT_TIMES || VERBOSE) ? new TreeMap<>() : null;
         long startTime = System.nanoTime();
         Collection<BaseTest> testCollection = allTests.values();
@@ -689,7 +707,7 @@ public class TestFramework {
         }
     }
 
-    public static void check(boolean test, String failureMessage) {
+    static void check(boolean test, String failureMessage) {
         if (!test) {
             throw new TestFrameworkException("Internal TestFramework exception:\n" + failureMessage);
         }
@@ -701,26 +719,13 @@ public class TestFramework {
         No
     }
 
-    public static boolean isC2Compiled(Method m) {
-        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
-//        return compiledByC2(m) == TriState.Yes;
-    }
-
-    public static void assertDeoptimizedByC2(Method m) {
-        TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
-    }
-
-    public static void assertCompiledByC2(Method m) {
-        TestRun.check(compiledByC2(m) != TriState.No, m + " should have been compiled");
-    }
-
     private static TriState compiledByC2(Method m) {
 //        if (!TestFramework.USE_COMPILER || TestFramework.XCOMP || TestFramework.TEST_C1 ||
 //                (TestFramework.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, CompLevel.C2.getValue(), false))) {
 //            return TriState.Maybe;
 //        }
-        if (WHITE_BOX.isMethodCompiled(m, false) &&
-                WHITE_BOX.getMethodCompilationLevel(m, false) >= CompLevel.C2.getValue()) {
+        if (WHITE_BOX.isMethodCompiled(m, false)
+            && WHITE_BOX.getMethodCompilationLevel(m, false) >= CompLevel.C2.getValue()) {
             return TriState.Yes;
         }
         return TriState.No;
@@ -739,10 +744,6 @@ class TestFrameworkException extends RuntimeException {
 
 class DeclaredTest {
     private final Method testMethod;
-    public Method getTestMethod() {
-        return testMethod;
-    }
-
     private final Argument[] arguments;
     private final int warmupIterations;
     private final CompLevel compLevel;
@@ -756,6 +757,10 @@ class DeclaredTest {
         this.arguments = arguments;
         this.warmupIterations = warmupIterations;
         this.osrOnly = osrOnly;
+    }
+
+    public Method getTestMethod() {
+        return testMethod;
     }
 
     public CompLevel getCompLevel() {
@@ -807,7 +812,7 @@ class DeclaredTest {
 }
 
 class BaseTest {
-    protected static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
+    private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
     private static final int OSR_TEST_TIMEOUT = Integer.parseInt(System.getProperty("OSRTestTimeOut", "5000"));
 
     protected final DeclaredTest test;
@@ -833,6 +838,7 @@ class BaseTest {
             }
         }
     }
+
     public String getTestName() {
         return testMethod.getName();
     }
@@ -918,12 +924,12 @@ class BaseTest {
     private void compileNormallyAndRun() {
         final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VERIFY_OOPS);
         final Method testMethod = test.getTestMethod();
-        TestFrameworkUtils.enqueueMethodForCompilation(test);
+        enqueueMethodForCompilation();
         if (maybeCodeBufferOverflow && !WHITE_BOX.isMethodCompiled(testMethod, false)) {
             // Let's disable VerifyOops temporarily and retry.
             WHITE_BOX.setBooleanVMFlag("VerifyOops", false);
             WHITE_BOX.clearMethodState(testMethod);
-            TestFrameworkUtils.enqueueMethodForCompilation(test);
+            enqueueMethodForCompilation();
             WHITE_BOX.setBooleanVMFlag("VerifyOops", true);
         }
         if (!TestFramework.STRESS_CC && TestFramework.USE_COMPILER) {
@@ -938,6 +944,10 @@ class BaseTest {
             checkCompilationLevel();
         }
         runMethod();
+    }
+
+    private  void enqueueMethodForCompilation() {
+        TestFramework.enqueueMethodForCompilation(test.getTestMethod(), test.getCompLevel());
     }
 
     protected void checkCompilationLevel() {
@@ -1100,21 +1110,5 @@ class ParsedComparator<T extends Comparable<T>>  {
             TestFormat.fail("Invalid value format.");
         }
         return new ParsedComparator<>(value, comparison);
-    }
-}
-
-class TestFrameworkUtils {
-    private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
-
-    public static void enqueueMethodForCompilation(DeclaredTest test) {
-        enqueueMethodForCompilation(test.getTestMethod(), test.getCompLevel());
-    }
-
-    // Used for non-@Tests, can also be called from other places in tests.
-    public static void enqueueMethodForCompilation(Method m, CompLevel compLevel) {
-        if (TestFramework.VERBOSE) {
-            System.out.println("enqueueMethodForCompilation " + m + ", level = " + compLevel);
-        }
-        WHITE_BOX.enqueueMethodForCompilation(m, compLevel.getValue());
     }
 }

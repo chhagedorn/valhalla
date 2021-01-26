@@ -48,25 +48,25 @@ public class TestInfo {
         return testMethod;
     }
 
-    public boolean isC2Compiled(Method m) {
-        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
-//        return compiledByC2(m) == TriState.Yes;
-    }
-
-    public boolean isCompiledAtLevel(Method m, CompLevel level) {
-        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue();
-//        return compiledByC2(m) == TriState.Yes;
-    }
-
-    public void assertDeoptimizedByC2(Method m) {
-        TestRun.check(!isC2Compiled(m) || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
-    }
-
-    public void assertCompiledByC2(Method m) {
-        TestRun.check(isC2Compiled(m), m + " should have been compiled");
-    }
-
-    public void assertCompiledAtLevel(Method m, CompLevel level) {
-        TestRun.check(isCompiledAtLevel(m, level), m + " should have been compiled at level " + level.name());
-    }
+//    public boolean isC2Compiled(Method m) {
+//        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
+////        return compiledByC2(m) == TriState.Yes;
+//    }
+//
+//    public boolean isCompiledAtLevel(Method m, CompLevel level) {
+//        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue();
+////        return compiledByC2(m) == TriState.Yes;
+//    }
+//
+//    public void assertDeoptimizedByC2(Method m) {
+//        TestRun.check(!isC2Compiled(m) || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
+//    }
+//
+//    public void assertCompiledByC2(Method m) {
+//        TestRun.check(isC2Compiled(m), m + " should have been compiled");
+//    }
+//
+//    public void assertCompiledAtLevel(Method m, CompLevel level) {
+//        TestRun.check(isCompiledAtLevel(m, level), m + " should have been compiled at level " + level.name());
+//    }
 }

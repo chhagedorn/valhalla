@@ -11,10 +11,10 @@ public class TestBadFormat {
     public static void main(String[] args) throws NoSuchMethodException {
         runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-        expectTestFormatException(BadArguments.class);
-        expectTestFormatException(BadOverloadedMethod.class);
-        expectTestFormatException(BadCompilerControl.class);
-//        expectTestFormatException(BadWarmup.class);
+//        expectTestFormatException(BadArguments.class);
+//        expectTestFormatException(BadOverloadedMethod.class);
+//        expectTestFormatException(BadCompilerControl.class);
+        expectTestFormatException(BadWarmup.class);
     }
 
     private static void expectTestFormatException(Class<?> clazz) {
@@ -129,3 +129,16 @@ class BadCompilerControl {
     public void mix2() {}
 }
 
+class BadWarmup {
+
+    @Warmup(10000)
+    public void warmUpNonTest() {}
+
+    @Test
+    @Warmup(-1)
+    public void negativeWarmup() {}
+
+    @Run(test = "negativeWarmup")
+    @Warmup(-1)
+    public void negativeWarmup2() {}
+}

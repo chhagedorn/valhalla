@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 // Only used by TestVM
@@ -139,15 +138,17 @@ class IREncodingPrinter {
                 .findAny().orElse(null);
         if (actualFlagValue != null) {
             long actualLongFlagValue = (Long) actualFlagValue;
-            long longValue = 0;
-            ParsedComparator<Long> parsedComparator = null;
+            long longValue;
+            ParsedComparator<Long> parsedComparator ;
             try {
                 parsedComparator = ParsedComparator.parseComparator(value);
                 longValue = Long.parseLong(parsedComparator.getStrippedString());
             } catch (NumberFormatException e) {
                 TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
+                return false;
             } catch (Exception e) {
-                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag, e);
+                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag + ": " + e.getCause());
+                return false;
             }
             return parsedComparator.getPredicate().test(actualLongFlagValue, longValue);
         }
@@ -165,15 +166,17 @@ class IREncodingPrinter {
         actualFlagValue = WHITE_BOX.getDoubleVMFlag(flag);
         if (actualFlagValue != null) {
             double actualDoubleFlagValue = (Double) actualFlagValue;
-            double doubleValue = 0;
-            ParsedComparator<Double> parsedComparator = null;
+            double doubleValue;
+            ParsedComparator<Double> parsedComparator;
             try {
                 parsedComparator = ParsedComparator.parseComparator(value);
                 doubleValue = Double.parseDouble(parsedComparator.getStrippedString());
             } catch (NumberFormatException e) {
                 TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
+                return false;
             } catch (Exception e) {
-                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag, e);
+                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag + ": " + e.getCause());
+                return false;
             }
             return parsedComparator.getPredicate().test(actualDoubleFlagValue, doubleValue);
         }

@@ -2,6 +2,7 @@ package compiler.valhalla.framework;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.Random;
 
 class Argument {
@@ -45,54 +46,52 @@ class Argument {
         ArgumentValue[] values = argumentsAnno.value();
         Argument[] arguments = new Argument[values.length];
         Class<?>[] declaredParameters = m.getParameterTypes();
+        Parameter[] declaredParameterObjects = m.getParameters();
         TestFormat.check(values.length == declaredParameters.length,
                          "Number of argument values provided in @Arguments does not match the number of actual arguments in " + m);
 
         for (int i = 0; i < values.length; i++) {
             ArgumentValue specifiedArg = values[i];
             Class<?> parameter = declaredParameters[i];
-            switch (specifiedArg) {
-                case DEFAULT -> arguments[i] = createDefault(parameter);
-                case NUMBER_42 -> {
-                    TestFormat.check(isNumber(parameter),
-                                     "Provided invalid NUMBER_42 argument for non-number " + parameter + " for " + m);
-                    arguments[i] = create((byte) 42);
+            Parameter parameterObj = declaredParameterObjects[i];
+            try {
+                switch (specifiedArg) {
+                    case DEFAULT -> arguments[i] = createDefault(parameter);
+                    case NUMBER_42 -> {
+                        TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_42 argument for non-number " + parameterObj + " for " + m);
+                        arguments[i] = create((byte) 42);
+                    }
+                    case NUMBER_MINUS_42 -> {
+                        TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_MINUS_42 argument for non-number " + parameterObj + " for " + m);
+                        arguments[i] = create((byte) -42);
+                    }
+                    case BOOLEAN_TOGGLE_FIRST_FALSE -> {
+                        TestFormat.check(isBoolean(parameter), "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameterObj + " for " + m);
+                        arguments[i] = createToggleBoolean(false);
+                    }
+                    case BOOLEAN_TOGGLE_FIRST_TRUE -> {
+                        TestFormat.check(Argument.isBoolean(parameter), "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameterObj + " for " + m);
+                        arguments[i] = createToggleBoolean(true);
+                    }
+                    case TRUE -> {
+                        TestFormat.check(Argument.isBoolean(parameter), "Provided invalid TRUE argument for non-boolean " + parameterObj + " for " + m);
+                        arguments[i] = create(true);
+                    }
+                    case FALSE -> {
+                        TestFormat.check(Argument.isBoolean(parameter), "Provided invalid FALSE argument for non-boolean " + parameterObj + " for " + m);
+                        arguments[i] = create(false);
+                    }
+                    case RANDOM_ONCE -> {
+                        TestFormat.check(isPrimitiveType(parameter), "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameterObj + " for " + m);
+                        arguments[i] = createRandom(parameter);
+                    }
+                    case RANDOM_EACH -> {
+                        TestFormat.check(isPrimitiveType(parameter), "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameterObj + " for " + m);
+                        arguments[i] = createRandomEach(parameter);
+                    }
                 }
-                case NUMBER_MINUS_42 -> {
-                    TestFormat.check(isNumber(parameter),
-                                     "Provided invalid NUMBER_MINUS_42 argument for non-number " + parameter + " for " + m);
-                    arguments[i] = create((byte) -42);
-                }
-                case BOOLEAN_TOGGLE_FIRST_FALSE -> {
-                    TestFormat.check(isBoolean(parameter),
-                                     "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameter + " for " + m);
-                    arguments[i] = createToggleBoolean(false);
-                }
-                case BOOLEAN_TOGGLE_FIRST_TRUE -> {
-                    TestFormat.check(Argument.isBoolean(parameter),
-                                     "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameter + " for " + m);
-                    arguments[i] = createToggleBoolean(true);
-                }
-                case TRUE -> {
-                    TestFormat.check(Argument.isBoolean(parameter),
-                                     "Provided invalid TRUE argument for non-boolean " + parameter + " for " + m);
-                    arguments[i] = create(true);
-                }
-                case FALSE -> {
-                    TestFormat.check(Argument.isBoolean(parameter),
-                                     "Provided invalid FALSE argument for non-boolean " + parameter + " for " + m);
-                    arguments[i] = create(false);
-                }
-                case RANDOM_ONCE -> {
-                    TestFormat.check(isPrimitiveType(parameter),
-                                     "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameter + " for " + m);
-                    arguments[i] = createRandom(parameter);
-                }
-                case RANDOM_EACH -> {
-                    TestFormat.check(isPrimitiveType(parameter),
-                                     "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameter + " for " + m);
-                    arguments[i] = createRandomEach(parameter);
-                }
+            } catch (TestFormatException e) {
+                // Catch and continue to check arguments.
             }
         }
         return arguments;
@@ -116,7 +115,7 @@ class Argument {
                 constructor.setAccessible(true);
                 return Argument.create(constructor.newInstance());
             } catch (Exception e) {
-                TestFormat.fail("Cannot create new default instance of " + c, e);
+                TestFormat.fail("Cannot create new default instance of " + c + ": " + e.getCause());
                 return null;
             }
         }

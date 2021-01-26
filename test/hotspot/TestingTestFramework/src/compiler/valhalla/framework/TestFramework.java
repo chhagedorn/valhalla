@@ -248,7 +248,7 @@ public class TestFramework {
 
     // Can be called from tests for non-@Test methods
     public static void compile(Method m, CompLevel compLevel) {
-        TestFormat.check(getAnnotation(m, Test.class) == null,
+        TestRun.check(getAnnotation(m, Test.class) == null,
                          "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
         enqueueMethodForCompilation(m, compLevel);
     }
@@ -285,19 +285,18 @@ public class TestFramework {
             // Process the helper classes and apply the explicit compile commands
             processExplicitCompileCommands(helperClass);
         }
-        runTestsOnSameVM(testClass);
-    }
-
-    private void runTestsOnSameVM(Class<?> testClass) {
         parseTestClass(testClass);
         runTests();
     }
 
     // Only called by tests testing the framework itself. Accessed by reflection. Do not expose this to normal users.
-    private static void runTestsOnSameVM() {
-        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    private static void runTestsOnSameVM(Class<?> testClass) {
+        if (testClass == null) {
+            StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+            testClass = walker.getCallerClass();
+        }
         TestFramework framework = new TestFramework();
-        framework.runTestsOnSameVM(walker.getCallerClass());
+        framework.runTestsOnSameVM(testClass, new ArrayList<>());
     }
 
     private void runTestVM(Class<?> testClass, List<Class<?>> helperClasses, Scenario scenario) {
@@ -409,9 +408,22 @@ public class TestFramework {
         setupCheckAndRunMethods(clazz);
 
         // All remaining tests are simple base tests without check or specific way to run them
-        declaredTests.forEach((key, value) -> allTests.put(key, new BaseTest(value)));
+        addBaseTests();
+        TestFormat.reportIfAnyFailures();
         declaredTests.clear();
         testMethodMap.clear();
+    }
+
+    private void addBaseTests() {
+        declaredTests.forEach((m, test) -> {
+            try {
+                Arguments argumentsAnno = getAnnotation(m, Arguments.class);
+                TestFormat.check(argumentsAnno != null || m.getParameterCount() == 0, "Missing @Arguments annotation to define arguments of " + m);
+                allTests.put(m, new BaseTest(test));
+            } catch (TestFormatException e) {
+                // Failure logged. Continue and report later.
+            }
+        });
     }
 
     private void addReplay() {
@@ -426,12 +438,20 @@ public class TestFramework {
         if (USE_COMPILE_COMMAND_ANNOTATIONS) {
             Method[] methods = clazz.getDeclaredMethods();
             for (Method m : methods) {
-                applyIndependentCompilationCommands(m);
+                try {
+                    applyIndependentCompilationCommands(m);
+                } catch (TestFormatException e) {
+                    // Failure logged. Continue and report later.
+                }
             }
 
             // Only force compilation now because above annotations affect inlining
             for (Method m : methods) {
-                applyForceCompileCommand(m);
+                try {
+                    applyForceCompileCommand(m);
+                } catch (TestFormatException e) {
+                    // Failure logged. Continue and report later.
+                }
             }
         }
     }
@@ -444,13 +464,8 @@ public class TestFramework {
         Test testAnno = getAnnotation(m, Test.class);
         TestFormat.check(testAnno == null || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
                          "Not allowed to use explicit compile command annotations (@ForceInline, @DontInline," +
-                         "@ForceCompile or @DontCompile) together with @Test at " + m + ". Use compLevel and skip in @Test for fine tuning.");
-        if (Stream.of(forceCompileAnno, dontCompileAnno, dontInlineAnno).filter(Objects::nonNull).count() > 1) {
-            // Failure
-            TestFormat.check(dontCompileAnno == null || dontInlineAnno == null,
-                             "@DontInline is implicitely done with @DontCompile annotation at " + m);
-            TestFormat.fail("Cannot mix @ForceInline, @DontInline and @DontCompile at the same time at " + m);
-        }
+                         "@ForceCompile or @DontCompile) together with @Test at " + m + ". Use compLevel in @Test for fine tuning.");
+        TestFormat.check(forceInlineAnno == null || dontInlineAnno == null, "Cannot have @ForceInline and @DontInline at the same time at " + m);
         TestFormat.check(forceCompileAnno == null || dontCompileAnno == null,
                          "Cannot have @ForceCompile and @DontCompile at the same time at " + m);
         // First handle inline annotations
@@ -497,16 +512,20 @@ public class TestFramework {
         boolean hasExcludeList = excludeList != null;
         for (Method m : clazz.getDeclaredMethods()) {
             Test testAnno = getAnnotation(m, Test.class);
-            if (testAnno != null) {
-                if (hasIncludeList && includeList.contains(m.getName()) && (!hasExcludeList || !excludeList.contains(m.getName()))) {
-                    addTest(m);
-                } else if (hasExcludeList && !excludeList.contains(m.getName())) {
-                    addTest(m);
+            try {
+                if (testAnno != null) {
+                    if (hasIncludeList && includeList.contains(m.getName()) && (!hasExcludeList || !excludeList.contains(m.getName()))) {
+                        addTest(m);
+                    } else if (hasExcludeList && !excludeList.contains(m.getName())) {
+                        addTest(m);
+                    } else {
+                        addTest(m);
+                    }
                 } else {
-                    addTest(m);
+                    TestFormat.check(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
                 }
-            } else {
-                TestFormat.check(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
+            } catch (TestFormatException e) {
+                // Failure logged. Continue and report later.
             }
         }
         if (PRINT_VALID_IR_RULES) {
@@ -515,18 +534,8 @@ public class TestFramework {
     }
 
     private void addTest(Method m) {
-        TestFormat.check(!testMethodMap.containsKey(m.getName()),
-                         "Cannot overload two @Test methods " + m + " and " + testMethodMap.get(m.getName()));
         Test testAnno = getAnnotation(m, Test.class);
-        TestFormat.check(testAnno != null, m + " must be a method with a @Test annotation");
-
-        Check checkAnno = getAnnotation(m, Check.class);
-        Run runAnno = getAnnotation(m, Run.class);
-        TestFormat.check(checkAnno == null && runAnno == null,
-                         m + " has invalid @Check or @Run annotation while @Test annotation is present.");
-
-        TestFormat.check(!Arrays.asList(m.getParameterTypes()).contains(TestInfo.class),
-                         "Forbidden use of " + TestInfo.class + " as parameter at @Test method " + m);
+        checkTestAnnotations(m, testAnno);
 
         Warmup warmup = getAnnotation(m, Warmup.class);
         int warmupIterations = WARMUP_ITERATIONS;
@@ -549,6 +558,20 @@ public class TestFramework {
         DeclaredTest test = new DeclaredTest(m, Argument.getArguments(m), compLevel, warmupIterations, osrOnly);
         declaredTests.put(m, test);
         testMethodMap.put(m.getName(), m);
+    }
+
+    private void checkTestAnnotations(Method m, Test testAnno) {
+        TestFormat.check(!testMethodMap.containsKey(m.getName()),
+                         "Cannot overload two @Test methods " + m + " and " + testMethodMap.get(m.getName()));
+        TestFormat.check(testAnno != null, m + " must be a method with a @Test annotation");
+
+        Check checkAnno = getAnnotation(m, Check.class);
+        Run runAnno = getAnnotation(m, Run.class);
+        TestFormat.check(checkAnno == null && runAnno == null,
+                         m + " has invalid @Check or @Run annotation while @Test annotation is present.");
+
+        TestFormat.check(!Arrays.asList(m.getParameterTypes()).contains(TestInfo.class),
+                         "Forbidden use of " + TestInfo.class + " as parameter at @Test method " + m);
     }
 
 
@@ -587,12 +610,15 @@ public class TestFramework {
             Check checkAnno = getAnnotation(m, Check.class);
             Run runAnno = getAnnotation(m, Run.class);
             Arguments argumentsAnno = getAnnotation(m, Arguments.class);
-            TestFormat.check(argumentsAnno == null || (checkAnno == null && runAnno == null),
-                             "Cannot have @Argument annotation in combination with @Run or @Check at " + m);
-            if (checkAnno != null) {
-                addCheckedTest(m, checkAnno, runAnno);
-            } else if (runAnno != null) {
-                addCustomRunTest(m, runAnno);
+            try {
+                TestFormat.check(argumentsAnno == null || (checkAnno == null && runAnno == null), "Cannot have @Argument annotation in combination with @Run or @Check at " + m);
+                if (checkAnno != null) {
+                    addCheckedTest(m, checkAnno, runAnno);
+                } else if (runAnno != null) {
+                    addCustomRunTest(m, runAnno);
+                }
+            } catch (TestFormatException e) {
+                // Failure logged. Continue and report later.
             }
         }
     }
@@ -630,24 +656,26 @@ public class TestFramework {
 
         DeclaredTest test = declaredTests.remove(testMethod);
         TestFormat.check(test != null, "Missing @Test annotation for associated test method " + checkAnno.test() + " for @Check at " + m);
-        applyCompileCommands(m);
+        applyCompileCommands(m, false);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
         CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter);
         allTests.put(testMethod, checkedTest);
     }
 
-    private void applyCompileCommands(Method m) {
+    private void applyCompileCommands(Method m, boolean defaultDontCompile) {
         ForceInline forceInlineAnno = getAnnotation(m, ForceInline.class);
         DontInline dontInlineAnno = getAnnotation(m, DontInline.class);
         ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
         DontCompile dontCompileAnno = getAnnotation(m, DontCompile.class);
-        if (Stream.of(forceCompileAnno, dontCompileAnno, forceCompileAnno, dontInlineAnno).anyMatch(Objects::nonNull)) {
+        if (Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).anyMatch(Objects::nonNull)) {
             applyIndependentCompilationCommands(m);
             applyForceCompileCommand(m);
         } else {
-            // Implicitely @DontCompile if nothing specified
-            dontCompileMethod(m);
+            if (defaultDontCompile) {
+                // @DontCompile if nothing specified. Done for @Run.
+                dontCompileMethod(m);
+            }
         }
     }
 
@@ -659,7 +687,7 @@ public class TestFramework {
         TestFormat.check(!test.hasArguments(), "Invalid @Arguments annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         TestFormat.check(m.getParameterCount() == 0 || (m.getParameterCount() == 1 && m.getParameterTypes()[0].equals(TestInfo.class)),
                          "@Run method " + m + " must specify either no TestInfo parameter or exactly one");
-        applyCompileCommands(m);
+        applyCompileCommands(m, true);
         // Don't inline run methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
         CustomRunTest customRunTest = new CustomRunTest(test, m, runAnno);

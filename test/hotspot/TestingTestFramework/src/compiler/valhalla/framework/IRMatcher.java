@@ -84,7 +84,6 @@ class IRMatcher {
         for (Method m : testClass.getDeclaredMethods()) {
             IR[] irAnnos =  m.getAnnotationsByType(IR.class);
             if (irAnnos.length > 0) {
-                TestFormat.check(m.isAnnotationPresent(Test.class), "Found @IR annotation at non-@Test method " + m);
                 Integer[] ids = irRulesMap.get(m.getName());
                 TestFramework.check(ids != null, "Should find method name in validIrRulesMap for " + m);
                 TestFramework.check(ids.length > 0, "Did not find any rule indices for " + m);
@@ -95,16 +94,24 @@ class IRMatcher {
                 }
             }
         }
+        reportFailuresIfAny();
+    }
+
+    private void reportFailuresIfAny() {
         if (!fails.isEmpty()) {
-            StringBuilder builder = new StringBuilder("\n");
-            builder.append("One or more @IR rules failed:\n");
-            builder.append("-----------------------------\n");
-            fails.forEach((method, list) -> {
+            StringBuilder builder = new StringBuilder();
+            int failures = 0;
+            for (Map.Entry<Method, List<String>> entry : fails.entrySet()) {
+                Method method = entry.getKey();
+                List<String> list = entry.getValue();
                 builder.append("- Method \"").append(method).append("\":\n");
+                failures += list.size();
                 list.forEach(s -> builder.append("  * ").append(s.replace("\n", "\n    ").trim()).append("\n"));
                 builder.append("\n");
-            });
-            builder.append("\n");
+            }
+            builder.insert(0, "------------\n");
+            builder.insert(0, "Failures (" + failures + ")\n");
+            builder.insert(0, ("\nOne or more @IR rules failed:\n\n"));
             Asserts.fail(builder.toString());
         }
     }
@@ -140,16 +147,17 @@ class IRMatcher {
                 String node = nodesWithCount.get(i);
                 TestFormat.check(i + 1 < nodesWithCount.size(), "Missing count for IR node \"" + node + "\" at " + m);
                 String countString = nodesWithCount.get(i + 1);
-                long expectedCount = 0;
-
-                ParsedComparator<Long> parsedComparator = null;
+                long expectedCount;
+                ParsedComparator<Long> parsedComparator;
                 try {
                     parsedComparator = ParsedComparator.parseComparator(countString);
                     expectedCount = Long.parseLong(parsedComparator.getStrippedString());
                 } catch (NumberFormatException e) {
                     TestFormat.fail("Provided invalid count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
+                    return;
                 } catch (Exception e) {
-                    TestFormat.fail("Invalid comparator in \"" + countString + "\" for count of node " + node, e);
+                    TestFormat.fail("Invalid comparator in \"" + countString + "\" for count of node " + node + ": " + e.getCause());
+                    return;
                 }
                 TestFormat.check(expectedCount >= 0,"Provided invalid negative count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
 

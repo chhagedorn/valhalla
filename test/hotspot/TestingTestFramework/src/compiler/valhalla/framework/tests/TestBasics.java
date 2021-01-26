@@ -9,9 +9,9 @@ import java.util.stream.Stream;
 public class TestBasics {
     public static void main(String[] args) throws Exception {
         // Run on same VM to make this test easier as we are not interested in any output processing.
-        Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM");
+        Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-        runTestsOnSameVM.invoke(null);
+        runTestsOnSameVM.invoke(null, new Object[]{ null });
 
         if (wasExecuted) {
             throw new RuntimeException("Executed non @Test method or a method that was not intended to be run");
@@ -73,7 +73,7 @@ public class TestBasics {
 //    }
 
     static boolean wasExecuted = false;
-    static int[] testExecuted = new int[76];
+    static int[] testExecuted = new int[78];
     static int[] checkExecuted = new int[5];
     boolean lastToggleBoolean = true;
     long[] nonFloatingRandomNumbers = new long[10];
@@ -702,7 +702,7 @@ public class TestBasics {
     }
 
     @Test
-    public void testRunNoTestInfo(int i) {
+    public void testRunNoTestInfo(int i) { // Argument allowed when run by @Run
         testExecuted[62]++;
     }
 
@@ -843,6 +843,21 @@ public class TestBasics {
         for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();
         }
+    }
+
+    @Test
+    public void sameName() {
+        testExecuted[76]++;
+    }
+
+    // Allowed to overload test method if not test method itself
+    public void sameName(boolean a) {
+        wasExecuted = true;
+    }
+
+    @Check(test="sameName")
+    public void checkSameName() {
+        testExecuted[77]++;
     }
 }
 

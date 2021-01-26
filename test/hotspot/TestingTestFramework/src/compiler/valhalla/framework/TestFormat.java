@@ -13,6 +13,12 @@ public class TestFormat {
         }
     }
 
+    public static void checkNoThrow(boolean test, String failureMessage) {
+        if (!test) {
+            FAILURES.add(failureMessage);
+        }
+    }
+
     public static void fail(String failureMessage) {
         FAILURES.add(failureMessage);
         throw new TestFormatException(failureMessage);

@@ -266,6 +266,15 @@ public class TestFramework {
         TestRun.check(compiledByC2(m) != TriState.No, m + " should have been compiled");
     }
 
+    public static void assertCompiledAtLevel(Method m, CompLevel level) {
+        TestRun.check(isCompiledAtLevel(m, level), m + " should have been compiled at level " + level.name());
+    }
+
+    public static void assertNotCompiled(Method m) {
+        TestRun.check(!WHITE_BOX.isMethodCompiled(m, false) && !WHITE_BOX.isMethodCompiled(m, true),
+                      m + " should not have been compiled");
+    }
+
     public static String getLastVmOutput() {
         return lastVmOutput;
     }
@@ -461,13 +470,7 @@ public class TestFramework {
         DontInline dontInlineAnno = getAnnotation(m, DontInline.class);
         ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
         DontCompile dontCompileAnno = getAnnotation(m, DontCompile.class);
-        Test testAnno = getAnnotation(m, Test.class);
-        TestFormat.check(testAnno == null || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
-                         "Not allowed to use explicit compile command annotations (@ForceInline, @DontInline," +
-                         "@ForceCompile or @DontCompile) together with @Test at " + m + ". Use compLevel in @Test for fine tuning.");
-        TestFormat.check(forceInlineAnno == null || dontInlineAnno == null, "Cannot have @ForceInline and @DontInline at the same time at " + m);
-        TestFormat.check(forceCompileAnno == null || dontCompileAnno == null,
-                         "Cannot have @ForceCompile and @DontCompile at the same time at " + m);
+        checkCompilationCommandAnnotations(m, forceInlineAnno, dontInlineAnno, forceCompileAnno, dontCompileAnno);
         // First handle inline annotations
         if (dontInlineAnno != null) {
             WHITE_BOX.testSetDontInlineMethod(m, true);
@@ -475,7 +478,13 @@ public class TestFramework {
             WHITE_BOX.testSetForceInlineMethod(m, true);
         }
         if (dontCompileAnno != null) {
-            dontCompileMethod(m);
+            if (dontCompileAnno.value().length == 0) {
+                dontCompileMethod(m);
+            } else {
+                for (CompLevel compLevel : dontCompileAnno.value()) {
+                    dontCompileMethodAtLevel(m, compLevel);
+                }
+            }
         }
 
         if (STRESS_CC) {
@@ -487,10 +496,47 @@ public class TestFramework {
         }
     }
 
+    private void checkCompilationCommandAnnotations(Method m, ForceInline forceInlineAnno, DontInline dontInlineAnno, ForceCompile forceCompileAnno, DontCompile dontCompileAnno) {
+        Test testAnno = getAnnotation(m, Test.class);
+        TestFormat.check(testAnno == null || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
+                         "Not allowed to use explicit compile command annotations (@ForceInline, @DontInline," +
+                         "@ForceCompile or @DontCompile) together with @Test at " + m + ". Use compLevel in @Test for fine tuning.");
+        if (Stream.of(forceInlineAnno, dontCompileAnno, dontInlineAnno).filter(Objects::nonNull).count() > 1) {
+            // Failure
+            TestFormat.check(dontCompileAnno == null || dontInlineAnno == null,
+                             "@DontInline is implicitely done with @DontCompile annotation at " + m);
+            TestFormat.fail("Cannot mix @ForceInline, @DontInline and @DontCompile at the same time at " + m);
+        }
+        TestFormat.check(forceInlineAnno == null || dontInlineAnno == null, "Cannot have @ForceInline and @DontInline at the same time at " + m);
+        if (forceCompileAnno != null && dontCompileAnno != null) {
+            CompLevel forceCompile = forceCompileAnno.value();
+            CompLevel[] dontCompile = dontCompileAnno.value();
+            TestFormat.check(dontCompile.length != 0,
+                             "Cannot have @ForceCompile and default @DontCompile (exclude all) at the same time at " + m);
+            TestFormat.check(forceCompile != CompLevel.ANY,
+                             "Cannot have @ForceCompile with ANY and @DontCompile at the same time at " + m);
+            TestFormat.check(Arrays.stream(dontCompile).noneMatch(a -> a == forceCompile),
+                             "Overlapping compilation levels with @ForceCompile and @DontCompile at " + m);
+        }
+        TestFormat.check(forceCompileAnno == null || dontCompileAnno == null,
+                         "Cannot have @ForceCompile and @DontCompile at the same time at " + m);
+    }
+
     private void dontCompileMethod(Method m) {
         WHITE_BOX.makeMethodNotCompilable(m, CompLevel.ANY.getValue(), true);
         WHITE_BOX.makeMethodNotCompilable(m, CompLevel.ANY.getValue(), false);
         WHITE_BOX.testSetDontInlineMethod(m, true);
+    }
+
+    private void dontCompileMethodAtLevel(Method m, CompLevel compLevel) {
+        if (VERBOSE) {
+            System.out.println("dontCompileMethodAtLevel " + m + " , level = " + compLevel.name());
+        }
+        WHITE_BOX.makeMethodNotCompilable(m, compLevel.getValue(), true);
+        WHITE_BOX.makeMethodNotCompilable(m, compLevel.getValue(), false);
+        if (compLevel == CompLevel.ANY) {
+            WHITE_BOX.testSetDontInlineMethod(m, true);
+        }
     }
 
     private void applyForceCompileCommand(Method m) {
@@ -504,6 +550,7 @@ public class TestFramework {
         if (TestFramework.VERBOSE) {
             System.out.println("enqueueMethodForCompilation " + m + ", level = " + compLevel);
         }
+        compLevel = restrictCompLevel(compLevel);
         WHITE_BOX.enqueueMethodForCompilation(m, compLevel.getValue());
     }
 
@@ -522,7 +569,9 @@ public class TestFramework {
                         addTest(m);
                     }
                 } else {
-                    TestFormat.check(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
+                    TestFormat.checkNoThrow(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
+                    TestFormat.checkNoThrow(!m.isAnnotationPresent(Warmup.class) || getAnnotation(m, Run.class) != null,
+                                     "Found @Warmup annotation on non-@Test or non-@Run method " + m);
                 }
             } catch (TestFormatException e) {
                 // Failure logged. Continue and report later.
@@ -541,6 +590,7 @@ public class TestFramework {
         int warmupIterations = WARMUP_ITERATIONS;
         if (warmup != null) {
             warmupIterations = warmup.value();
+            TestFormat.check(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + m);
         }
 
         boolean osrOnly = getAnnotation(m, OSROnly.class) != null;
@@ -554,7 +604,6 @@ public class TestFramework {
         if (FLIP_C1_C2) {
             compLevel = flipCompLevel(compLevel);
         }
-        compLevel = restrictCompLevel(compLevel);
         DeclaredTest test = new DeclaredTest(m, Argument.getArguments(m), compLevel, warmupIterations, osrOnly);
         declaredTests.put(m, test);
         testMethodMap.put(m.getName(), m);
@@ -681,17 +730,27 @@ public class TestFramework {
 
     private void addCustomRunTest(Method m, Run runAnno) {
         Method testMethod = testMethodMap.get(runAnno.test());
-        TestFormat.check(testMethod != null, "Did not find associated test method " + runAnno.test() + " for @Run at " + m);
         DeclaredTest test = declaredTests.remove(testMethod);
+        checkCustomRunTest(m, runAnno, testMethod, test);
+        applyCompileCommands(m, true);
+        // Don't inline run methods
+        WHITE_BOX.testSetDontInlineMethod(m, true);
+        CustomRunTest customRunTest = new CustomRunTest(test, m, getAnnotation(m, Warmup.class), runAnno);
+        allTests.put(m, customRunTest);
+    }
+
+    private void checkCustomRunTest(Method m, Run runAnno, Method testMethod, DeclaredTest test) {
+        TestFormat.check(testMethod != null, "Did not find associated test method " + runAnno.test() + " for @Run at " + m);
         TestFormat.check(test != null, "Missing @Test annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         TestFormat.check(!test.hasArguments(), "Invalid @Arguments annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         TestFormat.check(m.getParameterCount() == 0 || (m.getParameterCount() == 1 && m.getParameterTypes()[0].equals(TestInfo.class)),
                          "@Run method " + m + " must specify either no TestInfo parameter or exactly one");
-        applyCompileCommands(m, true);
-        // Don't inline run methods
-        WHITE_BOX.testSetDontInlineMethod(m, true);
-        CustomRunTest customRunTest = new CustomRunTest(test, m, runAnno);
-        allTests.put(m, customRunTest);
+        Warmup warmupAnno = getAnnotation(testMethod, Warmup.class);
+        TestFormat.checkNoThrow(warmupAnno == null,
+                         "Cannot set @Warmup at @Test method " + testMethod + " when used with its @Run method " + m + ". Use @Warmup at @Run method instead.");
+        warmupAnno = getAnnotation(m, Warmup.class);
+        TestFormat.checkNoThrow(warmupAnno == null || runAnno.mode() != RunMode.ONCE,
+                         "Cannot set @Warmup at @Run method " + m + " when used with RunMode.ONCE. The @Run method is only invoked once.");
     }
 
     private static <T extends Annotation> T getAnnotation(Method m, Class<T> c) {
@@ -757,6 +816,11 @@ public class TestFramework {
             return TriState.Yes;
         }
         return TriState.No;
+    }
+
+    private static boolean isCompiledAtLevel(Method m, CompLevel level) {
+        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue();
+//        return compiledByC2(m) == TriState.Yes;
     }
 }
 
@@ -847,11 +911,13 @@ class BaseTest {
     protected final Method testMethod;
     protected final TestInfo testInfo;
     protected final Object invocationTarget;
+    protected int warmupIterations;
 
     public BaseTest(DeclaredTest test) {
         this.test = test;
         this.testMethod = test.getTestMethod();
         this.testInfo = new TestInfo(testMethod);
+        this.warmupIterations = test.getWarmupIterations();
         Class<?> clazz = testMethod.getDeclaringClass();
         if (Modifier.isStatic(testMethod.getModifiers())) {
             this.invocationTarget = null;
@@ -880,7 +946,7 @@ class BaseTest {
             return;
         }
         test.printFixedRandomArguments();
-        for (int i = 0; i < test.getWarmupIterations(); i++) {
+        for (int i = 0; i < warmupIterations; i++) {
             runMethod();
         }
         testInfo.setWarmUpFinished();
@@ -961,8 +1027,15 @@ class BaseTest {
             WHITE_BOX.setBooleanVMFlag("VerifyOops", true);
         }
         if (!TestFramework.STRESS_CC && TestFramework.USE_COMPILER) {
-            for (int i = 0; !WHITE_BOX.isMethodCompiled(testMethod, false) && i < 10 ; i++) {
+            Asserts.assertTrue(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false));
+            for (int i = 0; WHITE_BOX.getMethodCompilationLevel(testMethod, false) != test.getCompLevel().getValue() && i < 5 ; i++) {
                 try {
+                    if (i > 0) {
+                        if (TestFramework.VERBOSE) {
+                            System.out.println(testMethod + " is not yet compiled. Enqueue again");
+                        }
+                        enqueueMethodForCompilation();
+                    }
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
                     TestFormat.fail("Error while waiting for compilation to be completed of " + testMethod);
@@ -974,12 +1047,12 @@ class BaseTest {
         runMethod();
     }
 
-    private  void enqueueMethodForCompilation() {
+    private void enqueueMethodForCompilation() {
         TestFramework.enqueueMethodForCompilation(test.getTestMethod(), test.getCompLevel());
     }
 
     protected void checkCompilationLevel() {
-        CompLevel level = CompLevel.forValue(WhiteBox.getWhiteBox().getMethodCompilationLevel(testMethod));
+        CompLevel level = CompLevel.forValue(WHITE_BOX.getMethodCompilationLevel(testMethod));
         TestRun.check(level == test.getCompLevel(),
                       "Compilation level should be " + test.getCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod);
     }
@@ -1034,12 +1107,13 @@ class CustomRunTest extends BaseTest {
     private final Method runMethod;
     private final RunMode mode;
 
-    public CustomRunTest(DeclaredTest test, Method runMethod, Run runSpecification) {
+    public CustomRunTest(DeclaredTest test, Method runMethod, Warmup warmUpAnno, Run runSpecification) {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         runMethod.setAccessible(true);
         this.runMethod = runMethod;
         this.mode = runSpecification.mode();
+        this.warmupIterations = warmUpAnno != null ? warmUpAnno.value() : test.getWarmupIterations();
     }
 
     @Override

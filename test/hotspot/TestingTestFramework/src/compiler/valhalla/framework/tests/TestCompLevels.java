@@ -7,7 +7,6 @@ import java.lang.reflect.Method;
 
 // Requires C1 and C2 enabled
 public class TestCompLevels {
-    public static final String[] TEST_KEYS = { "test-key0", "test-key1" };
     static int[] testExecuted = new int[4];
 
     public static void main(String[] args) throws Exception {
@@ -36,7 +35,7 @@ public class TestCompLevels {
 
     @Check(test = "testC1", when = CheckAt.COMPILED)
     public void checkTestC1(TestInfo info) {
-        info.assertCompiledAtLevel(info.getTest(), CompLevel.C1);
+        TestFramework.assertCompiledAtLevel(info.getTest(), CompLevel.C1);
     }
 
     @Test(compLevel = CompLevel.C1_LIMITED_PROFILE)
@@ -46,7 +45,7 @@ public class TestCompLevels {
 
     @Check(test = "testC1Limited", when = CheckAt.COMPILED)
     public void checkTestLimited(TestInfo info) {
-        info.assertCompiledAtLevel(info.getTest(), CompLevel.C1_LIMITED_PROFILE);
+        TestFramework.assertCompiledAtLevel(info.getTest(), CompLevel.C1_LIMITED_PROFILE);
     }
 
     @Test(compLevel = CompLevel.C1_FULL_PROFILE)
@@ -56,7 +55,7 @@ public class TestCompLevels {
 
     @Check(test = "testC1Full", when = CheckAt.COMPILED)
     public void checkTestC1Full(TestInfo info) {
-        info.assertCompiledAtLevel(info.getTest(), CompLevel.C1_FULL_PROFILE);
+        TestFramework.assertCompiledAtLevel(info.getTest(), CompLevel.C1_FULL_PROFILE);
     }
 
     @Test(compLevel = CompLevel.C2)
@@ -66,7 +65,7 @@ public class TestCompLevels {
 
     @Check(test = "testC2", when = CheckAt.COMPILED)
     public void checkTestC2(TestInfo info) {
-        info.assertCompiledAtLevel(info.getTest(), CompLevel.C2);
+        TestFramework.assertCompiledAtLevel(info.getTest(), CompLevel.C2);
     }
 }
 

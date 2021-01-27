@@ -40,30 +40,28 @@ public class TestFramework {
 
     // User defined settings
     static final boolean XCOMP = Platform.isComp();
-    private static final boolean PRINT_GRAPH = true;
 //    private static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
     static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "true"));
     private static final boolean PRINT_TIMES = Boolean.parseBoolean(System.getProperty("PrintTimes", "false"));
 
     private static final boolean COMPILE_COMMANDS = Boolean.parseBoolean(System.getProperty("CompileCommands", "true")) && !XCOMP;
-    private static       boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"))
-                                             && !XCOMP && !TEST_C1 && COMPILE_COMMANDS && Platform.isDebugBuild() && !Platform.isInt();
+    static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
+    static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
+    private static final boolean REQUESTED_VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
+    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1 && COMPILE_COMMANDS
+                                       && Platform.isDebugBuild() && !Platform.isInt();
     private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
     private static final String TESTLIST = System.getProperty("Testlist", "");
     private static final String EXCLUDELIST = System.getProperty("Exclude", "");
     public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "251"));
     private static final boolean DUMP_REPLAY = Boolean.parseBoolean(System.getProperty("DumpReplay", "false"));
     private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
-    static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
-    private static final boolean USE_COMPILE_COMMAND_ANNOTATIONS = Boolean.parseBoolean(System.getProperty("UseCompileCommandAnnotations", "true"));
     private static final boolean PRINT_VALID_IR_RULES = Boolean.parseBoolean(System.getProperty("PrintValidIRRules", "false"));
     protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
     protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
     private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
-
-    static final boolean TESTING_TEST_FRAMEWORK = Boolean.parseBoolean(System.getProperty("TestingTestFramework", "false"));
 
     private final String[] fixedDefaultFlags;
     private final String[] compileCommandFlags;
@@ -71,7 +69,6 @@ public class TestFramework {
     private final String[] verifyFlags;
     private static String lastVmOutput; // Only used to test TestFramework
 
-    static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
     static final boolean VERIFY_OOPS = (Boolean)WHITE_BOX.getVMFlag("VerifyOops");
 
     private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
@@ -142,7 +139,7 @@ public class TestFramework {
 
     public static void main(String[] args) {
         String testClassName = args[0];
-        System.out.println("Framework main(), about to run test class " + testClassName);
+        System.out.println("Framework main(), about to run tests in class " + testClassName);
         Class<?> testClass;
         try {
             testClass = Class.forName(testClassName);
@@ -195,18 +192,18 @@ public class TestFramework {
     }
 
     public static void runWithScenarios(Class<?> testClass, Scenario... scenarios) {
-        runWithScenarios(Scenario.Run.EXCLUDE_DEFAULT, testClass, null, scenarios);
+        runWithScenariosAndHelperClasses(Scenario.Run.EXCLUDE_DEFAULT, testClass, null, scenarios);
     }
 
     public static void runWithScenarios(Scenario.Run runMode, Class<?> testClass, Scenario... scenarios) {
-        runWithScenarios(runMode, testClass, null, scenarios);
+        runWithScenariosAndHelperClasses(runMode, testClass, null, scenarios);
     }
 
-    public static void runWithScenarios(Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
-        runWithScenarios(Scenario.Run.EXCLUDE_DEFAULT, testClass, helperClasses, scenarios);
+    public static void runWithScenariosAndHelperClasses(Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
+        runWithScenariosAndHelperClasses(Scenario.Run.EXCLUDE_DEFAULT, testClass, helperClasses, scenarios);
     }
 
-    public static void runWithScenarios(Scenario.Run runMode, Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
+    public static void runWithScenariosAndHelperClasses(Scenario.Run runMode, Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
         TestFramework framework = new TestFramework();
         Map<String, Exception> exceptionMap = new HashMap<>();
         // First run without additional scenario flags.
@@ -242,10 +239,6 @@ public class TestFramework {
         }
     }
 
-    public static void run(Class<?> testClass, List<Class<?>> helperClasses) {
-        doRun(testClass, helperClasses);
-    }
-
     // Can be called from tests for non-@Test methods
     public static void compile(Method m, CompLevel compLevel) {
         TestRun.check(getAnnotation(m, Test.class) == null,
@@ -254,8 +247,11 @@ public class TestFramework {
     }
 
     public static boolean isC2Compiled(Method m) {
-        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
-//        return compiledByC2(m) == TriState.Yes;
+        return compiledByC2(m) == TriState.Yes;
+    }
+
+    public static boolean isCompiledAtLevel(Method m, CompLevel compLevel) {
+        return compiledAtLevel(m, compLevel) == TriState.Yes;
     }
 
     public static void assertDeoptimizedByC2(Method m) {
@@ -267,7 +263,7 @@ public class TestFramework {
     }
 
     public static void assertCompiledAtLevel(Method m, CompLevel level) {
-        TestRun.check(isCompiledAtLevel(m, level), m + " should have been compiled at level " + level.name());
+        TestRun.check(compiledAtLevel(m, level) != TriState.No, m + " should have been compiled at level " + level.name());
     }
 
     public static void assertNotCompiled(Method m) {
@@ -310,8 +306,8 @@ public class TestFramework {
 
     private void runTestVM(Class<?> testClass, List<Class<?>> helperClasses, Scenario scenario) {
         if (scenario != null && !scenario.isEnabled()) {
-            System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag -DScenarios and" +
-                                       "is therefore not executed.");
+            System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag -DScenarios " +
+                               "and is therefore not executed.");
             return;
         }
 
@@ -321,18 +317,16 @@ public class TestFramework {
             // Calls 'main' of this class to run all specified tests with commands 'cmds'.
             oa = ProcessTools.executeTestJvm(cmds);
         } catch (Exception e) {
-            throw new TestRunException("Error while executing Test VM", e);
+            throw new TestFrameworkException("Error while executing Test VM", e);
         }
         String output = oa.getOutput();
-        if (VERBOSE) {
+        lastVmOutput = output;
+
+        if (VERBOSE || oa.getExitValue() != 0) {
             System.out.println(" ----- OUTPUT -----");
             System.out.println(output);
         }
-        lastVmOutput = output;
-        if (!TESTING_TEST_FRAMEWORK) {
-            // Tests for the framework itself might expect certain exceptions.
-            oa.shouldHaveExitValue(0);
-        }
+        oa.shouldHaveExitValue(0);
 
         if (VERIFY_IR) {
             IRMatcher irMatcher = new IRMatcher(output, testClass);
@@ -364,7 +358,7 @@ public class TestFramework {
 
         // TODO: Only for debugging
         if (cmds.get(0).startsWith("-agentlib")) {
-            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
+            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=y,server=y");
         }
 
         if (PREFER_COMMAND_LINE_FLAGS) {
@@ -391,6 +385,9 @@ public class TestFramework {
                 System.out.println("Disabled IR verification due to CompileThreshold flag");
             }
             VERIFY_IR = false;
+        } else if (!VERIFY_IR && REQUESTED_VERIFY_IR) {
+            System.out.println("IR Verification disabled either due to not running a debug build, running with -Xint, or other " +
+                               "VM flags that make the verification inaccurate or impossible (e.g. running with C1 only).");
         }
 
         if (VERIFY_IR) {
@@ -416,7 +413,7 @@ public class TestFramework {
         setupTests(clazz);
         setupCheckAndRunMethods(clazz);
 
-        // All remaining tests are simple base tests without check or specific way to run them
+        // All remaining tests are simple base tests without check or specific way to run them.
         addBaseTests();
         TestFormat.reportIfAnyFailures();
         declaredTests.clear();
@@ -444,11 +441,18 @@ public class TestFramework {
     }
 
     private void processExplicitCompileCommands(Class<?> clazz) {
-        if (USE_COMPILE_COMMAND_ANNOTATIONS) {
+        if (!XCOMP) {
+            // Don't control compilations if -Xcomp is enabled.
             Method[] methods = clazz.getDeclaredMethods();
             for (Method m : methods) {
                 try {
                     applyIndependentCompilationCommands(m);
+
+                    if (STRESS_CC) {
+                        if (getAnnotation(m, Test.class) != null) {
+                            excludeCompilationRandomly(m);
+                        }
+                    }
                 } catch (TestFormatException e) {
                     // Failure logged. Continue and report later.
                 }
@@ -463,6 +467,17 @@ public class TestFramework {
                 }
             }
         }
+    }
+
+    static boolean excludeCompilationRandomly(Method m) {
+        // Exclude some methods from compilation with C2 to stress test the calling convention
+        boolean exclude = Utils.getRandomInstance().nextBoolean();
+        if (exclude) {
+            System.out.println("Excluding from C2 compilation: " + m);
+            WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2.getValue(), false);
+            WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2.getValue(), true);
+        }
+        return exclude;
     }
 
     private void applyIndependentCompilationCommands(Method m) {
@@ -484,14 +499,6 @@ public class TestFramework {
                 for (CompLevel compLevel : dontCompileAnno.value()) {
                     dontCompileMethodAtLevel(m, compLevel);
                 }
-            }
-        }
-
-        if (STRESS_CC) {
-            // Exclude some methods from compilation with C2 to stress test the calling convention
-            if (Utils.getRandomInstance().nextBoolean()) {
-                System.out.println("Excluding from C2 compilation: " + m);
-                WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2.getValue(), false);
             }
         }
     }
@@ -593,13 +600,16 @@ public class TestFramework {
             TestFormat.check(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + m);
         }
 
-        boolean osrOnly = getAnnotation(m, OSROnly.class) != null;
+        boolean osrOnly = getAnnotation(m, OSRCompileOnly.class) != null;
 
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter.emitRuleEncoding(m);
         }
-        // Don't inline test methods
-        WHITE_BOX.testSetDontInlineMethod(m, true);
+
+        if (!XCOMP) {
+            // Don't inline test methods. Don't care when -Xcomp set.
+            WHITE_BOX.testSetDontInlineMethod(m, true);
+        }
         CompLevel compLevel = testAnno.compLevel();
         if (FLIP_C1_C2) {
             compLevel = flipCompLevel(compLevel);
@@ -749,8 +759,11 @@ public class TestFramework {
         TestFormat.checkNoThrow(warmupAnno == null,
                          "Cannot set @Warmup at @Test method " + testMethod + " when used with its @Run method " + m + ". Use @Warmup at @Run method instead.");
         warmupAnno = getAnnotation(m, Warmup.class);
-        TestFormat.checkNoThrow(warmupAnno == null || runAnno.mode() != RunMode.ONCE,
+        TestFormat.checkNoThrow(warmupAnno == null || runAnno.mode() != RunMode.INVOKE_ONCE,
                          "Cannot set @Warmup at @Run method " + m + " when used with RunMode.ONCE. The @Run method is only invoked once.");
+        OSRCompileOnly osrAnno = getAnnotation(testMethod, OSRCompileOnly.class);
+        TestFormat.checkNoThrow(osrAnno == null || runAnno.mode() != RunMode.INVOKE_ONCE,
+                                "Cannot set @OSRCompileOnly at @Run method " + m + " when used with RunMode.ONCE. The @Run method is responsible for triggering compilation.");
     }
 
     private static <T extends Annotation> T getAnnotation(Method m, Class<T> c) {
@@ -807,20 +820,19 @@ public class TestFramework {
     }
 
     private static TriState compiledByC2(Method m) {
-//        if (!TestFramework.USE_COMPILER || TestFramework.XCOMP || TestFramework.TEST_C1 ||
-//                (TestFramework.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, CompLevel.C2.getValue(), false))) {
-//            return TriState.Maybe;
-//        }
+        return compiledAtLevel(m, CompLevel.C2);
+    }
+
+    private static TriState compiledAtLevel(Method m, CompLevel level) {
+        if (!TestFramework.USE_COMPILER || TestFramework.XCOMP || TestFramework.TEST_C1 ||
+            (TestFramework.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
+            return TriState.Maybe;
+        }
         if (WHITE_BOX.isMethodCompiled(m, false)
-            && WHITE_BOX.getMethodCompilationLevel(m, false) >= CompLevel.C2.getValue()) {
+            && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue()) {
             return TriState.Yes;
         }
         return TriState.No;
-    }
-
-    private static boolean isCompiledAtLevel(Method m, CompLevel level) {
-        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue();
-//        return compiledByC2(m) == TriState.Yes;
     }
 }
 
@@ -906,11 +918,13 @@ class DeclaredTest {
 class BaseTest {
     private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
     private static final int OSR_TEST_TIMEOUT = Integer.parseInt(System.getProperty("OSRTestTimeOut", "5000"));
+    private static final int TEST_COMPILATION_TIMEOUT = Integer.parseInt(System.getProperty("TestCompilationTimeout", "5000"));
 
     protected final DeclaredTest test;
     protected final Method testMethod;
     protected final TestInfo testInfo;
     protected final Object invocationTarget;
+    private final boolean shouldCompile;
     protected int warmupIterations;
 
     public BaseTest(DeclaredTest test) {
@@ -931,6 +945,13 @@ class BaseTest {
                                                    + ". Make sure there is a constructor without arguments.", e);
             }
         }
+        if (!TestFramework.USE_COMPILER) {
+            this.shouldCompile = false;
+        } else if (TestFramework.STRESS_CC) {
+            this.shouldCompile = !TestFramework.excludeCompilationRandomly(testMethod);
+        } else {
+            this.shouldCompile = true;
+        }
     }
 
     public String getTestName() {
@@ -945,6 +966,9 @@ class BaseTest {
             // Exclude test if compilation level is SKIP either set through test or by not matching the current VM flags.
             return;
         }
+        if (TestFramework.VERBOSE) {
+            System.out.println("Starting " + testMethod);
+        }
         test.printFixedRandomArguments();
         for (int i = 0; i < warmupIterations; i++) {
             runMethod();
@@ -952,9 +976,13 @@ class BaseTest {
         testInfo.setWarmUpFinished();
 
         if (test.isOSROnly()) {
-            compileOSRAndRun();
+            compileOSRAndRun(); // TODO: Keep this?
         } else {
-            compileNormallyAndRun();
+            if (shouldCompile) {
+                compileTest();
+            }
+            // Always run method.
+            runMethod();
         }
     }
 
@@ -1015,36 +1043,36 @@ class BaseTest {
         }
     }
 
-    private void compileNormallyAndRun() {
+    private void compileTest() {
         final boolean maybeCodeBufferOverflow = (TestFramework.TEST_C1 && TestFramework.VERIFY_OOPS);
         final Method testMethod = test.getTestMethod();
+        long started = System.currentTimeMillis();
+        long elapsed = 0;
+        Asserts.assertTrue(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false));
         enqueueMethodForCompilation();
-        if (maybeCodeBufferOverflow && !WHITE_BOX.isMethodCompiled(testMethod, false)) {
-            // Let's disable VerifyOops temporarily and retry.
-            WHITE_BOX.setBooleanVMFlag("VerifyOops", false);
-            WHITE_BOX.clearMethodState(testMethod);
-            enqueueMethodForCompilation();
-            WHITE_BOX.setBooleanVMFlag("VerifyOops", true);
-        }
-        if (!TestFramework.STRESS_CC && TestFramework.USE_COMPILER) {
-            Asserts.assertTrue(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false));
-            for (int i = 0; WHITE_BOX.getMethodCompilationLevel(testMethod, false) != test.getCompLevel().getValue() && i < 5 ; i++) {
-                try {
-                    if (i > 0) {
-                        if (TestFramework.VERBOSE) {
-                            System.out.println(testMethod + " is not yet compiled. Enqueue again");
-                        }
-                        enqueueMethodForCompilation();
-                    }
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    TestFormat.fail("Error while waiting for compilation to be completed of " + testMethod);
+
+        do {
+            if (!WHITE_BOX.isMethodQueuedForCompilation(testMethod)) {
+                if (elapsed > 0 && TestFramework.VERBOSE) {
+                    System.out.println(testMethod + " is not in queue anymore due to compiling it simultaneously on a different level. Enqueue again.");
+                    enqueueMethodForCompilation();
                 }
             }
-            Asserts.assertTrue(WHITE_BOX.isMethodCompiled(testMethod, false), testMethod + " not compiled after waiting 1s");
-            checkCompilationLevel();
-        }
-        runMethod();
+            if (maybeCodeBufferOverflow && elapsed > 1000 && !WHITE_BOX.isMethodCompiled(testMethod, false)) {
+                // Let's disable VerifyOops temporarily and retry.
+                WHITE_BOX.setBooleanVMFlag("VerifyOops", false);
+                WHITE_BOX.clearMethodState(testMethod);
+                enqueueMethodForCompilation();
+                WHITE_BOX.setBooleanVMFlag("VerifyOops", true);
+            }
+
+            if (WHITE_BOX.getMethodCompilationLevel(testMethod, false) == test.getCompLevel().getValue()) {
+                break;
+            }
+            elapsed = System.currentTimeMillis() - started;
+        } while (elapsed < TEST_COMPILATION_TIMEOUT);
+        TestRun.check(elapsed < TEST_COMPILATION_TIMEOUT, "Could not compile" + testMethod + " after " + TEST_COMPILATION_TIMEOUT/1000 + "s");
+        checkCompilationLevel();
     }
 
     private void enqueueMethodForCompilation() {
@@ -1119,7 +1147,7 @@ class CustomRunTest extends BaseTest {
     @Override
     public void run() {
         switch (mode) {
-            case ONCE -> runMethod();
+            case INVOKE_ONCE -> runMethod();
             case NORMAL -> super.run();
         }
     }
@@ -1146,7 +1174,7 @@ class CustomRunTest extends BaseTest {
         if (level != test.getCompLevel()) {
             String message = "Compilation level should be " + test.getCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod + ".";
             switch (mode) {
-                case ONCE -> message = message + "\nCheck your @Run method (invoked once) " + runMethod + " to ensure that " + testMethod + " will be complied at the requested level.";
+                case INVOKE_ONCE -> message = message + "\nCheck your @Run method (invoked once) " + runMethod + " to ensure that " + testMethod + " will be complied at the requested level.";
                 case NORMAL -> message = message + "\nCheck your @Run method " + runMethod + " to ensure that " + testMethod + " is called at least once in each iteration.";
             }
             TestRun.fail(message);

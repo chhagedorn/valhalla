@@ -8,6 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class IRMatcher {
+    private static final boolean PRINT_GRAPH = true;
     private final Map<String, Integer[]> irRulesMap;
     private final Map<String,String> compilations;
     private final Class<?> testClass;
@@ -47,8 +48,8 @@ class IRMatcher {
     }
 
     private void splitCompilations(String output, Class<?> testClass) {
-        Pattern comp_re = Pattern.compile("\\n\\s+\\d+\\s+\\d+\\s+([% ])([s ])([! ])b([n ])\\s+\\d?\\s+\\S+\\.(?<name>[^.]+::\\S+)\\s+(?<osr>@ \\d+\\s+)?[(]\\d+ bytes[)]");
-        Matcher m = comp_re.matcher(output);
+        Pattern pattern = Pattern.compile("\\n\\s+\\d+\\s+\\d+\\s+([% ])([s ])([! ])b([n ])\\s+\\d?\\s+\\S+\\.(?<name>[^.]+::\\S+)\\s+(?<osr>@ \\d+\\s+)?[(]\\d+ bytes[)]");
+        Matcher m = pattern.matcher(output);
         int prev = 0;
         String methodName = null;
         String keyMatchPrefix = testClass.getSimpleName() + "::";
@@ -73,7 +74,11 @@ class IRMatcher {
             if (methodName.startsWith(keyMatchPrefix)) {
                 String shortMethodName = methodName.split("::")[1];
                 if (irRulesMap.containsKey(methodName.split("::")[1])) {
-                    compilations.put(shortMethodName, output.substring(prev));
+                    String testOutput = output.substring(prev);
+                    if (PRINT_GRAPH) {
+                        System.out.println("\nGraph for " + methodName + "\n" + testOutput);
+                    }
+                    compilations.put(shortMethodName, testOutput);
                 }
             }
         }

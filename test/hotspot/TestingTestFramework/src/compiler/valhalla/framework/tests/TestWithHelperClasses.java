@@ -9,9 +9,11 @@ public class TestWithHelperClasses {
         TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class, Helper2.class);
         try {
             TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class);
-        } catch (TestRunException e) {
-            Asserts.assertTrue(e.getMessage().contains("public static void compiler.valhalla.framework.tests.Helper2.foo() should have been compiled"));
+        } catch (Exception e) {
+            Asserts.assertTrue(TestFramework.getLastVmOutput().contains("public static void compiler.valhalla.framework.tests.Helper2.foo() should have been compiled"));
+            return;
         }
+        throw new RuntimeException("Did not catch exception");
     }
 
     @Test

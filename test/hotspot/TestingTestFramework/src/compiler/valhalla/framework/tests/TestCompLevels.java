@@ -10,9 +10,9 @@ public class TestCompLevels {
     static int[] testExecuted = new int[4];
 
     public static void main(String[] args) throws Exception {
-        Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM");
+        Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-        runTestsOnSameVM.invoke(null);
+        runTestsOnSameVM.invoke(null, new Object[]{null});
         for (int i = 0; i < testExecuted.length; i++) {
             int value = testExecuted[i];
             if (value != TestFramework.WARMUP_ITERATIONS + 1) {
@@ -23,7 +23,7 @@ public class TestCompLevels {
         }
         Scenario s = new Scenario(1, "-XX:-TieredCompilation");
         TestFramework.runWithScenarios(TestNoTiered.class, s);
-        s = new Scenario(1, "-XX:TieredStopAtLevel=1");
+        s = new Scenario(2, "-XX:TieredStopAtLevel=1");
         TestFramework.runWithScenarios(TestStopAtLevel1.class, s);
         Asserts.assertTrue(TestFramework.getLastVmOutput().contains("TestStopAtLevel1=34"));
     }

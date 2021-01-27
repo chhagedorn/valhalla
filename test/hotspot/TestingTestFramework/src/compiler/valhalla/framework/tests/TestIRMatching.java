@@ -94,8 +94,6 @@ public class TestIRMatching {
             Scenario scenario = new Scenario(0, args);
             TestFramework.runWithScenarios(constraint.getKlass(), scenario); // All constraints have the same class.
             shouldNotReach();
-        } catch (ShouldNotReachException e) {
-           throw e;
         } catch (TestRunException e) {
             System.out.println(e.getMessage());
             constraint.checkConstraint(e);

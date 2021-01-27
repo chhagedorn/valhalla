@@ -30,6 +30,15 @@ public class TestControls {
         Asserts.assertEQ(executed[11], 2);
         Asserts.assertEQ(executed[12], 1);
         Asserts.assertFalse(wasExecuted);
+        final long started = System.currentTimeMillis();
+        long elapsed = 0;
+        Method overloadDouble = TestControls.class.getDeclaredMethod("overload", double.class);
+        Method overloadInt = TestControls.class.getDeclaredMethod("overload", int.class);
+        while (!(TestFramework.isC2Compiled(overloadInt) && TestFramework.isCompiledAtLevel(overloadDouble, CompLevel.C1_LIMITED_PROFILE)) && elapsed < 5000) {
+            elapsed = System.currentTimeMillis() - started;
+        }
+        TestFramework.assertCompiledAtLevel(TestControls.class.getDeclaredMethod("overload", double.class), CompLevel.C1_LIMITED_PROFILE);
+        TestFramework.assertCompiledByC2(TestControls.class.getDeclaredMethod("overload", int.class));
     }
 
     @Test
@@ -58,8 +67,6 @@ public class TestControls {
     public void check2(TestInfo info) throws NoSuchMethodException{
         Asserts.assertTrue(!info.isWarmUp() && executed[1] == 101);
         TestFramework.assertCompiledByC2(info.getTest());
-        TestFramework.assertCompiledByC2(TestControls.class.getDeclaredMethod("overload", int.class));
-        TestFramework.assertCompiledAtLevel(TestControls.class.getDeclaredMethod("overload", double.class), CompLevel.C1_LIMITED_PROFILE);
     }
 
     @Test
@@ -94,7 +101,7 @@ public class TestControls {
         executed[3]++;
     }
     
-    @Run(test = "testDontCompile", mode = RunMode.ONCE)
+    @Run(test = "testDontCompile", mode = RunMode.INVOKE_ONCE)
     public void runTestDontCompile() throws NoSuchMethodException {
         for (int i = 0; i < 10000; i++) {
             dontCompile(); // Should not compile this method

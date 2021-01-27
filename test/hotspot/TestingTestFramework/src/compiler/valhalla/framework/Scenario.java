@@ -39,6 +39,10 @@ public class Scenario {
         }
     }
 
+    public void addFlag(String flag) {
+        flags.add(flag);
+    }
+
     public List<String> getFlags() {
         return flags;
     }

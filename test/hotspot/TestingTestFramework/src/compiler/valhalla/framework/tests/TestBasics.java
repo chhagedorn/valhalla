@@ -107,8 +107,13 @@ public class TestBasics {
         wasExecuted = true;
     }
 
-    // Can overload when not a @Test
+    // Can overload non- @Test
     public static void test2(int i) {
+        wasExecuted = true;
+    }
+
+    // Can overload a @Test if it is not a @Test itself.
+    public static void test(double i) {
         wasExecuted = true;
     }
 
@@ -827,7 +832,7 @@ public class TestBasics {
         checkExecuted[4]++;
     }
 
-    @Run(test = "testRunOnce", mode=RunMode.ONCE)
+    @Run(test = "testRunOnce", mode=RunMode.INVOKE_ONCE)
     public void runTestRunOnce(TestInfo info) {
         testRunOnce();
     }
@@ -838,7 +843,7 @@ public class TestBasics {
         testExecuted[75]++;
     }
 
-    @Run(test = "testRunOnce2", mode=RunMode.ONCE)
+    @Run(test = "testRunOnce2", mode=RunMode.INVOKE_ONCE)
     public void runTestRunOnce2(TestInfo info) {
         for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();
@@ -855,7 +860,7 @@ public class TestBasics {
         wasExecuted = true;
     }
 
-    @Check(test="sameName")
+    @Check(test = "sameName")
     public void checkSameName() {
         testExecuted[77]++;
     }

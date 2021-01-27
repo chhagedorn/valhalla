@@ -11,9 +11,9 @@ public class TestBadFormat {
     public static void main(String[] args) throws NoSuchMethodException {
         runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-//        expectTestFormatException(BadArguments.class);
-//        expectTestFormatException(BadOverloadedMethod.class);
-//        expectTestFormatException(BadCompilerControl.class);
+        expectTestFormatException(BadArguments.class);
+        expectTestFormatException(BadOverloadedMethod.class);
+        expectTestFormatException(BadCompilerControl.class);
         expectTestFormatException(BadWarmup.class);
     }
 

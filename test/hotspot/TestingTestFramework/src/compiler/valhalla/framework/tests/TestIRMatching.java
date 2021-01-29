@@ -42,22 +42,22 @@ public class TestIRMatching {
                        Constraint.failOnNodes(MultipleFailOnBad.class, "fail9()", 1,true, "Store", "CallStaticJava"),
                        Constraint.failOnMatches(MultipleFailOnBad.class, "fail10()", 1,true, "Store", "iFld"));
 
-        runFailOnTests(Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 1,true, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 2,true, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 3,false, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 4,false, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIrNodes.class, "allocArray()", 5,true, "MyClass"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "loop()", 1, true, "Loop"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "loop()", 2, false, "CountedLoop"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "countedLoop()", 1, false, "Loop"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "countedLoop()", 2, true, "CountedLoop"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "loopAndCountedLoop()", 1, true, "Loop"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "loopAndCountedLoop()", 2, true, "CountedLoop"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "load()", 1, true, "Load"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "load()", 2, true, "VariousIrNodes"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "load()", 3, true, "VariousIrNodes"),
-                       Constraint.failOnMatches(VariousIrNodes.class, "load()", 4, true, "Load", "iFld"),
-                       Constraint.failOnNodes(VariousIrNodes.class, "load()", 5, false, "Load")
+        runFailOnTests(Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 1, true, "MyClass"),
+                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 2, true, "MyClass"),
+                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 3, false, "MyClass"),
+                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 4, false, "MyClass"),
+                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 5, true, "MyClass"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "loop()", 1, true, "Loop"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "loop()", 2, false, "CountedLoop"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "countedLoop()", 1, false, "Loop"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "countedLoop()", 2, true, "CountedLoop"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "loopAndCountedLoop()", 1, true, "Loop"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "loopAndCountedLoop()", 2, true, "CountedLoop"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 1, true, "Load"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 2, true, "VariousIRNodes"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 3, true, "VariousIRNodes"),
+                       Constraint.failOnMatches(VariousIRNodes.class, "load()", 4, true, "Load", "iFld"),
+                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 5, false, "Load")
         );
 
         runWithArguments(CountComparisons.class, "-XX:SuspendRetryCount=50");
@@ -273,7 +273,7 @@ class FlagComparisons {
     @IR(applyIf = {"SuspendRetryCount", "50"}) // Index 0
     @IR(applyIf = {"SuspendRetryCount", "=50"})
     @IR(applyIf = {"SuspendRetryCount", "= 50"})
-    @IR(applyIf = {"SuspendRetryCount", " =  50"})
+    @IR(applyIf = {"SuspendRetryCount", " =   50"})
     @IR(applyIf = {"SuspendRetryCount", "<=50"}) // Index 4
     @IR(applyIf = {"SuspendRetryCount", "<= 50"})
     @IR(applyIf = {"SuspendRetryCount", " <=  50"})
@@ -466,7 +466,7 @@ class BadCount {
 }
 
 // Test on remaining IR nodes that we have not tested above, yet.
-class VariousIrNodes {
+class VariousIRNodes {
     MyClass[] myClassArray;
     int limit = 1024;
     int iFld = 34;
@@ -515,8 +515,8 @@ class VariousIrNodes {
 
     @Test
     @IR(failOn = {IRNode.LOAD})
-    @IR(failOn = {IRNode.LOAD_OF_CLASS, "compiler/valhalla/framework/tests/VariousIrNodes"})
-    @IR(failOn = {IRNode.LOAD_OF_CLASS, "VariousIrNodes"})
+    @IR(failOn = {IRNode.LOAD_OF_CLASS, "compiler/valhalla/framework/tests/VariousIRNodes"})
+    @IR(failOn = {IRNode.LOAD_OF_CLASS, "VariousIRNodes"})
     @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld"})
     @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld2", IRNode.LOAD_OF_CLASS, "Various"}) // Does not fail
     public void load() {

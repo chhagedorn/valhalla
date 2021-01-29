@@ -5,17 +5,18 @@ import jdk.test.lib.Asserts;
 
 public class TestScenarios {
     public static void main(String[] args) {
+        Scenario sDefault = new Scenario(0);
         Scenario s1 = new Scenario(1, "-XX:SuspendRetryCount=51");
         Scenario s2 = new Scenario(2, "-XX:SuspendRetryCount=52");
         Scenario s3 = new Scenario(3, "-XX:SuspendRetryCount=53");
         Scenario s3dup = new Scenario(3, "-XX:SuspendRetryCount=53");
         try {
-            TestFramework.runWithScenarios(Scenario.Run.INCLUDE_DEFAULT, s1, s2, s3);
+            TestFramework.runWithScenarios(sDefault, s1, s2, s3);
         } catch (TestRunException e) {
-            Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #1, #3, #Default Scenario"));
+            Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #0, #1, #3"));
         }
         try {
-            TestFramework.runWithScenarios(s1, s2, s3); // Default scenario excluded by default.
+            TestFramework.runWithScenarios(s1, s2, s3);
         } catch (TestRunException e) {
             Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #1, #3"));
         }

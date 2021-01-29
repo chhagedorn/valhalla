@@ -3,7 +3,7 @@ package compiler.valhalla.framework;
 import java.util.*;
 
 public class Scenario {
-    // "jtreg -DXcomp=true" runs all the scenarios with -Xcomp. This is faster than "jtreg -javaoptions:-Xcomp".
+
     static final String ADDITIONAL_SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
     private static final String SCENARIOS = System.getProperty("Scenarios", "");
     private static final List<String> additionalScenarioFlags = new ArrayList<>();
@@ -12,10 +12,7 @@ public class Scenario {
     private final List<String> flags;
     private final int index;
     boolean enabled;
-
-    public enum Run {
-        EXCLUDE_DEFAULT, INCLUDE_DEFAULT
-    }
+    private String vmOutput;
 
     static {
         if (!SCENARIOS.isEmpty()) {
@@ -53,5 +50,13 @@ public class Scenario {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public void setVMOutput(String vmOutput) {
+        this.vmOutput = vmOutput;
+    }
+
+    public String getVMOutput() {
+        return vmOutput;
     }
 }

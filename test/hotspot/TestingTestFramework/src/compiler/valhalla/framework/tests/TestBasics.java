@@ -16,8 +16,8 @@ public class TestBasics {
         if (wasExecuted) {
             throw new RuntimeException("Executed non @Test method or a method that was not intended to be run");
         }
-        for (int i = 0; i < testExecuted.length; i++) {
-            int value = testExecuted[i];
+        for (int i = 0; i < executed.length; i++) {
+            int value = executed[i];
             if (value != TestFramework.WARMUP_ITERATIONS + 1) {
                 // Warmups + 1 C2 compiled invocation
                 throw new RuntimeException("Test " + i + "  was executed " + value + " times stead of "
@@ -25,7 +25,7 @@ public class TestBasics {
             }
         }
 
-        for (int value : checkExecuted) {
+        for (int value : executedOnce) {
             if (value != 1) {
                 throw new RuntimeException("Check function should have been executed exactly once");
             }
@@ -73,8 +73,8 @@ public class TestBasics {
 //    }
 
     static boolean wasExecuted = false;
-    static int[] testExecuted = new int[78];
-    static int[] checkExecuted = new int[5];
+    static int[] executed = new int[78];
+    static int[] executedOnce = new int[5];
     boolean lastToggleBoolean = true;
     long[] nonFloatingRandomNumbers = new long[10];
     double[] floatingRandomNumbers = new double[10];
@@ -92,9 +92,10 @@ public class TestBasics {
         randomBooleans = new Boolean[64];
     }
 
+    // Base test, no arguments, directly invoked.
     @Test
     public void test() {
-        testExecuted[0]++;
+        executed[0]++;
     }
 
     // Not a test
@@ -119,24 +120,26 @@ public class TestBasics {
 
     @Test
     public static void staticTest() {
-        testExecuted[1]++;
+        executed[1]++;
     }
 
     @Test
     public final void finalTest() {
-        testExecuted[2]++;
+        executed[2]++;
     }
 
     @Test
     public int returnValueTest() {
-        testExecuted[3]++;
+        executed[3]++;
         return 4;
     }
 
+    // Base test, with arguments, directly invoked.
+    // Specify the argument values with @Arguments
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void byteDefaultArgument(byte x) {
-        testExecuted[4]++;
+        executed[4]++;
         if (x != 0) {
             throw new RuntimeException("Must be 0");
         }
@@ -145,7 +148,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void shortDefaultArgument(short x) {
-        testExecuted[5]++;
+        executed[5]++;
         if (x != 0) {
             throw new RuntimeException("Must be 0");
         }
@@ -154,7 +157,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void intDefaultArgument(int x) {
-        testExecuted[6]++;
+        executed[6]++;
         if (x != 0) {
             throw new RuntimeException("Must be 0");
         }
@@ -163,7 +166,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void longDefaultArgument(long x) {
-        testExecuted[7]++;
+        executed[7]++;
         if (x != 0L) {
             throw new RuntimeException("Must be 0");
         }
@@ -172,7 +175,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void floatDefaultArgument(float x) {
-        testExecuted[8]++;
+        executed[8]++;
         if (x != 0.0f) {
             throw new RuntimeException("Must be 0.0");
         }
@@ -181,7 +184,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void doubleDefaultArgument(double x) {
-        testExecuted[9]++;
+        executed[9]++;
         if (x != 0.0f) {
             throw new RuntimeException("Must be 0.0");
         }
@@ -190,7 +193,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void charDefaultArgument(char x) {
-        testExecuted[10]++;
+        executed[10]++;
         if (x != '\u0000') {
             throw new RuntimeException("Must be \u0000");
         }
@@ -199,7 +202,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void booleanDefaultArgument(boolean x) {
-        testExecuted[11]++;
+        executed[11]++;
         if (x) {
             throw new RuntimeException("Must be false");
         }
@@ -208,7 +211,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void stringObjectDefaultArgument(String x) {
-        testExecuted[12]++;
+        executed[12]++;
         if (x == null || x.length() != 0) {
             throw new RuntimeException("Default string object must be non-null and having a length of zero");
         }
@@ -217,7 +220,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.DEFAULT)
     public void defaultObjectDefaultArgument(DefaultObject x) {
-        testExecuted[13]++;
+        executed[13]++;
         if (x == null || x.i != 4) {
             throw new RuntimeException("Default object must not be null and its i field must be 4");
         }
@@ -226,7 +229,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_42)
     public void byte42(byte x) {
-        testExecuted[14]++;
+        executed[14]++;
         if (x != 42) {
             throw new RuntimeException("Must be 42");
         }
@@ -235,7 +238,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_42)
     public void short42(short x) {
-        testExecuted[15]++;
+        executed[15]++;
         if (x != 42) {
             throw new RuntimeException("Must be 42");
         }
@@ -244,7 +247,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_42)
     public void int42(int x) {
-        testExecuted[16]++;
+        executed[16]++;
         if (x != 42) {
             throw new RuntimeException("Must be 42");
         }
@@ -253,7 +256,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_42)
     public void long42(long x) {
-        testExecuted[17]++;
+        executed[17]++;
         if (x != 42) {
             throw new RuntimeException("Must be 42");
         }
@@ -262,7 +265,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_42)
     public void float42(float x) {
-        testExecuted[18]++;
+        executed[18]++;
         if (x != 42.0) {
             throw new RuntimeException("Must be 42");
         }
@@ -271,7 +274,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_42)
     public void double42(double x) {
-        testExecuted[19]++;
+        executed[19]++;
         if (x != 42.0) {
             throw new RuntimeException("Must be 42");
         }
@@ -280,7 +283,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.FALSE)
     public void booleanFalse(boolean x) {
-        testExecuted[20]++;
+        executed[20]++;
         if (x) {
             throw new RuntimeException("Must be false");
         }
@@ -289,7 +292,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.TRUE)
     public void booleanTrue(boolean x) {
-        testExecuted[21]++;
+        executed[21]++;
         if (!x) {
             throw new RuntimeException("Must be true");
         }
@@ -298,37 +301,37 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomByte(byte x) {
-        testExecuted[22]++;
+        executed[22]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomShort(short x) {
-        testExecuted[23]++;
+        executed[23]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomInt(int x) {
-        testExecuted[24]++;
+        executed[24]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomLong(long x) {
-        testExecuted[25]++;
+        executed[25]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomFloat(float x) {
-        testExecuted[26]++;
+        executed[26]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomDouble(double x) {
-        testExecuted[27]++;
+        executed[27]++;
     }
 
     // Not executed
@@ -339,13 +342,13 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.RANDOM_ONCE)
     public void randomBoolean(boolean x) {
-        testExecuted[28]++;
+        executed[28]++;
     }
 
     @Test
     @Arguments(ArgumentValue.BOOLEAN_TOGGLE_FIRST_FALSE)
     public void booleanToggleFirstFalse(boolean x) {
-        if (testExecuted[29] == 0) {
+        if (executed[29] == 0) {
             // First invocation
             if (x) {
                 throw new RuntimeException("BOOLEAN_TOGGLE_FIRST_FALSE must be false on first invocation");
@@ -354,63 +357,63 @@ public class TestBasics {
             throw new RuntimeException("BOOLEAN_TOGGLE_FIRST_FALSE did not toggle");
         }
         lastToggleBoolean = x;
-        testExecuted[29]++;
+        executed[29]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachByte(byte x) {
-        checkNonFloatingRandomNumber(x, testExecuted[30]);
-        testExecuted[30]++;
+        checkNonFloatingRandomNumber(x, executed[30]);
+        executed[30]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachShort(short x) {
-        checkNonFloatingRandomNumber(x, testExecuted[31]);
-        testExecuted[31]++;
+        checkNonFloatingRandomNumber(x, executed[31]);
+        executed[31]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachInt(int x) {
-        checkNonFloatingRandomNumber(x, testExecuted[32]);
-        testExecuted[32]++;
+        checkNonFloatingRandomNumber(x, executed[32]);
+        executed[32]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachLong(long x) {
-        checkNonFloatingRandomNumber(x, testExecuted[33]);
-        testExecuted[33]++;
+        checkNonFloatingRandomNumber(x, executed[33]);
+        executed[33]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachChar(char x) {
-        checkNonFloatingRandomNumber(x, testExecuted[34]);
-        testExecuted[34]++;
+        checkNonFloatingRandomNumber(x, executed[34]);
+        executed[34]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachFloat(float x) {
-        checkFloatingRandomNumber(x, testExecuted[35]);
-        testExecuted[35]++;
+        checkFloatingRandomNumber(x, executed[35]);
+        executed[35]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachDouble(double x) {
-        checkFloatingRandomNumber(x, testExecuted[36]);
-        testExecuted[36]++;
+        checkFloatingRandomNumber(x, executed[36]);
+        executed[36]++;
     }
 
     @Test
     @Arguments(ArgumentValue.RANDOM_EACH)
     public void randomEachBoolean(boolean x) {
-        checkRandomBoolean(x, testExecuted[37]);
-        testExecuted[37]++;
+        checkRandomBoolean(x, executed[37]);
+        executed[37]++;
     }
 
     private void checkNonFloatingRandomNumber(long x, int invocationCount) {
@@ -462,7 +465,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_MINUS_42)
     public void byteMinus42(byte x) {
-        testExecuted[38]++;
+        executed[38]++;
         if (x != -42) {
             throw new RuntimeException("Must be -42");
         }
@@ -471,7 +474,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_MINUS_42)
     public void shortMinus42(short x) {
-        testExecuted[39]++;
+        executed[39]++;
         if (x != -42) {
             throw new RuntimeException("Must be -42");
         }
@@ -480,7 +483,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_MINUS_42)
     public void intMinus42(int x) {
-        testExecuted[40]++;
+        executed[40]++;
         if (x != -42) {
             throw new RuntimeException("Must be -42");
         }
@@ -489,7 +492,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_MINUS_42)
     public void longMinus42(long x) {
-        testExecuted[41]++;
+        executed[41]++;
         if (x != -42) {
             throw new RuntimeException("Must be -42");
         }
@@ -498,7 +501,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_MINUS_42)
     public void floatMinus42(float x) {
-        testExecuted[42]++;
+        executed[42]++;
         if (x != -42.0) {
             throw new RuntimeException("Must be -42");
         }
@@ -507,7 +510,7 @@ public class TestBasics {
     @Test
     @Arguments(ArgumentValue.NUMBER_MINUS_42)
     public void doubleMinus42(double x) {
-        testExecuted[43]++;
+        executed[43]++;
         if (x != -42.0) {
             throw new RuntimeException("Must be -42");
         }
@@ -516,7 +519,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.DEFAULT, ArgumentValue.DEFAULT})
     public void twoArgsDefault1(byte x, short y) {
-        testExecuted[44]++;
+        executed[44]++;
         if (x != 0 || y != 0) {
             throw new RuntimeException("Both must be 0");
         }
@@ -525,7 +528,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.DEFAULT, ArgumentValue.DEFAULT})
     public void twoArgsDefault2(int x, short y) {
-        testExecuted[45]++;
+        executed[45]++;
         if (x != 0 || y != 0) {
             throw new RuntimeException("Both must be 0");
         }
@@ -534,7 +537,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.DEFAULT, ArgumentValue.DEFAULT})
     public void twoArgsDefault3(short x, long y) {
-        testExecuted[46]++;
+        executed[46]++;
         if (x != 0 || y != 0) {
             throw new RuntimeException("Both must be 0");
         }
@@ -543,7 +546,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.DEFAULT, ArgumentValue.DEFAULT})
     public void twoArgsDefault4(float x, boolean y) {
-        testExecuted[47]++;
+        executed[47]++;
         if (x != 0.0 || y) {
             throw new RuntimeException("Must be 0 and false");
         }
@@ -552,7 +555,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.DEFAULT, ArgumentValue.DEFAULT})
     public void twoArgsDefault5(boolean x, char y) {
-        testExecuted[48]++;
+        executed[48]++;
         if (x || y != '\u0000') {
             throw new RuntimeException("Must be false and \u0000");
         }
@@ -561,7 +564,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.DEFAULT, ArgumentValue.DEFAULT})
     public void twoArgsDefault6(char x, byte y) {
-        testExecuted[49]++;
+        executed[49]++;
         if (x != '\u0000' || y != 0) {
             throw new RuntimeException("Must be\u0000 and 0");
         }
@@ -570,7 +573,7 @@ public class TestBasics {
     @Test
     @Arguments({ArgumentValue.RANDOM_ONCE, ArgumentValue.RANDOM_ONCE})
     public void twoArgsRandomOnce(char x, byte y) {
-        testExecuted[50]++;
+        executed[50]++;
     }
 
     @Test
@@ -582,7 +585,7 @@ public class TestBasics {
         if (Stream.of(a, b, c, d, e, f, g, h).allMatch(i -> i == a)) {
             throw new RuntimeException("RANDOM_ONCE does not produce random values for different arguments");
         }
-        testExecuted[51]++;
+        executed[51]++;
     }
 
     @Test
@@ -591,7 +594,7 @@ public class TestBasics {
                 ArgumentValue.RANDOM_ONCE, ArgumentValue.RANDOM_ONCE,
                 ArgumentValue.RANDOM_ONCE, ArgumentValue.RANDOM_ONCE})
     public void checkMixedRandoms1(byte a, short b, int c, long d, char e, boolean f, float g, double h) {
-        testExecuted[52]++;
+        executed[52]++;
     }
 
     @Test
@@ -600,7 +603,7 @@ public class TestBasics {
                 ArgumentValue.RANDOM_EACH, ArgumentValue.RANDOM_EACH,
                 ArgumentValue.RANDOM_EACH, ArgumentValue.RANDOM_EACH})
     public void checkMixedRandoms2(byte a, short b, int c, long d, char e, boolean f, float g, double h) {
-        testExecuted[53]++;
+        executed[53]++;
     }
 
     @Test
@@ -609,7 +612,7 @@ public class TestBasics {
                 ArgumentValue.RANDOM_ONCE, ArgumentValue.RANDOM_EACH,
                 ArgumentValue.RANDOM_EACH, ArgumentValue.RANDOM_ONCE})
     public void checkMixedRandoms3(byte a, short b, int c, long d, char e, boolean f, float g, double h) {
-        testExecuted[54]++;
+        executed[54]++;
     }
 
     @Test
@@ -620,7 +623,7 @@ public class TestBasics {
         if (a != 42 || b != 42 || c != 42 || d != 42 || e != 42.0 || f != 42.0) {
             throw new RuntimeException("Must all be 42");
         }
-        testExecuted[55]++;
+        executed[55]++;
     }
 
     @Test
@@ -631,7 +634,7 @@ public class TestBasics {
         if (a != -42 || b != -42 || c != -42 || d != -42 || e != -42.0 || f != -42.0) {
             throw new RuntimeException("Must all be -42");
         }
-        testExecuted[56]++;
+        executed[56]++;
     }
 
     @Test
@@ -642,14 +645,14 @@ public class TestBasics {
         if (a != -42 || b != 42 || c != -42 || d != -42 || e != 42.0 || f != -42.0) {
             throw new RuntimeException("Do not match the right 42 version");
         }
-        testExecuted[57]++;
+        executed[57]++;
     }
 
 
     @Test
     @Arguments(ArgumentValue.BOOLEAN_TOGGLE_FIRST_TRUE)
     public void booleanToggleFirstTrue(boolean x) {
-        if (testExecuted[58] == 0) {
+        if (executed[58] == 0) {
             // First invocation
             if (!x) {
                 throw new RuntimeException("BOOLEAN_TOGGLE_FIRST_FALSE must be false on first invocation");
@@ -658,13 +661,13 @@ public class TestBasics {
             throw new RuntimeException("BOOLEAN_TOGGLE_FIRST_FALSE did not toggle");
         }
         lastToggleBoolean = x;
-        testExecuted[58]++;
+        executed[58]++;
     }
 
     @Test
     @Arguments({ArgumentValue.BOOLEAN_TOGGLE_FIRST_FALSE, ArgumentValue.BOOLEAN_TOGGLE_FIRST_TRUE})
     public void checkTwoToggles(boolean b1, boolean b2) {
-        if (testExecuted[59] == 0) {
+        if (executed[59] == 0) {
             // First invocation
             if (b1 || !b2) {
                 throw new RuntimeException("BOOLEAN_TOGGLES have wrong initial value");
@@ -675,14 +678,14 @@ public class TestBasics {
             throw new RuntimeException("Booleans did not toggle");
         }
         lastToggleBoolean = b1;
-        testExecuted[59]++;
+        executed[59]++;
     }
 
     @Test
     @Arguments({ArgumentValue.BOOLEAN_TOGGLE_FIRST_FALSE, ArgumentValue.FALSE,
                 ArgumentValue.TRUE, ArgumentValue.BOOLEAN_TOGGLE_FIRST_TRUE})
     public void booleanMix(boolean b1, boolean b2, boolean b3, boolean b4) {
-        if (testExecuted[60] == 0) {
+        if (executed[60] == 0) {
             // First invocation
             if (b1 || b2 || !b3 || !b4) {
                 throw new RuntimeException("BOOLEAN_TOGGLES have wrong initial value");
@@ -693,14 +696,145 @@ public class TestBasics {
             throw new RuntimeException("Booleans did not toggle");
         }
         lastToggleBoolean = b1;
-        testExecuted[60]++;
+        executed[60]++;
+    }
+
+    /*
+     * Checked tests.
+     */
+
+    @Test
+    public int testCheck() {
+        executed[63]++;
+        return 1;
+    }
+
+    // Checked test. Check invoked after invoking "testCheck". Perform some more things after invocation.
+    @Check(test = "testCheck")
+    public void checkTestCheck() {
+        executed[64]++; // Executed on each invocation
     }
 
     @Test
-    public void testRun() {
-        testExecuted[61]++;
+    public int testCheckReturn() {
+        executed[65]++;
+        return 2;
     }
 
+    // Checked test with return value. Perform checks on it.
+    @Check(test = "testCheckReturn")
+    public void checkTestCheckReturn(int returnValue) {
+        if (returnValue != 2) {
+            throw new RuntimeException("Must be 2");
+        }
+        executed[66]++; // Executed on each invocation
+    }
+
+    @Test
+    public int testCheckTestInfo() {
+        executed[67]++;
+        return 3;
+    }
+
+    // Checked test with info object about test.
+    @Check(test = "testCheckTestInfo")
+    public void checkTestCheckTestInfo(TestInfo testInfo) {
+        executed[68]++; // Executed on each invocation
+    }
+
+
+    @Test
+    public int testCheckBoth() {
+        executed[69]++;
+        return 4;
+    }
+
+    // Checked test with return value and info object about test.
+    @Check(test = "testCheckBoth")
+    public void checkTestCheckTestInfo(int returnValue, TestInfo testInfo) {
+        if (returnValue != 4) {
+            throw new RuntimeException("Must be 4");
+        }
+        executed[70]++; // Executed on each invocation
+    }
+
+    @Test
+    public int testCheckOnce() {
+        executed[71]++;
+        return 1;
+    }
+
+    // Check method only invoked once after method is compiled after warm up.
+    @Check(test = "testCheckOnce", when = CheckAt.COMPILED)
+    public void checkTestCheckOnce() {
+        executedOnce[0]++; // Executed once
+    }
+
+    @Test
+    public int testCheckReturnOnce() {
+        executed[72]++;
+        return 2;
+    }
+
+    @Check(test = "testCheckReturnOnce", when = CheckAt.COMPILED)
+    public void checkTestCheckReturnOnce(int returnValue) {
+        if (returnValue != 2) {
+            throw new RuntimeException("Must be 2");
+        }
+        executedOnce[1]++; // Executed once
+    }
+
+    @Test
+    public int testCheckTestInfoOnce() {
+        executed[73]++;
+        return 3;
+    }
+
+    @Check(test = "testCheckTestInfoOnce", when = CheckAt.COMPILED)
+    public void checkTestCheckTestInfoOnce(TestInfo testInfo) {
+        executedOnce[2]++; // Executed once
+    }
+
+    @Test
+    public int testCheckBothOnce() {
+        executed[74]++;
+        return 4;
+    }
+
+    @Check(test = "testCheckBothOnce", when = CheckAt.COMPILED)
+    public void checkTestCheckBothOnce(int returnValue, TestInfo testInfo) {
+        if (returnValue != 4) {
+            throw new RuntimeException("Must be 4");
+        }
+        executedOnce[3]++; // Executed once
+    }
+
+    @Test
+    public void sameName() {
+        executed[76]++;
+    }
+
+    // Allowed to overload test method if not test method itself
+    public void sameName(boolean a) {
+        wasExecuted = true;
+    }
+
+    @Check(test = "sameName")
+    public void checkSameName() {
+        executed[77]++;
+    }
+
+    /*
+     * Custom run tests.
+     */
+
+    @Test
+    public void testRun() {
+        executed[61]++;
+    }
+
+    // Custom run test. This method is invoked each time instead of @Test method. This method responsible for calling
+    // the @Test method. @Test method is compiled after warm up. This is similar to the verifiers in the old Valhalla framework.
     @Run(test = "testRun")
     public void runTestRun(TestInfo info) {
         testRun();
@@ -708,7 +842,7 @@ public class TestBasics {
 
     @Test
     public void testRunNoTestInfo(int i) { // Argument allowed when run by @Run
-        testExecuted[62]++;
+        executed[62]++;
     }
 
     @Run(test = "testRunNoTestInfo")
@@ -727,142 +861,27 @@ public class TestBasics {
     }
 
     @Test
-    public int testCheck() {
-        testExecuted[63]++;
-        return 1;
-    }
-
-    @Check(test = "testCheck")
-    public void checkTestCheck() {
-        testExecuted[64]++; // Executed on each invocation
-    }
-
-    @Test
-    public int testCheckReturn() {
-        testExecuted[65]++;
-        return 2;
-    }
-
-    @Check(test = "testCheckReturn")
-    public void checkTestCheckReturn(int returnValue) {
-        if (returnValue != 2) {
-            throw new RuntimeException("Must be 2");
-        }
-        testExecuted[66]++; // Executed on each invocation
-    }
-
-    @Test
-    public int testCheckTestInfo() {
-        testExecuted[67]++;
-        return 3;
-    }
-
-    @Check(test = "testCheckTestInfo")
-    public void checkTestCheckTestInfo(TestInfo testInfo) {
-        testExecuted[68]++; // Executed on each invocation
-    }
-
-
-    @Test
-    public int testCheckBoth() {
-        testExecuted[69]++;
-        return 4;
-    }
-
-    @Check(test = "testCheckBoth")
-    public void checkTestCheckTestInfo(int returnValue, TestInfo testInfo) {
-        if (returnValue != 4) {
-            throw new RuntimeException("Must be 4");
-        }
-        testExecuted[70]++; // Executed on each invocation
-    }
-
-    @Test
-    public int testCheckOnce() {
-        testExecuted[71]++;
-        return 1;
-    }
-
-    @Check(test = "testCheckOnce", when=CheckAt.COMPILED)
-    public void checkTestCheckOnce() {
-        checkExecuted[0]++; // Executed once
-    }
-
-    @Test
-    public int testCheckReturnOnce() {
-        testExecuted[72]++;
-        return 2;
-    }
-
-    @Check(test = "testCheckReturnOnce", when=CheckAt.COMPILED)
-    public void checkTestCheckReturnOnce(int returnValue) {
-        if (returnValue != 2) {
-            throw new RuntimeException("Must be 2");
-        }
-        checkExecuted[1]++; // Executed once
-    }
-
-    @Test
-    public int testCheckTestInfoOnce() {
-        testExecuted[73]++;
-        return 3;
-    }
-
-    @Check(test = "testCheckTestInfoOnce", when=CheckAt.COMPILED)
-    public void checkTestCheckTestInfoOnce(TestInfo testInfo) {
-        checkExecuted[2]++; // Executed once
-    }
-
-    @Test
-    public int testCheckBothOnce() {
-        testExecuted[74]++;
-        return 4;
-    }
-
-    @Check(test = "testCheckBothOnce", when=CheckAt.COMPILED)
-    public void checkTestCheckBothOnce(int returnValue, TestInfo testInfo) {
-        if (returnValue != 4) {
-            throw new RuntimeException("Must be 4");
-        }
-        checkExecuted[3]++; // Executed once
-    }
-
-    @Test
     public void testRunOnce() {
-        checkExecuted[4]++;
+        executedOnce[4]++;
     }
 
-    @Run(test = "testRunOnce", mode=RunMode.INVOKE_ONCE)
+    // Custom run test that is only invoked once. There is no warm up and no compilation. This method is responsible
+    // for triggering compilation.
+    @Run(test = "testRunOnce", mode = RunMode.INVOKE_ONCE)
     public void runTestRunOnce(TestInfo info) {
         testRunOnce();
     }
 
-
     @Test
     public void testRunOnce2() {
-        testExecuted[75]++;
+        executed[75]++;
     }
 
-    @Run(test = "testRunOnce2", mode=RunMode.INVOKE_ONCE)
+    @Run(test = "testRunOnce2", mode = RunMode.INVOKE_ONCE)
     public void runTestRunOnce2(TestInfo info) {
         for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();
         }
-    }
-
-    @Test
-    public void sameName() {
-        testExecuted[76]++;
-    }
-
-    // Allowed to overload test method if not test method itself
-    public void sameName(boolean a) {
-        wasExecuted = true;
-    }
-
-    @Check(test = "sameName")
-    public void checkSameName() {
-        testExecuted[77]++;
     }
 }
 

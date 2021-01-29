@@ -76,27 +76,28 @@ public class TestFramework {
     private final HashMap<String, Method> testMethodMap = new HashMap<>();
     private List<String> excludeList = null;
     private List<String> includeList = null;
+    private List<Class<?>> helperClasses = null;
+    private List<Scenario> scenarios = null;
     private final IREncodingPrinter irMatchRulePrinter;
+    private Class<?> testClass = null;
 
-    TestFramework() {
+    public TestFramework(Class<?> testClass) {
+        TestRun.check(testClass != null, "Test class cannot be null");
+        this.testClass = testClass;
         // These flags can be overridden
         fixedDefaultFlags = initDefaultFlags();
         compileCommandFlags = initCompileCommandFlags();
         printFlags = initPrintFlags();
         verifyFlags = initVerifyFlags();
 
+        this.includeList = createTestFilterList(TESTLIST, testClass);
+        this.excludeList = createTestFilterList(EXCLUDELIST, testClass);
+
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter = new IREncodingPrinter();
         } else {
             irMatchRulePrinter = null;
         }
-    }
-
-    // Only used by a TestVM
-    private TestFramework(Class<?> testClass) {
-        this();
-        includeList = createTestFilterList(TESTLIST, testClass);
-        excludeList = createTestFilterList(EXCLUDELIST, testClass);
     }
 
     protected String[] initDefaultFlags() {
@@ -148,15 +149,22 @@ public class TestFramework {
         }
 
         TestFramework framework = new TestFramework(testClass);
-        framework.runTestsOnSameVM(testClass, getHelperClasses(args));
+        Class<?>[] helperClasses = getHelperClasses(args);
+        if (helperClasses != null) {
+            framework.addHelperClasses(helperClasses);
+        }
+        framework.runTestsOnSameVM();
     }
 
-    private static ArrayList<Class<?>> getHelperClasses(String[] args) {
-        ArrayList<Class<?>> helperClasses = new ArrayList<>();
+    private static Class<?>[] getHelperClasses(String[] args) {
+        if (args.length == 1) {
+            return null;
+        }
+        Class<?>[] helperClasses = new Class<?>[args.length - 1]; // First argument is test class
         for (int i = 1; i < args.length; i++) {
             String helperClassName = args[i];
             try {
-                helperClasses.add(Class.forName(helperClassName));
+                helperClasses[i - 1] = Class.forName(helperClassName);
             } catch (Exception e) {
                 throw new TestRunException("Could not find helper class " + helperClassName, e);
             }
@@ -170,72 +178,72 @@ public class TestFramework {
      */
     public static void run() {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        doRun(walker.getCallerClass(), null);
+        run(walker.getCallerClass());
     }
 
     public static void run(Class<?> testClass) {
-        doRun(testClass, null);
+        TestFramework framework = new TestFramework(testClass);
+        framework.runTestVM(null);
     }
 
     public static void runWithHelperClasses(Class<?> testClass, Class<?>... helperClasses) {
-        doRun(testClass, Arrays.asList(helperClasses));
+        TestFramework framework = new TestFramework(testClass);
+        framework.addHelperClasses(helperClasses);
+        framework.runTestVM(null);
     }
 
     public static void runWithScenarios(Scenario... scenarios) {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runWithScenarios(Scenario.Run.EXCLUDE_DEFAULT, walker.getCallerClass(), scenarios);
-    }
-
-    public static void runWithScenarios(Scenario.Run runMode, Scenario... scenarios) {
-        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runWithScenarios(runMode, walker.getCallerClass(), scenarios);
+        runWithScenarios(walker.getCallerClass(), scenarios);
     }
 
     public static void runWithScenarios(Class<?> testClass, Scenario... scenarios) {
-        runWithScenariosAndHelperClasses(Scenario.Run.EXCLUDE_DEFAULT, testClass, null, scenarios);
+        TestFramework framework = new TestFramework(testClass);
+        framework.addScenarios(scenarios);
+        framework.doRunWithScenarios();
     }
 
-    public static void runWithScenarios(Scenario.Run runMode, Class<?> testClass, Scenario... scenarios) {
-        runWithScenariosAndHelperClasses(runMode, testClass, null, scenarios);
-    }
-
-    public static void runWithScenariosAndHelperClasses(Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
-        runWithScenariosAndHelperClasses(Scenario.Run.EXCLUDE_DEFAULT, testClass, helperClasses, scenarios);
-    }
-
-    public static void runWithScenariosAndHelperClasses(Scenario.Run runMode, Class<?> testClass, List<Class<?>> helperClasses, Scenario... scenarios) {
-        TestFramework framework = new TestFramework();
-        Map<String, Exception> exceptionMap = new HashMap<>();
-        // First run without additional scenario flags.
-        if (runMode == Scenario.Run.INCLUDE_DEFAULT) {
-            try {
-                framework.runTestVM(testClass, helperClasses, null);
-            } catch (Exception e) {
-                exceptionMap.put("Default Scenario", e);
-            }
+    public TestFramework addHelperClasses(Class<?>... helperClasses) {
+        TestRun.check(helperClasses != null && Arrays.stream(helperClasses).noneMatch(Objects::isNull), "A Helper class cannot be null");
+        if (this.helperClasses == null) {
+            this.helperClasses = new ArrayList<>();
         }
 
-        Set<Integer> scenarioIndecies = new HashSet<>();
-        for (Scenario scenario : scenarios) {
-            int scenarioIndex = scenario.getIndex();
-            TestFormat.check(!scenarioIndecies.contains(scenarioIndex),
-                             "Cannot define two scenarios with the same index " + scenarioIndex);
-            scenarioIndecies.add(scenarioIndex);
-            try {
-                framework.runTestVM(testClass, helperClasses, scenario);
-            } catch (Exception e) {
-                exceptionMap.put(String.valueOf(scenarioIndex), e);
-            }
+        for (Class<?> helperClass : helperClasses) {
+            TestRun.check(!this.helperClasses.contains(helperClass), "Cannot add the same class twice: " + helperClass);
+            this.helperClasses.add(helperClass);
         }
-        if (!exceptionMap.isEmpty()) {
-            StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
-            builder.append(String.join(", #", exceptionMap.keySet())).append("\n\n");
-            for (Map.Entry<String, Exception> entry: exceptionMap.entrySet()) {
-                String title = "Stacktrace for Scenario #" + entry.getKey();
-                builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
-                builder.append(entry.getValue().getMessage()).append("\n");
-            }
-            TestRun.fail(builder.toString());
+        return this;
+    }
+
+    public TestFramework addScenarios(Scenario... scenarios) {
+        TestRun.check(scenarios != null && Arrays.stream(scenarios).noneMatch(Objects::isNull), "A scenario cannot be null");
+        if (this.scenarios == null) {
+            this.scenarios = new ArrayList<>(Arrays.asList(scenarios));
+        } else {
+            this.scenarios.addAll(Arrays.asList(scenarios));
+        }
+        return this;
+    }
+
+    public void clear() {
+        clearHelperClasses();
+        clearScenarios();
+    }
+
+    public void clearHelperClasses() {
+        this.helperClasses = null;
+    }
+
+    public void clearScenarios() {
+        this.scenarios = null;
+    }
+
+    public void start() {
+        if (scenarios != null) {
+            doRunWithScenarios();
+        } else {
+            runTestVM(null);
         }
     }
 
@@ -278,19 +286,40 @@ public class TestFramework {
      * End of public interface
      */
 
-
-    private static void doRun(Class<?> testClass, List<Class<?>> helperClasses) {
-        TestFramework framework = new TestFramework();
-        framework.runTestVM(testClass, helperClasses, null);
+    private void doRunWithScenarios() {
+        Map<String, Exception> exceptionMap = new HashMap<>();
+        Set<Integer> scenarioIndecies = new HashSet<>();
+        for (Scenario scenario : scenarios) {
+            int scenarioIndex = scenario.getIndex();
+            TestFormat.check(!scenarioIndecies.contains(scenarioIndex),
+                             "Cannot define two scenarios with the same index " + scenarioIndex);
+            scenarioIndecies.add(scenarioIndex);
+            try {
+                runTestVM(scenario);
+            } catch (Exception e) {
+                exceptionMap.put(String.valueOf(scenarioIndex), e);
+            }
+        }
+        if (!exceptionMap.isEmpty()) {
+            StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
+            builder.append(String.join(", #", exceptionMap.keySet())).append("\n\n");
+            for (Map.Entry<String, Exception> entry: exceptionMap.entrySet()) {
+                String title = "Stacktrace for Scenario #" + entry.getKey();
+                builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
+                builder.append(entry.getValue().getMessage()).append("\n");
+            }
+            TestRun.fail(builder.toString());
+        }
     }
 
-
-    private void runTestsOnSameVM(Class<?> testClass, ArrayList<Class<?>> helperClasses) {
-        for (Class<?> helperClass : helperClasses) {
-            // Process the helper classes and apply the explicit compile commands
-            processExplicitCompileCommands(helperClass);
+    private void runTestsOnSameVM() {
+        if (helperClasses != null) {
+            for (Class<?> helperClass : helperClasses) {
+                // Process the helper classes and apply the explicit compile commands
+                processExplicitCompileCommands(helperClass);
+            }
         }
-        parseTestClass(testClass);
+        parseTestClass();
         runTests();
     }
 
@@ -300,18 +329,18 @@ public class TestFramework {
             StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
             testClass = walker.getCallerClass();
         }
-        TestFramework framework = new TestFramework();
-        framework.runTestsOnSameVM(testClass, new ArrayList<>());
+        TestFramework framework = new TestFramework(testClass);
+        framework.runTestsOnSameVM();
     }
 
-    private void runTestVM(Class<?> testClass, List<Class<?>> helperClasses, Scenario scenario) {
+    private void runTestVM(Scenario scenario) {
         if (scenario != null && !scenario.isEnabled()) {
             System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag -DScenarios " +
                                "and is therefore not executed.");
             return;
         }
 
-        ArrayList<String> cmds = prepareTestVmFlags(testClass, helperClasses, scenario);
+        ArrayList<String> cmds = prepareTestVmFlags(scenario);
         OutputAnalyzer oa;
         try {
             // Calls 'main' of this class to run all specified tests with commands 'cmds'.
@@ -321,6 +350,9 @@ public class TestFramework {
         }
         String output = oa.getOutput();
         lastVmOutput = output;
+        if (scenario != null) {
+            scenario.setVMOutput(output);
+        }
 
         if (VERBOSE || oa.getExitValue() != 0) {
             System.out.println(" ----- OUTPUT -----");
@@ -334,7 +366,7 @@ public class TestFramework {
         }
     }
 
-    private ArrayList<String> prepareTestVmFlags(Class<?> testClass, List<Class<?>> helperClasses, Scenario scenario) {
+    private ArrayList<String> prepareTestVmFlags(Scenario scenario) {
         String[] vmInputArguments = InputArguments.getVmInputArgs();
         ArrayList<String> cmds = new ArrayList<>();
         if (!PREFER_COMMAND_LINE_FLAGS) {
@@ -371,10 +403,6 @@ public class TestFramework {
         if (helperClasses != null) {
             helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
         }
-
-        if (VERBOSE) {
-            System.out.println("Command Line: " + String.join(" ", cmds));
-        }
         return cmds;
     }
 
@@ -407,11 +435,11 @@ public class TestFramework {
         cmds.add("-XX:CompileCommand=option," + testClass.getCanonicalName() + "::*,bool," + option + ",true");
     }
 
-    private void parseTestClass(Class<?> clazz) {
+    private void parseTestClass() {
         addReplay();
-        processExplicitCompileCommands(clazz);
-        setupTests(clazz);
-        setupCheckAndRunMethods(clazz);
+        processExplicitCompileCommands(testClass);
+        setupTests();
+        setupCheckAndRunMethods();
 
         // All remaining tests are simple base tests without check or specific way to run them.
         addBaseTests();
@@ -561,10 +589,10 @@ public class TestFramework {
         WHITE_BOX.enqueueMethodForCompilation(m, compLevel.getValue());
     }
 
-    private void setupTests(Class<?> clazz) {
+    private void setupTests() {
         boolean hasIncludeList = includeList != null;
         boolean hasExcludeList = excludeList != null;
-        for (Method m : clazz.getDeclaredMethods()) {
+        for (Method m : testClass.getDeclaredMethods()) {
             Test testAnno = getAnnotation(m, Test.class);
             try {
                 if (testAnno != null) {
@@ -664,8 +692,8 @@ public class TestFramework {
         return compLevel;
     }
 
-    private void setupCheckAndRunMethods(Class<?> clazz) {
-        for (Method m : clazz.getDeclaredMethods()) {
+    private void setupCheckAndRunMethods() {
+        for (Method m : testClass.getDeclaredMethods()) {
             Check checkAnno = getAnnotation(m, Check.class);
             Run runAnno = getAnnotation(m, Run.class);
             Arguments argumentsAnno = getAnnotation(m, Arguments.class);

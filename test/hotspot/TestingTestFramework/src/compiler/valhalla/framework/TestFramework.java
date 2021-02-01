@@ -642,7 +642,7 @@ public class TestFramework {
         if (FLIP_C1_C2) {
             compLevel = flipCompLevel(compLevel);
         }
-        DeclaredTest test = new DeclaredTest(m, Argument.getArguments(m), compLevel, warmupIterations, osrOnly);
+        DeclaredTest test = new DeclaredTest(m, ArgumentValue.getArguments(m), compLevel, warmupIterations, osrOnly);
         declaredTests.put(m, test);
         testMethodMap.put(m.getName(), m);
     }
@@ -876,12 +876,12 @@ class TestFrameworkException extends RuntimeException {
 
 class DeclaredTest {
     private final Method testMethod;
-    private final Argument[] arguments;
+    private final ArgumentValue[] arguments;
     private final int warmupIterations;
     private final CompLevel compLevel;
     private final boolean osrOnly;
 
-    public DeclaredTest(Method testMethod, Argument[] arguments, CompLevel compLevel, int warmupIterations, boolean osrOnly) {
+    public DeclaredTest(Method testMethod, ArgumentValue[] arguments, CompLevel compLevel, int warmupIterations, boolean osrOnly) {
         // Make sure we can also call non-public or public methods in package private classes
         testMethod.setAccessible(true);
         this.testMethod = testMethod;
@@ -912,7 +912,7 @@ class DeclaredTest {
     }
 
     public Object[] getArguments() {
-        return Arrays.stream(arguments).map(Argument::getArgument).toArray();
+        return Arrays.stream(arguments).map(ArgumentValue::getArgument).toArray();
     }
 
     public void printFixedRandomArguments() {
@@ -920,7 +920,7 @@ class DeclaredTest {
             boolean hasRandomArgs = false;
             StringBuilder builder = new StringBuilder("Random Arguments: ");
             for (int i = 0; i < arguments.length; i++) {
-                Argument argument = arguments[i];
+                ArgumentValue argument = arguments[i];
                 if (argument.isFixedRandom()) {
                     hasRandomArgs = true;
                     builder.append("arg ").append(i).append(": ").append(argument.getArgument()).append(", ");

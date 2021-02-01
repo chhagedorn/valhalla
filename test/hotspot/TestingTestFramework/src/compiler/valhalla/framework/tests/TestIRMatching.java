@@ -121,7 +121,7 @@ public class TestIRMatching {
 
 class AndOr1 {
     @Test
-    @Arguments(ArgumentValue.DEFAULT)
+    @Arguments(Argument.DEFAULT)
     @IR(applyIfAnd = {"UsePerfData", "true", "SuspendRetryCount", "50", "UseTLAB", "true"}, failOn = {IRNode.CALL})
     public void test1(int i) {
         dontInline();

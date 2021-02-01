@@ -40,44 +40,44 @@ class BadArguments {
     public void noArgAnnotation(int a) {}
 
     @Test
-    @Arguments(ArgumentValue.DEFAULT)
+    @Arguments(Argument.DEFAULT)
     public void argNumberMismatch(int a, int b) {}
 
     @Test
-    @Arguments(ArgumentValue.DEFAULT)
+    @Arguments(Argument.DEFAULT)
     public void argNumberMismatch2() {}
 
     @Test
-    @Arguments(ArgumentValue.NUMBER_42)
+    @Arguments(Argument.NUMBER_42)
     public void notBoolean(boolean a) {}
 
     @Test
-    @Arguments(ArgumentValue.NUMBER_MINUS_42)
+    @Arguments(Argument.NUMBER_MINUS_42)
     public void notBoolean2(boolean a) {}
 
     @Test
-    @Arguments(ArgumentValue.TRUE)
+    @Arguments(Argument.TRUE)
     public void notNumber(int a) {}
 
     @Test
-    @Arguments(ArgumentValue.FALSE)
+    @Arguments(Argument.FALSE)
     public void notNumber2(int a) {}
 
     @Test
-    @Arguments(ArgumentValue.BOOLEAN_TOGGLE_FIRST_TRUE)
+    @Arguments(Argument.BOOLEAN_TOGGLE_FIRST_TRUE)
     public void notNumber3(int a) {}
 
     @Test
-    @Arguments(ArgumentValue.BOOLEAN_TOGGLE_FIRST_FALSE)
+    @Arguments(Argument.BOOLEAN_TOGGLE_FIRST_FALSE)
     public void notNumber4(int a) {}
 
     @Test
-    @Arguments({ArgumentValue.BOOLEAN_TOGGLE_FIRST_FALSE, ArgumentValue.TRUE})
+    @Arguments({Argument.BOOLEAN_TOGGLE_FIRST_FALSE, Argument.TRUE})
     public void notNumber5(boolean a, int b) {}
 
 
     @Test
-    @Arguments({ArgumentValue.BOOLEAN_TOGGLE_FIRST_FALSE, ArgumentValue.NUMBER_42})
+    @Arguments({Argument.BOOLEAN_TOGGLE_FIRST_FALSE, Argument.NUMBER_42})
     public void notNumber6(int a, boolean b) {}
 }
 
@@ -87,11 +87,11 @@ class BadOverloadedMethod {
     public void sameName() {}
 
     @Test
-    @Arguments(ArgumentValue.DEFAULT)
+    @Arguments(Argument.DEFAULT)
     public void sameName(boolean a) {}
 
     @Test
-    @Arguments(ArgumentValue.DEFAULT)
+    @Arguments(Argument.DEFAULT)
     public void sameName(double a) {}
 }
 

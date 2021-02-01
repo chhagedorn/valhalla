@@ -5,5 +5,5 @@ import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Arguments {
-    ArgumentValue[] value();
+    Argument[] value();
 }

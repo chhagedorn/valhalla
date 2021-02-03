@@ -638,7 +638,7 @@ public class TestFramework {
             // Don't inline test methods. Don't care when -Xcomp set.
             WHITE_BOX.testSetDontInlineMethod(m, true);
         }
-        CompLevel compLevel = testAnno.compLevel();
+        CompLevel compLevel = restrictCompLevel(testAnno.compLevel());
         if (FLIP_C1_C2) {
             compLevel = flipCompLevel(compLevel);
         }
@@ -669,7 +669,7 @@ public class TestFramework {
         }
         if (compLevel == CompLevel.ANY) {
             // Use C2 by default.
-            return CompLevel.C2;
+            compLevel = CompLevel.C2;
         }
         if (!TIERED_COMPILATION && compLevel.getValue() < CompLevel.C2.getValue()) {
             return CompLevel.SKIP;

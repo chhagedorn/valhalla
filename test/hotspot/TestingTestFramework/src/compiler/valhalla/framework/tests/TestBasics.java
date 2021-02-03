@@ -7,6 +7,14 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class TestBasics {
+    private static boolean wasExecuted = false;
+    private boolean lastToggleBoolean = true;
+    private final static int[] executed = new int[92];
+    private final static int[] executedOnce = new int[5];
+    private long[] nonFloatingRandomNumbers = new long[10];
+    private double[] floatingRandomNumbers = new double[10];
+    private Boolean[] randomBooleans = new Boolean[64];
+
     public static void main(String[] args) throws Exception {
         // Run on same VM to make this test easier as we are not interested in any output processing.
         Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
@@ -31,54 +39,6 @@ public class TestBasics {
             }
         }
     }
-
-//    @Test
-//    @Arguments({ArgumentValue.DEFAULT, ArgumentValue.FALSE, ArgumentValue.NUMBER_42, ArgumentValue.RANDOM_ALL, ArgumentValue.RANDOM_ONCE, ArgumentValue.BOOLEAN_TOGGLE})
-//    public int test(int arg1, boolean arg2, double arg3, double arg4, int arg5, boolean arg6) {
-//        return 0;
-//    }
-//
-//    // Useful for quick checking, nothing fancy going on. This method is optional.
-//    @Check(test = "test", when=CheckAt.C2_COMPILED)
-//    // Must match method 'test' when removing '_check'. Could also think about matching in annotation, e.g. @Check(test = "test2").
-//    public void test_check(int result /* must match return argument of 'test', possible to check? */) {
-//        // This method runs in interpreter, DontCompile.
-//        // Check that there is a method 'test' with @Test, no method 'test_check' or when present no @Run at it (bad style though, better use check in annotation?),
-//        // 'test' has non-void return (if void, what do you need the check for then?)
-//        // If 'test' has arguments but no @Arguments annotation, framework takes default arguments (bad style though).
-//        // Framework executes 'test' with warmup (specified or default).
-//        // This method is then called from framework once after 'test' compiled or once when 'test' is called the first time by framework and after 'test' is compiled
-////        Asserts.assertEQ(result, 0);
-//    }
-//
-//    @Test
-//    public void test2(int arg1, boolean arg2, int arg3, int arg4) {
-//    }
-//
-//    // Optional method.
-//    // Useful when more complex/changing arguments are required. Framework calls this method in interpreter and let it handle how to call the method
-//    // 'test'. Framework could verify that this method has at least one call to 'test2'?
-//    @Run(test = "test2")
-//    // Must match method 'test2' when removing '_run'. Could also think about matching in annotation, e.g. @Run(test = "test2").
-//    public void test2_run(TestInfo info) {
-//        // This method runs in interpreter, DontCompile
-//        // Check that there is a method 'test2' with @Test.
-//        // Check that no @Arguments present in 'test2' (not useful when specifying here how to call the method)
-//        // Called each time by framework, specifies how to run test
-//        if (info.isWarmUp()) {
-//            test2(34, info.toggleBoolean(), info.getRandomInt(), 0);
-//        } else {
-//            test2(12, true, info.getRandomInt(), -555);
-//        }
-//    }
-
-    static boolean wasExecuted = false;
-    static int[] executed = new int[78];
-    static int[] executedOnce = new int[5];
-    boolean lastToggleBoolean = true;
-    long[] nonFloatingRandomNumbers = new long[10];
-    double[] floatingRandomNumbers = new double[10];
-    Boolean[] randomBooleans = new Boolean[64];
 
     private void clearNonFloatingRandomNumbers() {
         nonFloatingRandomNumbers = new long[10];
@@ -513,6 +473,132 @@ public class TestBasics {
         executed[43]++;
         if (x != -42.0) {
             throw new RuntimeException("Must be -42");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void byteMin(byte x) {
+        executed[79]++;
+        if (x != Byte.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void charMin(char x) {
+        executed[80]++;
+        if (x != Character.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void shortMin(short x) {
+        executed[81]++;
+        if (x != Short.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void intMin(int x) {
+        executed[82]++;
+        if (x != Integer.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void longMin(long x) {
+        executed[83]++;
+        if (x != Long.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void floatMin(float x) {
+        executed[84]++;
+        if (x != Float.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MIN)
+    public void doubleMin(double x) {
+        executed[85]++;
+        if (x != Double.MIN_VALUE) {
+            throw new RuntimeException("Must be MIN_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void byteMax(byte x) {
+        executed[86]++;
+        if (x != Byte.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void charMax(char x) {
+        executed[87]++;
+        if (x != Character.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void shortMax(short x) {
+        executed[88]++;
+        if (x != Short.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void intMax(int x) {
+        executed[89]++;
+        if (x != Integer.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void longMax(long x) {
+        executed[90]++;
+        if (x != Long.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void floatMax(float x) {
+        executed[91]++;
+        if (x != Float.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
+        }
+    }
+
+    @Test
+    @Arguments(Argument.MAX)
+    public void doubleMax(double x) {
+        executed[78]++;
+        if (x != Double.MAX_VALUE) {
+            throw new RuntimeException("Must be MAX_VALUE");
         }
     }
 

@@ -58,35 +58,53 @@ class ArgumentValue {
                 switch (specifiedArg) {
                     case DEFAULT -> arguments[i] = createDefault(parameter);
                     case NUMBER_42 -> {
-                        TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_42 argument for non-number " + parameterObj + " for " + m);
+                        TestFormat.check(isNumber(parameter),
+                                         "Provided invalid NUMBER_42 argument for non-number " + parameterObj + " for " + m);
                         arguments[i] = create((byte) 42);
                     }
                     case NUMBER_MINUS_42 -> {
-                        TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_MINUS_42 argument for non-number " + parameterObj + " for " + m);
+                        TestFormat.check(isNumber(parameter),
+                                         "Provided invalid NUMBER_MINUS_42 argument for non-number " + parameterObj + " for " + m);
                         arguments[i] = create((byte) -42);
                     }
+                    case MIN -> {
+                        TestFormat.check(isNumber(parameter) || isChar(parameter),
+                                         "Provided invalid MIN argument for non-number " + parameterObj + " for " + m);
+                        arguments[i] = createMin(parameter);
+                    }
+                    case MAX -> {
+                        TestFormat.check(isNumber(parameter) || isChar(parameter),
+                                         "Provided invalid MAX argument for non-number " + parameterObj + " for " + m);
+                        arguments[i] = createMax(parameter);
+                    }
                     case BOOLEAN_TOGGLE_FIRST_FALSE -> {
-                        TestFormat.check(isBoolean(parameter), "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameterObj + " for " + m);
+                        TestFormat.check(isBoolean(parameter),
+                                         "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameterObj + " for " + m);
                         arguments[i] = createToggleBoolean(false);
                     }
                     case BOOLEAN_TOGGLE_FIRST_TRUE -> {
-                        TestFormat.check(ArgumentValue.isBoolean(parameter), "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameterObj + " for " + m);
+                        TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                         "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameterObj + " for " + m);
                         arguments[i] = createToggleBoolean(true);
                     }
                     case TRUE -> {
-                        TestFormat.check(ArgumentValue.isBoolean(parameter), "Provided invalid TRUE argument for non-boolean " + parameterObj + " for " + m);
+                        TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                         "Provided invalid TRUE argument for non-boolean " + parameterObj + " for " + m);
                         arguments[i] = create(true);
                     }
                     case FALSE -> {
-                        TestFormat.check(ArgumentValue.isBoolean(parameter), "Provided invalid FALSE argument for non-boolean " + parameterObj + " for " + m);
+                        TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                         "Provided invalid FALSE argument for non-boolean " + parameterObj + " for " + m);
                         arguments[i] = create(false);
                     }
                     case RANDOM_ONCE -> {
-                        TestFormat.check(isPrimitiveType(parameter), "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameterObj + " for " + m);
+                        TestFormat.check(isPrimitiveType(parameter),
+                                         "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameterObj + " for " + m);
                         arguments[i] = createRandom(parameter);
                     }
                     case RANDOM_EACH -> {
-                        TestFormat.check(isPrimitiveType(parameter), "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameterObj + " for " + m);
+                        TestFormat.check(isPrimitiveType(parameter),
+                                         "Provided invalid RANDOM_EACH argument for non-primitive type " + parameterObj + " for " + m);
                         arguments[i] = createRandomEach(parameter);
                     }
                 }
@@ -121,11 +139,57 @@ class ArgumentValue {
         }
     }
 
-    private static ArgumentValue createRandom(Class<?> c) {
-        return new ArgumentValue(getRandom(c), null, true);
+
+    private static ArgumentValue createMin(Class<?> c) {
+        Object argument = null;
+        if (c.equals(byte.class)) {
+            argument = Byte.MIN_VALUE;
+        } else if (isChar(c)) {
+            argument = Character.MIN_VALUE;
+        }  else if (c.equals(short.class)) {
+            argument = Short.MIN_VALUE;
+        } else if (c.equals(int.class)) {
+            argument = Integer.MIN_VALUE;
+        } else if (c.equals(long.class)) {
+            argument = Long.MIN_VALUE;
+        } else if (c.equals(float.class)) {
+            argument = Float.MIN_VALUE;
+        } else if (c.equals(double.class)) {
+            argument = Double.MIN_VALUE;
+        } else {
+            throw new TestFrameworkException("Invalid class passed to createMin()");
+        }
+        return new ArgumentValue(argument, null, false);
     }
+
+    private static ArgumentValue createMax(Class<?> c) {
+        Object argument = null;
+        if (c.equals(byte.class)) {
+            argument = Byte.MAX_VALUE;
+        } else if (isChar(c)) {
+            argument = Character.MAX_VALUE;
+        }  else if (c.equals(short.class)) {
+            argument = Short.MAX_VALUE;
+        } else if (c.equals(int.class)) {
+            argument = Integer.MAX_VALUE;
+        } else if (c.equals(long.class)) {
+            argument = Long.MAX_VALUE;
+        } else if (c.equals(float.class)) {
+            argument = Float.MAX_VALUE;
+        } else if (c.equals(double.class)) {
+            argument = Double.MAX_VALUE;
+        } else {
+            throw new TestFrameworkException("Invalid class passed to createMin()");
+        }
+        return new ArgumentValue(argument, null, false);
+    }
+
     private static ArgumentValue createToggleBoolean(boolean firstBoolean) {
         return new ArgumentValue(null, firstBoolean, false);
+    }
+
+    private static ArgumentValue createRandom(Class<?> c) {
+        return new ArgumentValue(getRandom(c), null, true);
     }
 
     private static ArgumentValue createRandomEach(Class<?> c) {

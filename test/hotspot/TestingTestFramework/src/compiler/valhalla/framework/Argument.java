@@ -10,6 +10,6 @@ public enum Argument {
     FALSE,
     RANDOM_ONCE,
     RANDOM_EACH,
-    MAX, // TODO -> for numbers
-    MIN // TODO -> for numbers
+    MAX,
+    MIN
 }

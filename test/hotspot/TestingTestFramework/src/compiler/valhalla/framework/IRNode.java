@@ -1,3 +1,26 @@
+/*
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package compiler.valhalla.framework;
 
 import java.util.ArrayList;
@@ -66,24 +89,12 @@ public class IRNode {
         for (int i = 0; i < nodes.length; i += 2) {
             String node = nodes[i];
             switch (node) {
-                case ALLOC_OF -> {
-                    mergeCompositeNodes(nodes, mergedNodes, i, node, ALLOC_OF_POSTFIX, "ALLOC_OF");
-                }
-                case ALLOC_ARRAY_OF -> {
-                    mergeCompositeNodes(nodes, mergedNodes, i, node, ALLOC_ARRAY_OF_POSTFIX, "ALLOC_ARRAY_OF");
-                }
-                case STORE_OF_CLASS -> {
-                    mergeCompositeNodes(nodes, mergedNodes, i, node, STORE_OF_CLASS_POSTFIX, "STORE_OF_CLASS");
-                }
-                case STORE_OF_FIELD -> {
-                    mergeCompositeNodes(nodes, mergedNodes, i, node, STORE_OF_FIELD_POSTFIX, "STORE_OF_FIELD");
-                }
-                case LOAD_OF_CLASS -> {
-                    mergeCompositeNodes(nodes, mergedNodes, i, node, LOAD_OF_CLASS_POSTFIX, "LOAD_OF_CLASS");
-                }
-                case LOAD_OF_FIELD -> {
-                    mergeCompositeNodes(nodes, mergedNodes, i, node, LOAD_OF_FIELD_POSTFIX, "LOAD_OF_FIELD");
-                }
+                case ALLOC_OF -> mergeCompositeNodes(nodes, mergedNodes, i, node, ALLOC_OF_POSTFIX, "ALLOC_OF");
+                case ALLOC_ARRAY_OF -> mergeCompositeNodes(nodes, mergedNodes, i, node, ALLOC_ARRAY_OF_POSTFIX, "ALLOC_ARRAY_OF");
+                case STORE_OF_CLASS -> mergeCompositeNodes(nodes, mergedNodes, i, node, STORE_OF_CLASS_POSTFIX, "STORE_OF_CLASS");
+                case STORE_OF_FIELD -> mergeCompositeNodes(nodes, mergedNodes, i, node, STORE_OF_FIELD_POSTFIX, "STORE_OF_FIELD");
+                case LOAD_OF_CLASS -> mergeCompositeNodes(nodes, mergedNodes, i, node, LOAD_OF_CLASS_POSTFIX, "LOAD_OF_CLASS");
+                case LOAD_OF_FIELD -> mergeCompositeNodes(nodes, mergedNodes, i, node, LOAD_OF_FIELD_POSTFIX, "LOAD_OF_FIELD");
                 default -> {
                     i--; // No composite node, do not increment by 2.
                     mergedNodes.add(node);

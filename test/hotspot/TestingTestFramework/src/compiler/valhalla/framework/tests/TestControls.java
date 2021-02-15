@@ -30,9 +30,11 @@ import sun.hotspot.WhiteBox;
 import java.lang.reflect.Method;
 
 public class TestControls {
-    static int[] executed = new int[13];
+    static int[] executed = new int[15];
     static boolean wasExecuted = false;
     static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
+
+    public int iFld;
 
     public static void main(String[] args) throws Exception {
         Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
@@ -175,5 +177,49 @@ public class TestControls {
         noWarmup2();
         Asserts.assertTrue(!info.isWarmUp());
         executed[12]++;
+    }
+
+    @Test
+    public void testDontCompile3() {
+        wasExecuted = true;
+    }
+
+    @DontCompile({CompLevel.C1, CompLevel.C1_LIMITED_PROFILE, CompLevel.C1_FULL_PROFILE})
+    public void dontCompile3() {
+        for (int i = 0; i < 100; i++)
+            iFld = 3;
+    }
+
+
+    @Run(test = "testDontCompile3")
+    @Warmup(0)
+    public void runDontCompile3(TestInfo info) {
+        for (int i = 0; i < 10000; i++) {
+            dontCompile3();
+        }
+        TestFramework.assertCompiledByC2(info.getTest());
+        executed[13]++;
+    }
+
+    @Test
+    public void testDontCompile4() {
+        wasExecuted = true;
+    }
+
+    @DontCompile({CompLevel.C1_FULL_PROFILE, CompLevel.C2})
+    public void dontCompile4() {
+        for (int i = 0; i < 100; i++)
+            iFld = 3;
+    }
+
+
+    @Run(test = "testDontCompile4")
+    @Warmup(0)
+    public void runDontCompile4(TestInfo info) {
+        for (int i = 0; i < 10000; i++) {
+            dontCompile4();
+        }
+//        TestFramework.assertCompiledByC2(info.getTest());
+        executed[14]++;
     }
 }

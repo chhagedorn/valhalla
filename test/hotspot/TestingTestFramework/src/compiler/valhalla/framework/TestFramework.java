@@ -473,12 +473,14 @@ public class TestFramework {
 
     private void addBaseTests() {
         declaredTests.forEach((m, test) -> {
-            try {
-                Arguments argumentsAnno = getAnnotation(m, Arguments.class);
-                TestFormat.check(argumentsAnno != null || m.getParameterCount() == 0, "Missing @Arguments annotation to define arguments of " + m);
-                allTests.put(m, new BaseTest(test));
-            } catch (TestFormatException e) {
-                // Failure logged. Continue and report later.
+            if (test.getAttachedMethod() == null) {
+                try {
+                    Arguments argumentsAnno = getAnnotation(m, Arguments.class);
+                    TestFormat.check(argumentsAnno != null || m.getParameterCount() == 0, "Missing @Arguments annotation to define arguments of " + m);
+                    allTests.put(m, new BaseTest(test));
+                } catch (TestFormatException e) {
+                    // Failure logged. Continue and report later.
+                }
             }
         });
     }
@@ -556,9 +558,11 @@ public class TestFramework {
 
     private void checkCompilationCommandAnnotations(Method m, ForceInline forceInlineAnno, DontInline dontInlineAnno, ForceCompile forceCompileAnno, DontCompile dontCompileAnno) {
         Test testAnno = getAnnotation(m, Test.class);
-        TestFormat.check(testAnno == null || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
-                         "Not allowed to use explicit compile command annotations (@ForceInline, @DontInline," +
-                         "@ForceCompile or @DontCompile) together with @Test at " + m + ". Use compLevel in @Test for fine tuning.");
+        Run runAnno = getAnnotation(m, Run.class);
+        Check checkAnno = getAnnotation(m, Check.class);
+        TestFormat.check((testAnno == null && runAnno == null && checkAnno == null) || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
+                         "Cannot use explicit compile command annotations (@ForceInline, @DontInline," +
+                         "@ForceCompile or @DontCompile) together with @Test, @Check or @Run: " + m + ". Use compLevel in @Test for fine tuning.");
         if (Stream.of(forceInlineAnno, dontCompileAnno, dontInlineAnno).filter(Objects::nonNull).count() > 1) {
             // Failure
             TestFormat.check(dontCompileAnno == null || dontInlineAnno == null,
@@ -576,8 +580,6 @@ public class TestFramework {
             TestFormat.check(Arrays.stream(dontCompile).noneMatch(a -> a == forceCompile),
                              "Overlapping compilation levels with @ForceCompile and @DontCompile at " + m);
         }
-        TestFormat.check(forceCompileAnno == null || dontCompileAnno == null,
-                         "Cannot have @ForceCompile and @DontCompile at the same time at " + m);
     }
 
     private void dontCompileMethod(Method m) {
@@ -648,7 +650,7 @@ public class TestFramework {
         int warmupIterations = WARMUP_ITERATIONS;
         if (warmup != null) {
             warmupIterations = warmup.value();
-            TestFormat.check(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + m);
+            TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + m);
         }
 
         boolean osrOnly = getAnnotation(m, OSRCompileOnly.class) != null;
@@ -672,7 +674,7 @@ public class TestFramework {
 
     private void checkTestAnnotations(Method m, Test testAnno) {
         TestFormat.check(!testMethodMap.containsKey(m.getName()),
-                         "Cannot overload two @Test methods " + m + " and " + testMethodMap.get(m.getName()));
+                         "Cannot overload two @Test methods: " + m + ", " + testMethodMap.get(m.getName()));
         TestFormat.check(testAnno != null, m + " must be a method with a @Test annotation");
 
         Check checkAnno = getAnnotation(m, Check.class);
@@ -766,34 +768,21 @@ public class TestFramework {
 
         DeclaredTest test = declaredTests.remove(testMethod);
         TestFormat.check(test != null, "Missing @Test annotation for associated test method " + checkAnno.test() + " for @Check at " + m);
-        applyCompileCommands(m, false);
+        Method attachedMethod = test.getAttachedMethod();
+        TestFormat.check(attachedMethod == null,
+                         "Cannot use @Test " + testMethod + " for more than one @Run/@Check method. Found: " + m + ", " + attachedMethod);
+        dontCompileMethod(m);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
         CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter);
         allTests.put(testMethod, checkedTest);
     }
 
-    private void applyCompileCommands(Method m, boolean defaultDontCompile) {
-        ForceInline forceInlineAnno = getAnnotation(m, ForceInline.class);
-        DontInline dontInlineAnno = getAnnotation(m, DontInline.class);
-        ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
-        DontCompile dontCompileAnno = getAnnotation(m, DontCompile.class);
-        if (Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).anyMatch(Objects::nonNull)) {
-            applyIndependentCompilationCommands(m);
-            applyForceCompileCommand(m);
-        } else {
-            if (defaultDontCompile) {
-                // @DontCompile if nothing specified. Done for @Run.
-                dontCompileMethod(m);
-            }
-        }
-    }
-
     private void addCustomRunTest(Method m, Run runAnno) {
         Method testMethod = testMethodMap.get(runAnno.test());
-        DeclaredTest test = declaredTests.remove(testMethod);
+        DeclaredTest test = declaredTests.get(testMethod);
         checkCustomRunTest(m, runAnno, testMethod, test);
-        applyCompileCommands(m, true);
+        dontCompileMethod(m);
         // Don't inline run methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
         CustomRunTest customRunTest = new CustomRunTest(test, m, getAnnotation(m, Warmup.class), runAnno);
@@ -801,11 +790,14 @@ public class TestFramework {
     }
 
     private void checkCustomRunTest(Method m, Run runAnno, Method testMethod, DeclaredTest test) {
-        TestFormat.check(testMethod != null, "Did not find associated test method " + runAnno.test() + " for @Run at " + m);
+        TestFormat.check(testMethod != null, "Did not find associated test method \"" + runAnno.test() + "\" specified in @Run at " + m);
         TestFormat.check(test != null, "Missing @Test annotation for associated test method " + runAnno.test() + " for @Run at " + m);
-        TestFormat.check(!test.hasArguments(), "Invalid @Arguments annotation for associated test method " + runAnno.test() + " for @Run at " + m);
+        Method attachedMethod = test.getAttachedMethod();
+        TestFormat.check(attachedMethod == null,
+                         "Cannot use @Test " + testMethod + " for more than one @Run/@Check method. Found: " + m + ", " + attachedMethod);
+        TestFormat.check(!test.hasArguments(), "Cannot use @Arguments at test method " + testMethod + " in combination with @Run method " + m);
         TestFormat.check(m.getParameterCount() == 0 || (m.getParameterCount() == 1 && m.getParameterTypes()[0].equals(TestInfo.class)),
-                         "@Run method " + m + " must specify either no TestInfo parameter or exactly one");
+                         "@Run method " + m + " must specify either no parameter or exactly one of " + TestInfo.class);
         Warmup warmupAnno = getAnnotation(testMethod, Warmup.class);
         TestFormat.checkNoThrow(warmupAnno == null,
                          "Cannot set @Warmup at @Test method " + testMethod + " when used with its @Run method " + m + ". Use @Warmup at @Run method instead.");
@@ -903,6 +895,7 @@ class DeclaredTest {
     private final int warmupIterations;
     private final CompLevel compLevel;
     private final boolean osrOnly;
+    private Method attachedMethod;
 
     public DeclaredTest(Method testMethod, ArgumentValue[] arguments, CompLevel compLevel, int warmupIterations, boolean osrOnly) {
         // Make sure we can also call non-public or public methods in package private classes
@@ -912,6 +905,7 @@ class DeclaredTest {
         this.arguments = arguments;
         this.warmupIterations = warmupIterations;
         this.osrOnly = osrOnly;
+        this.attachedMethod = null;
     }
 
     public Method getTestMethod() {
@@ -936,6 +930,14 @@ class DeclaredTest {
 
     public Object[] getArguments() {
         return Arrays.stream(arguments).map(ArgumentValue::getArgument).toArray();
+    }
+
+    public void setAttachedMethod(Method m) {
+        attachedMethod = m;
+    }
+
+    public Method getAttachedMethod() {
+        return attachedMethod;
     }
 
     public void printFixedRandomArguments() {
@@ -1008,6 +1010,8 @@ class BaseTest {
     public String getTestName() {
         return testMethod.getName();
     }
+
+    public Method getAttachedMethod() { return null; }
 
     /**
      * Run the associated test
@@ -1155,10 +1159,14 @@ class CheckedTest extends BaseTest {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         checkMethod.setAccessible(true);
+        test.setAttachedMethod(checkMethod);
         this.checkMethod = checkMethod;
         this.checkAt = checkSpecification.when();
         this.parameter = parameter;
     }
+
+    @Override
+    public Method getAttachedMethod() { return checkMethod; }
 
     @Override
     public void verify(Object result) {
@@ -1190,10 +1198,15 @@ class CustomRunTest extends BaseTest {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         runMethod.setAccessible(true);
+        test.setAttachedMethod(runMethod);
         this.runMethod = runMethod;
         this.mode = runSpecification.mode();
         this.warmupIterations = warmUpAnno != null ? warmUpAnno.value() : test.getWarmupIterations();
+        TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + runMethod);
     }
+
+    @Override
+    public Method getAttachedMethod() { return runMethod; }
 
     @Override
     public void run() {

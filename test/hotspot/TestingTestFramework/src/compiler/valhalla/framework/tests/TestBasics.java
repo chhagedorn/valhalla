@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 public class TestBasics {
     private static boolean wasExecuted = false;
     private boolean lastToggleBoolean = true;
-    private final static int[] executed = new int[92];
+    private final static int[] executed = new int[94];
     private final static int[] executedOnce = new int[5];
     private long[] nonFloatingRandomNumbers = new long[10];
     private double[] floatingRandomNumbers = new double[10];
@@ -928,9 +928,22 @@ public class TestBasics {
         wasExecuted = true;
     }
 
+    // Allowed to overload test method if not test method itself
     @Check(test = "sameName")
-    public void checkSameName() {
+    public void sameName(TestInfo info) {
         executed[77]++;
+    }
+
+    @Test
+    public void sameName2() {
+        executed[92]++;
+    }
+
+    // Allowed to overload test method if not test method itself
+    @Run(test = "sameName2")
+    public void sameName2(TestInfo info) {
+        executed[93]++;
+        sameName2();
     }
 
     /*

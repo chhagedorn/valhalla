@@ -34,13 +34,14 @@ public class TestBadFormat {
     public static void main(String[] args) throws NoSuchMethodException {
         runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-        expectTestFormatException(BadArguments.class);
-        expectTestFormatException(BadOverloadedMethod.class);
-        expectTestFormatException(BadCompilerControl.class);
-        expectTestFormatException(BadWarmup.class);
+//        expectTestFormatException(BadArguments.class);
+//        expectTestFormatException(BadOverloadedMethod.class);
+        expectTestFormatException(BadCompilerControl.class, -1);
+//        expectTestFormatException(BadWarmup.class, 5);
+//        expectTestFormatException(BadRunTests.class, -1);
     }
 
-    private static void expectTestFormatException(Class<?> clazz) {
+    private static void expectTestFormatException(Class<?> clazz, int count) {
         try {
             runTestsOnSameVM.invoke(null, clazz);
         } catch (Exception e) {
@@ -48,9 +49,15 @@ public class TestBadFormat {
             if (cause != null) {
                 System.out.println(cause.getMessage());
             }
-            Asserts.assertTrue(cause instanceof TestFormatException, "Unexpected exception: " + cause);
+            if (!(cause instanceof TestFormatException)) {
+                e.printStackTrace();
+                Asserts.fail("Unexpected exception: " + cause);
+            }
             String msg = cause.getMessage();
-            Asserts.assertTrue(msg.contains("Violations"));
+            // TODO:
+            if (count != -1) {
+                Asserts.assertTrue(msg.contains("Violations (" + count + ")"));
+            }
             return;
         }
         throw new RuntimeException("Should catch an exception");
@@ -98,10 +105,17 @@ class BadArguments {
     @Arguments({Argument.BOOLEAN_TOGGLE_FIRST_FALSE, Argument.TRUE})
     public void notNumber5(boolean a, int b) {}
 
-
     @Test
     @Arguments({Argument.BOOLEAN_TOGGLE_FIRST_FALSE, Argument.NUMBER_42})
     public void notNumber6(int a, boolean b) {}
+
+    @Test
+    @Arguments({Argument.MIN, Argument.MAX})
+    public void notNumber7(boolean a, boolean b) {}
+
+    @Test
+    @Arguments({Argument.DEFAULT})
+    public void missingDefaultConstructor(ClassNoDefaultConstructor a) {}
 }
 
 class BadOverloadedMethod {
@@ -150,6 +164,82 @@ class BadCompilerControl {
     @DontCompile
     @ForceCompile
     public void mix2() {}
+
+    @Test
+    public void test6() {}
+
+    @Run(test = "test6")
+    @DontCompile
+    public void notAtRun() {}
+
+    @Test
+    public void test7() {}
+
+    @Run(test = "test7")
+    @ForceCompile
+    public void notAtRun2() {}
+
+    @Test
+    public void test8() {}
+
+    @Run(test = "test8")
+    @DontInline
+    public void notAtRun3() {}
+
+    @Test
+    public void test9() {}
+
+    @Run(test = "test9")
+    @ForceInline
+    public void notAtRun4() {}
+
+    @Test
+    public void test10() {}
+
+    @Run(test = "test10")
+    @ForceInline
+    @ForceCompile
+    @DontInline
+    @DontCompile
+    public void notAtRun5() {}
+
+    @Test
+    public void test11() {}
+
+    @Check(test = "test11")
+    @DontCompile
+    public void notAtCheck() {}
+
+    @Test
+    public void test12() {}
+
+    @Check(test = "test12")
+    @ForceCompile
+    public void notAtCheck2() {}
+
+    @Test
+    public void test13() {}
+
+    @Check(test = "test13")
+    @DontInline
+    public void notAtCheck3() {}
+
+    @Test
+    public void test14() {}
+
+    @Check(test = "test14")
+    @ForceInline
+    public void notAtCheck4() {}
+
+    @Test
+    public void test15() {}
+
+    @Check(test = "test15")
+    @ForceInline
+    @ForceCompile
+    @DontInline
+    @DontCompile
+    public void notAtCheck5() {}
 }
 
 class BadWarmup {
@@ -158,10 +248,78 @@ class BadWarmup {
     public void warmUpNonTest() {}
 
     @Test
+    @Warmup(1)
+    public void someTest() {}
+
+    @Run(test = "someTest")
+    @Warmup(1)
+    public void twoWarmups() {}
+
+    @Test
     @Warmup(-1)
     public void negativeWarmup() {}
 
-    @Run(test = "negativeWarmup")
+    @Test
+    public void someTest2() {}
+
+    @Run(test = "someTest2")
     @Warmup(-1)
     public void negativeWarmup2() {}
+
+    @Test
+    public void someTest3() {}
+
+    @Run(test = "someTest2", mode = RunMode.INVOKE_ONCE)
+    @Warmup(-1)
+    public void noWarmupAtInvokeOnce() {}
+
+}
+
+class BadRunTests {
+    @Test
+    public void sharedByTwo() {}
+
+    @Run(test = "sharedByTwo")
+    public void share1() {}
+
+    @Run(test = "sharedByTwo")
+    public void share2() {}
+
+    @Run(test = "doesNotExist")
+    public void noTestExists() {}
+
+    @Test
+    @Arguments({Argument.DEFAULT})
+    public void argTest(int x) {}
+
+    @Run(test = "argTest")
+    public void noArgumentAnnotationForRun() {}
+
+    @Test
+    public void test1() {}
+
+    @Run(test = "test1")
+    public void wrongParameters1(int x) {}
+
+    @Test
+    public void test2() {}
+
+    @Run(test = "test2")
+    public void wrongParameters(TestInfo info, int x) {}
+
+    @Test
+    public void invalidShare() {}
+
+    @Run(test = "invalidShare")
+    public void shareSameTestTwice1() {}
+
+    @Run(test = "invalidShare")
+    public void shareSameTestTwice2() {}
+
+
+}
+
+class ClassNoDefaultConstructor {
+    private ClassNoDefaultConstructor(int i) {
+    }
 }

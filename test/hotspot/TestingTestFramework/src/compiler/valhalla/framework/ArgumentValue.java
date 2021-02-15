@@ -153,8 +153,11 @@ class ArgumentValue {
             // Object
             try {
                 Constructor<?> constructor = c.getDeclaredConstructor();
-                constructor.setAccessible(true);
+                constructor.setAccessible(true); // Make sure to have access to private default constructor
                 return ArgumentValue.create(constructor.newInstance());
+            } catch (NoSuchMethodException e) {
+                TestFormat.fail("Cannot create new default instance of " + c + " due to missing default constructor");
+                return null;
             } catch (Exception e) {
                 TestFormat.fail("Cannot create new default instance of " + c + ": " + e.getCause());
                 return null;

@@ -302,6 +302,11 @@ public class TestFramework {
                       m + " should not have been compiled");
     }
 
+    public static void assertCompiled(Method m) {
+        TestRun.check(WHITE_BOX.isMethodCompiled(m, false) || WHITE_BOX.isMethodCompiled(m, true),
+                      m + " should have been compiled");
+    }
+
     public static String getLastVmOutput() {
         return lastVmOutput;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -345,7 +345,7 @@ class BadWarmup {
     public void someTest3() {}
 
     @FailCount(2) // Negative warmup and invoke once
-    @Run(test = "someTest2", mode = RunMode.INVOKE_ONCE)
+    @Run(test = "someTest2", mode = RunMode.STANDALONE)
     @Warmup(-1)
     public void noWarmupAtInvokeOnce() {}
 }

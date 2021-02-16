@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -989,7 +989,7 @@ public class TestBasics {
 
     // Custom run test that is only invoked once. There is no warm up and no compilation. This method is responsible
     // for triggering compilation.
-    @Run(test = "testRunOnce", mode = RunMode.INVOKE_ONCE)
+    @Run(test = "testRunOnce", mode = RunMode.STANDALONE)
     public void runTestRunOnce(TestInfo info) {
         testRunOnce();
     }
@@ -999,7 +999,7 @@ public class TestBasics {
         executed[75]++;
     }
 
-    @Run(test = "testRunOnce2", mode = RunMode.INVOKE_ONCE)
+    @Run(test = "testRunOnce2", mode = RunMode.STANDALONE)
     public void runTestRunOnce2(TestInfo info) {
         for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();

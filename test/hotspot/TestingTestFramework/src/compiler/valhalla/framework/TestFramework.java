@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -825,11 +825,11 @@ public class TestFramework {
         TestFormat.checkNoThrow(warmupAnno == null,
                          "Cannot set @Warmup at @Test method " + testMethod + " when used with its @Run method " + m + ". Use @Warmup at @Run method instead.");
         warmupAnno = getAnnotation(m, Warmup.class);
-        TestFormat.checkNoThrow(warmupAnno == null || runAnno.mode() != RunMode.INVOKE_ONCE,
-                         "Cannot set @Warmup at @Run method " + m + " when used with RunMode.ONCE. The @Run method is only invoked once.");
+        TestFormat.checkNoThrow(warmupAnno == null || runAnno.mode() != RunMode.STANDALONE,
+                         "Cannot set @Warmup at @Run method " + m + " when used with RunMode.STANDALONE. The @Run method is only invoked once.");
         OSRCompileOnly osrAnno = getAnnotation(testMethod, OSRCompileOnly.class);
-        TestFormat.checkNoThrow(osrAnno == null || runAnno.mode() != RunMode.INVOKE_ONCE,
-                                "Cannot set @OSRCompileOnly at @Run method " + m + " when used with RunMode.ONCE. The @Run method is responsible for triggering compilation.");
+        TestFormat.checkNoThrow(osrAnno == null || runAnno.mode() != RunMode.STANDALONE,
+                                "Cannot set @OSRCompileOnly at @Run method " + m + " when used with RunMode.STANDALONE. The @Run method is responsible for triggering compilation.");
     }
 
     private static <T extends Annotation> T getAnnotation(Method m, Class<T> c) {
@@ -1250,7 +1250,7 @@ class CustomRunTest extends BaseTest {
     @Override
     public void run() {
         switch (mode) {
-            case INVOKE_ONCE -> runMethod();
+            case STANDALONE -> runMethod();
             case NORMAL -> super.run();
         }
     }
@@ -1277,7 +1277,7 @@ class CustomRunTest extends BaseTest {
         if (level != test.getCompLevel()) {
             String message = "Compilation level should be " + test.getCompLevel().name() + " (requested) but was " + level.name() + " for " + testMethod + ".";
             switch (mode) {
-                case INVOKE_ONCE -> message = message + "\nCheck your @Run method (invoked once) " + runMethod + " to ensure that " + testMethod + " will be complied at the requested level.";
+                case STANDALONE -> message = message + "\nCheck your @Run method (invoked once) " + runMethod + " to ensure that " + testMethod + " will be complied at the requested level.";
                 case NORMAL -> message = message + "\nCheck your @Run method " + runMethod + " to ensure that " + testMethod + " is called at least once in each iteration.";
             }
             TestRun.fail(message);

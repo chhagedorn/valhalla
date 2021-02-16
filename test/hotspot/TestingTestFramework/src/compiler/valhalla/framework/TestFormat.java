@@ -53,7 +53,7 @@ public class TestFormat {
             return;
         }
         StringBuilder builder = new StringBuilder();
-        builder.append("One or more format violations have been detected:\n\n");
+        builder.append("\nOne or more format violations have been detected:\n\n");
         builder.append("Violations (").append(FAILURES.size()).append(")\n");
         builder.append("--------------\n");
         for (String failure : FAILURES) {

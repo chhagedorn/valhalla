@@ -87,12 +87,24 @@ public class TestInfo {
         return getMethod(testMethod.getDeclaringClass(), name, args);
     }
 
+    public boolean isC1Compiled(Method m) {
+        return TestFramework.isC1Compiled(testMethod);
+    }
+
     public boolean isC2Compiled(Method m) {
         return TestFramework.isC2Compiled(testMethod);
     }
 
     public boolean isCompiledAtLevel(CompLevel compLevel) {
         return TestFramework.isCompiledAtLevel(testMethod, compLevel);
+    }
+
+    public void assertDeoptimizedByC1() {
+        TestFramework.assertDeoptimizedByC1(testMethod);
+    }
+
+    public void assertCompiledByC1() {
+        TestFramework.assertCompiledByC1(testMethod);
     }
 
     public void assertDeoptimizedByC2() {

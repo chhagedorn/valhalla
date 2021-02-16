@@ -141,7 +141,7 @@ public class TestControls {
         executed[6]++;
     }
 
-    @DontCompile({CompLevel.C1_FULL_PROFILE, CompLevel.C1_LIMITED_PROFILE, CompLevel.C2})
+    @DontCompile({CompLevel.C1, CompLevel.C2})
     public static void dontCompile2() {
         executed[7]++;
     }
@@ -185,22 +185,29 @@ public class TestControls {
         wasExecuted = true;
     }
 
-    @DontCompile({CompLevel.C1})
+    @DontCompile(CompLevel.ANY)
+    public void dontCompileAny() {
+        for (int i = 0; i < 10; i++) {
+            iFld = i;
+        }
+    }
+
+    @DontCompile(CompLevel.C1)
     public void dontCompileC1() {
         for (int i = 0; i < 10; i++) {
             iFld = 3;
         }
     }
 
-    @DontCompile({CompLevel.C1, CompLevel.C1_LIMITED_PROFILE, CompLevel.C1_FULL_PROFILE})
-    public void dontCompileC1AllLevels(int x) {
+    @DontCompile(CompLevel.C2)
+    public void dontCompileC2(int x, boolean b) {
         for (int i = 0; i < 10; i++) {
             iFld = x;
         }
     }
 
-    @DontCompile({CompLevel.C2})
-    public void dontCompileC2(int x, boolean b) {
+    @DontCompile({CompLevel.C1, CompLevel.C2})
+    public void dontCompileC1C2(int x) {
         for (int i = 0; i < 10; i++) {
             iFld = x;
         }
@@ -216,13 +223,6 @@ public class TestControls {
     @ForceCompile
     public void forceCompileAny() {
         wasExecuted = true;
-    }
-
-    @DontCompile({CompLevel.ANY})
-    public void dontCompileAny() {
-        for (int i = 0; i < 10; i++) {
-            iFld = i;
-        }
     }
 
     @ForceCompile(CompLevel.C1)
@@ -245,22 +245,32 @@ public class TestControls {
         wasExecuted = true;
     }
 
+    @ForceCompile(CompLevel.C1)
+    @DontCompile(CompLevel.C2)
+    public void forceC1DontC2() {
+        wasExecuted = true;
+    }
+
+    @ForceCompile(CompLevel.C2)
+    @DontCompile(CompLevel.C1)
+    public void forceC2DontC1() {
+        wasExecuted = true;
+    }
+
     @Run(test = "testCompilation")
     @Warmup(0)
     public void runTestCompilation(TestInfo info) {
         for (int i = 0; i < 10000; i++) {
             dontCompileAny();
             dontCompileC1();
-            dontCompileC1AllLevels(i);
             dontCompileC2(i, i % 2 == 0);
+            dontCompileC1C2(i);
         }
         TestFramework.assertCompiledByC2(info.getTest());
         TestFramework.assertNotCompiled(info.getTestClassMethod("dontCompileAny"));
-        Asserts.assertTrue(TestFramework.isC2Compiled(info.getTestClassMethod("dontCompileC1")));
-        Asserts.assertTrue(TestFramework.isC2Compiled(info.getTestClassMethod("dontCompileC1AllLevels", int.class)));
-        Method dontCompileC2 = info.getTestClassMethod("dontCompileC2", int.class, boolean.class);
-        Asserts.assertFalse(TestFramework.isC2Compiled(dontCompileC2));
-        TestFramework.assertCompiled(dontCompileC2);
+        TestFramework.assertCompiledByC2(info.getTestClassMethod("dontCompileC1"));
+        TestFramework.assertNotCompiled(info.getTestClassMethod("dontCompileC1C2", int.class));
+        TestFramework.assertCompiledByC1(info.getTestClassMethod("dontCompileC2", int.class, boolean.class));
 
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileDefault"), CompLevel.C2);
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileAny"), CompLevel.C2);
@@ -268,6 +278,9 @@ public class TestControls {
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC1"), CompLevel.C1);
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC1Limited"), CompLevel.C1_LIMITED_PROFILE);
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC1Full"), CompLevel.C1_FULL_PROFILE);
+
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceC1DontC2"), CompLevel.C1);
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceC2DontC1"), CompLevel.C2);
         executed[13]++;
     }
 }

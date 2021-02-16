@@ -79,7 +79,16 @@ class ArgumentValue {
             Parameter parameterObj = declaredParameterObjects[i];
             try {
                 switch (specifiedArg) {
-                    case DEFAULT -> arguments[i] = createDefault(parameter);
+                    case DEFAULT -> {
+                        try {
+                            arguments[i] = createDefault(parameter);
+                        } catch (NoSuchMethodException e) {
+                            TestFormat.fail("Cannot create new default instance of " + parameter + " for " + m
+                                            + " due to missing default constructor");
+                        } catch (Exception e) {
+                            TestFormat.fail("Cannot create new default instance of " + parameter + " for " + m + ": " + e.getCause());
+                        }
+                    }
                     case NUMBER_42 -> {
                         TestFormat.check(isNumber(parameter),
                                          "Provided invalid NUMBER_42 argument for non-number " + parameterObj + " for " + m);
@@ -142,7 +151,7 @@ class ArgumentValue {
         return new ArgumentValue(argumentValue, null, false);
     }
 
-    private static ArgumentValue createDefault(Class<?> c) {
+    private static ArgumentValue createDefault(Class<?> c) throws Exception {
         if (ArgumentValue.isNumber(c)) {
             return ArgumentValue.create((byte)0);
         } else if (ArgumentValue.isChar(c)) {
@@ -151,17 +160,9 @@ class ArgumentValue {
             return ArgumentValue.create(false);
         } else {
             // Object
-            try {
-                Constructor<?> constructor = c.getDeclaredConstructor();
-                constructor.setAccessible(true); // Make sure to have access to private default constructor
-                return ArgumentValue.create(constructor.newInstance());
-            } catch (NoSuchMethodException e) {
-                TestFormat.fail("Cannot create new default instance of " + c + " due to missing default constructor");
-                return null;
-            } catch (Exception e) {
-                TestFormat.fail("Cannot create new default instance of " + c + ": " + e.getCause());
-                return null;
-            }
+            Constructor<?> constructor = c.getDeclaredConstructor();
+            constructor.setAccessible(true); // Make sure to have access to private default constructor
+            return ArgumentValue.create(constructor.newInstance());
         }
     }
 

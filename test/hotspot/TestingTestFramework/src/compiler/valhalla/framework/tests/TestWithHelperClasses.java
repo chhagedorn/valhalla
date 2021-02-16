@@ -33,7 +33,8 @@ public class TestWithHelperClasses {
         try {
             TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class);
         } catch (Exception e) {
-            Asserts.assertTrue(TestFramework.getLastVmOutput().contains("public static void compiler.valhalla.framework.tests.Helper2.foo() should have been compiled"));
+            Asserts.assertFalse(TestFramework.getLastVmOutput().contains("public static void compiler.valhalla.framework.tests.Helper1.foo() should have been C2 compiled"));
+            Asserts.assertTrue(TestFramework.getLastVmOutput().contains("public static void compiler.valhalla.framework.tests.Helper2.foo() should have been C2 compiled"));
             return;
         }
         throw new RuntimeException("Did not catch exception");

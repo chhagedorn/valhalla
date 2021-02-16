@@ -277,6 +277,10 @@ public class TestFramework {
         enqueueMethodForCompilation(m, compLevel);
     }
 
+    public static boolean isC1Compiled(Method m) {
+        return compiledByC1(m) == TriState.Yes;
+    }
+
     public static boolean isC2Compiled(Method m) {
         return compiledByC2(m) == TriState.Yes;
     }
@@ -285,12 +289,20 @@ public class TestFramework {
         return compiledAtLevel(m, compLevel) == TriState.Yes;
     }
 
+    public static void assertDeoptimizedByC1(Method m) {
+        TestRun.check(compiledByC1(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized by C1");
+    }
+
     public static void assertDeoptimizedByC2(Method m) {
-        TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
+        TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized by C2");
+    }
+
+    public static void assertCompiledByC1(Method m) {
+        TestRun.check(compiledByC1(m) != TriState.No, m + " should have been C1 compiled");
     }
 
     public static void assertCompiledByC2(Method m) {
-        TestRun.check(compiledByC2(m) != TriState.No, m + " should have been compiled");
+        TestRun.check(compiledByC2(m) != TriState.No, m + " should have been C2 compiled");
     }
 
     public static void assertCompiledAtLevel(Method m, CompLevel level) {
@@ -555,6 +567,9 @@ public class TestFramework {
                 dontCompileMethod(m);
             } else {
                 for (CompLevel compLevel : dontCompileAnno.value()) {
+                    TestFormat.check(compLevel == CompLevel.C1 || compLevel == CompLevel.C2 || compLevel == CompLevel.ANY,
+                                     "Can only specify compilation level C1 (no individual C1 levels), " +
+                                     "C2 or ANY (no compilation, same as specifying anything) in @DontCompile at " + m);
                     dontCompileMethodAtLevel(m, compLevel);
                 }
             }
@@ -579,10 +594,10 @@ public class TestFramework {
             CompLevel forceCompile = forceCompileAnno.value();
             CompLevel[] dontCompile = dontCompileAnno.value();
             TestFormat.check(dontCompile.length != 0,
-                             "Cannot have @ForceCompile and default @DontCompile (exclude all) at the same time at " + m);
+                             "Cannot have @ForceCompile and default @DontCompile (CompLevel.ANY) at the same time at " + m);
             TestFormat.check(forceCompile != CompLevel.ANY,
-                             "Cannot have @ForceCompile with ANY and @DontCompile at the same time at " + m);
-            TestFormat.check(Arrays.stream(dontCompile).noneMatch(a -> a == forceCompile),
+                             "Cannot have @ForceCompile(CompLevel.ANY) and @DontCompile at the same time at " + m);
+            TestFormat.check(Arrays.stream(dontCompile).noneMatch(a -> CompLevel.overlapping(a, forceCompile)),
                              "Overlapping compilation levels with @ForceCompile and @DontCompile at " + m);
         }
     }
@@ -607,6 +622,8 @@ public class TestFramework {
     private void applyForceCompileCommand(Method m) {
         ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
         if (forceCompileAnno != null) {
+            TestFormat.check(forceCompileAnno.value() != CompLevel.SKIP,
+                             "Cannot define compilation level SKIP in @ForceCompile at " + m);
             enqueueMethodForCompilation(m, forceCompileAnno.value());
         }
     }
@@ -743,8 +760,8 @@ public class TestFramework {
     private void addCheckedTest(Method m, Check checkAnno, Run runAnno) {
         TestFormat.check(runAnno == null, m + " has invalid @Run annotation while @Check annotation is present.");
         Method testMethod = testMethodMap.get(checkAnno.test());
-        TestFormat.check(testMethod != null,"Did not find associated test method " + checkAnno.test() + " for @Check at " + m);
-
+        TestFormat.check(testMethod != null,"Did not find associated test method \"" + m.getDeclaringClass().getName()
+                                            + "." + checkAnno.test() + "\" for @Check at " + m);
         boolean firstParameterTestInfo = m.getParameterCount() > 0 && m.getParameterTypes()[0].equals(TestInfo.class);
         boolean secondParameterTestInfo = m.getParameterCount() > 1 && m.getParameterTypes()[1].equals(TestInfo.class);
 
@@ -795,7 +812,8 @@ public class TestFramework {
     }
 
     private void checkCustomRunTest(Method m, Run runAnno, Method testMethod, DeclaredTest test) {
-        TestFormat.check(testMethod != null, "Did not find associated test method \"" + runAnno.test() + "\" specified in @Run at " + m);
+        TestFormat.check(testMethod != null, "Did not find associated test method \""  + m.getDeclaringClass().getName()
+                                             + "." + runAnno.test() + "\" specified in @Run at " + m);
         TestFormat.check(test != null, "Missing @Test annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         Method attachedMethod = test.getAttachedMethod();
         TestFormat.check(attachedMethod == null,
@@ -865,6 +883,22 @@ public class TestFramework {
         Maybe,
         Yes,
         No
+    }
+
+    private static TriState compiledByC1(Method m) {
+        TriState triState = compiledAtLevel(m, CompLevel.C1);
+        if (triState != TriState.No) {
+            return triState;
+        }
+        triState = compiledAtLevel(m, CompLevel.C1_LIMITED_PROFILE);
+        if (triState != TriState.No) {
+            return triState;
+        }
+        triState = compiledAtLevel(m, CompLevel.C1_FULL_PROFILE);
+        if (triState != TriState.No) {
+            return triState;
+        }
+        return TriState.No;
     }
 
     private static TriState compiledByC2(Method m) {

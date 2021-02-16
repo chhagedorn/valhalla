@@ -27,13 +27,34 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum CompLevel {
-    SKIP(-3), // Skip a @Test having this value
+    /**
+     * Skip a {@link Test @Test} when set as {@link Test#compLevel()}.
+     */
+    SKIP(-3),
+    /**
+     *  Any compilation level:
+     *  <ul>
+     *      <li>Defaults to C2 for {@link Test @Test} and {@link ForceCompile @ForceCompile}.</li>
+     *      <li>Excludes all compilations for {@link DontCompile @DontCompile}.</li>
+     *  </ul>
+     */
     ANY(-2),
-    C1(1), // C1
-    C1_LIMITED_PROFILE(2), // C1, invocation & backedge counters
-    C1_FULL_PROFILE(3), // C1, invocation & backedge counters + mdo
-    C2(4); // C2 or JVMCI
-
+    /**
+     *  Compilation level 1: C1 compilation without any profile information.
+     */
+    C1(1),
+    /**
+     *  Compilation level 2: C1 compilation with limited profile information: Includes Invocation and backedge counters.
+     */
+    C1_LIMITED_PROFILE(2),
+    /**
+     *  Compilation level 3: C1 compilation with full profile information: Includes Invocation and backedge counters with MDO.
+     */
+    C1_FULL_PROFILE(3),
+    /**
+     * Compilation level 4: C2 compilation with full optimizations.
+     */
+    C2(4);
 
     private static final Map<Integer, CompLevel> typesByValue = new HashMap<>();
     private final int value;
@@ -54,5 +75,13 @@ public enum CompLevel {
 
     public static CompLevel forValue(int value) {
         return typesByValue.get(value);
+    }
+
+    public static boolean overlapping(CompLevel l1, CompLevel l2) {
+        return l1.isC1() == l2.isC1() || (l1 == C2 && l2 == C2);
+    }
+
+    private boolean isC1() {
+        return this == C1 || this == C1_LIMITED_PROFILE || this == C1_FULL_PROFILE;
     }
 }

@@ -26,7 +26,11 @@ package compiler.valhalla.framework.tests;
 import compiler.valhalla.framework.*;
 import jdk.test.lib.Asserts;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TestBadFormat {
 
@@ -34,14 +38,14 @@ public class TestBadFormat {
     public static void main(String[] args) throws NoSuchMethodException {
         runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-//        expectTestFormatException(BadArguments.class);
-//        expectTestFormatException(BadOverloadedMethod.class);
-        expectTestFormatException(BadCompilerControl.class, -1);
-//        expectTestFormatException(BadWarmup.class, 5);
-//        expectTestFormatException(BadRunTests.class, -1);
+        expectTestFormatException(BadArguments.class);
+        expectTestFormatException(BadOverloadedMethod.class);
+        expectTestFormatException(BadCompilerControl.class);
+        expectTestFormatException(BadWarmup.class);
+        expectTestFormatException(BadRunTests.class);
     }
 
-    private static void expectTestFormatException(Class<?> clazz, int count) {
+    private static void expectTestFormatException(Class<?> clazz) {
         try {
             runTestsOnSameVM.invoke(null, clazz);
         } catch (Exception e) {
@@ -54,14 +58,34 @@ public class TestBadFormat {
                 Asserts.fail("Unexpected exception: " + cause);
             }
             String msg = cause.getMessage();
-            // TODO:
-            if (count != -1) {
-                Asserts.assertTrue(msg.contains("Violations (" + count + ")"));
-            }
+
+            Violations violations = getViolations(clazz);
+            Asserts.assertTrue(violations.getFailedMethods().stream().allMatch(msg::contains));
+            Asserts.assertTrue(msg.contains("Violations (" + violations.getViolationCount() + ")"));
             return;
         }
         throw new RuntimeException("Should catch an exception");
     }
+
+    private static Violations getViolations(Class<?> clazz) {
+        Violations violations = new Violations();
+        for (Method m : clazz.getDeclaredMethods()) {
+            NoFail noFail = m.getDeclaredAnnotation(NoFail.class);
+            if (noFail == null) {
+                FailCount failCount = m.getDeclaredAnnotation(FailCount.class);
+                if (failCount != null) {
+                    violations.addFail(m, failCount.value());
+                } else {
+                    violations.addFail(m, 1);
+                }
+            } else {
+                // Cannot define both annotation at the same method.
+                Asserts.assertEQ(m.getDeclaredAnnotation(FailCount.class), null);
+            }
+        }
+        return violations;
+    }
+
 }
 
 class BadArguments {
@@ -105,10 +129,12 @@ class BadArguments {
     @Arguments({Argument.BOOLEAN_TOGGLE_FIRST_FALSE, Argument.TRUE})
     public void notNumber5(boolean a, int b) {}
 
+    @FailCount(2)
     @Test
     @Arguments({Argument.BOOLEAN_TOGGLE_FIRST_FALSE, Argument.NUMBER_42})
     public void notNumber6(int a, boolean b) {}
 
+    @FailCount(2)
     @Test
     @Arguments({Argument.MIN, Argument.MAX})
     public void notNumber7(boolean a, boolean b) {}
@@ -120,6 +146,7 @@ class BadArguments {
 
 class BadOverloadedMethod {
 
+    @FailCount(0) // Combined with both sameName() below
     @Test
     public void sameName() {}
 
@@ -165,6 +192,7 @@ class BadCompilerControl {
     @ForceCompile
     public void mix2() {}
 
+    @NoFail
     @Test
     public void test6() {}
 
@@ -172,6 +200,7 @@ class BadCompilerControl {
     @DontCompile
     public void notAtRun() {}
 
+    @NoFail
     @Test
     public void test7() {}
 
@@ -179,6 +208,7 @@ class BadCompilerControl {
     @ForceCompile
     public void notAtRun2() {}
 
+    @NoFail
     @Test
     public void test8() {}
 
@@ -186,6 +216,7 @@ class BadCompilerControl {
     @DontInline
     public void notAtRun3() {}
 
+    @NoFail
     @Test
     public void test9() {}
 
@@ -193,6 +224,7 @@ class BadCompilerControl {
     @ForceInline
     public void notAtRun4() {}
 
+    @NoFail
     @Test
     public void test10() {}
 
@@ -203,6 +235,7 @@ class BadCompilerControl {
     @DontCompile
     public void notAtRun5() {}
 
+    @NoFail
     @Test
     public void test11() {}
 
@@ -210,6 +243,7 @@ class BadCompilerControl {
     @DontCompile
     public void notAtCheck() {}
 
+    @NoFail
     @Test
     public void test12() {}
 
@@ -217,6 +251,7 @@ class BadCompilerControl {
     @ForceCompile
     public void notAtCheck2() {}
 
+    @NoFail
     @Test
     public void test13() {}
 
@@ -224,6 +259,7 @@ class BadCompilerControl {
     @DontInline
     public void notAtCheck3() {}
 
+    @NoFail
     @Test
     public void test14() {}
 
@@ -231,6 +267,7 @@ class BadCompilerControl {
     @ForceInline
     public void notAtCheck4() {}
 
+    @NoFail
     @Test
     public void test15() {}
 
@@ -240,6 +277,41 @@ class BadCompilerControl {
     @DontInline
     @DontCompile
     public void notAtCheck5() {}
+
+    @ForceCompile(CompLevel.SKIP)
+    public void invalidSkip1() {}
+
+    @DontCompile(CompLevel.SKIP)
+    public void invalidSkip2() {}
+
+    @DontCompile({CompLevel.C1, CompLevel.SKIP})
+    public void invalidSkip3() {}
+
+    @ForceCompile(CompLevel.C1)
+    @DontCompile(CompLevel.C1)
+    public void overlappingCompile1() {}
+
+    @ForceCompile(CompLevel.C2)
+    @DontCompile(CompLevel.C2)
+    public void overlappingCompile2() {}
+
+    @ForceCompile(CompLevel.ANY)
+    @DontCompile(CompLevel.C1)
+    public void invalidMix1() {}
+
+    @ForceCompile(CompLevel.ANY)
+    @DontCompile(CompLevel.C2)
+    public void invalidMix2() {}
+
+    @ForceCompile(CompLevel.ANY)
+    @DontCompile
+    public void invalidMix3() {}
+
+    @DontCompile(CompLevel.C1_LIMITED_PROFILE)
+    public void invalidDontCompile1() {}
+
+    @DontCompile(CompLevel.C1_FULL_PROFILE)
+    public void invalidDontCompile2() {}
 }
 
 class BadWarmup {
@@ -251,6 +323,7 @@ class BadWarmup {
     @Warmup(1)
     public void someTest() {}
 
+    @FailCount(0) // Combined with someTest()
     @Run(test = "someTest")
     @Warmup(1)
     public void twoWarmups() {}
@@ -259,6 +332,7 @@ class BadWarmup {
     @Warmup(-1)
     public void negativeWarmup() {}
 
+    @NoFail
     @Test
     public void someTest2() {}
 
@@ -266,22 +340,25 @@ class BadWarmup {
     @Warmup(-1)
     public void negativeWarmup2() {}
 
+    @NoFail
     @Test
     public void someTest3() {}
 
+    @FailCount(2) // Negative warmup and invoke once
     @Run(test = "someTest2", mode = RunMode.INVOKE_ONCE)
     @Warmup(-1)
     public void noWarmupAtInvokeOnce() {}
-
 }
 
 class BadRunTests {
     @Test
     public void sharedByTwo() {}
 
+    @FailCount(0) // Combined with sharedByTwo()
     @Run(test = "sharedByTwo")
     public void share1() {}
 
+    @FailCount(0) // Combined with sharedByTwo()
     @Run(test = "sharedByTwo")
     public void share2() {}
 
@@ -289,18 +366,21 @@ class BadRunTests {
     public void noTestExists() {}
 
     @Test
-    @Arguments({Argument.DEFAULT})
+    @Arguments(Argument.DEFAULT)
     public void argTest(int x) {}
 
+    @FailCount(0) // Combined with argTest()
     @Run(test = "argTest")
     public void noArgumentAnnotationForRun() {}
 
+    @NoFail
     @Test
     public void test1() {}
 
     @Run(test = "test1")
     public void wrongParameters1(int x) {}
 
+    @NoFail
     @Test
     public void test2() {}
 
@@ -310,16 +390,46 @@ class BadRunTests {
     @Test
     public void invalidShare() {}
 
+    @FailCount(0) // Combined with invalidShare()
     @Run(test = "invalidShare")
     public void shareSameTestTwice1() {}
 
+    @FailCount(0) // Combined with invalidShare()
     @Run(test = "invalidShare")
     public void shareSameTestTwice2() {}
-
-
 }
 
 class ClassNoDefaultConstructor {
     private ClassNoDefaultConstructor(int i) {
     }
 }
+
+// All methods without such an annotation must occur in the violation messages.
+@Retention(RetentionPolicy.RUNTIME)
+@interface NoFail {}
+
+// Specify a fail count for a method without @NoFail. Use the value 0 if multiple methods are part of the same violation.
+@Retention(RetentionPolicy.RUNTIME)
+@interface FailCount {
+    int value();
+}
+
+class Violations {
+    private final List<String> failedMethods = new ArrayList<>();
+    private int violations;
+
+    public int getViolationCount() {
+        return violations;
+    }
+
+    public List<String> getFailedMethods() {
+        return failedMethods;
+    }
+
+    public void addFail(Method m, int count) {
+        failedMethods.add(m.getName());
+        violations += count;
+    }
+}
+
+

@@ -26,7 +26,9 @@ package compiler.valhalla.framework;
 import sun.hotspot.WhiteBox;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class TestInfo {
     private static final Random random = new Random();
@@ -71,25 +73,37 @@ public class TestInfo {
         return testMethod;
     }
 
-//    public boolean isC2Compiled(Method m) {
-//        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == CompLevel.C2.getValue();
-////        return compiledByC2(m) == TriState.Yes;
-//    }
-//
-//    public boolean isCompiledAtLevel(Method m, CompLevel level) {
-//        return WHITE_BOX.isMethodCompiled(m, false) && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue();
-////        return compiledByC2(m) == TriState.Yes;
-//    }
-//
-//    public void assertDeoptimizedByC2(Method m) {
-//        TestRun.check(!isC2Compiled(m) || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized");
-//    }
-//
-//    public void assertCompiledByC2(Method m) {
-//        TestRun.check(isC2Compiled(m), m + " should have been compiled");
-//    }
-//
-//    public void assertCompiledAtLevel(Method m, CompLevel level) {
-//        TestRun.check(isCompiledAtLevel(m, level), m + " should have been compiled at level " + level.name());
-//    }
+    public Method getMethod(Class<?> c, String name, Class<?>... args) {
+        try {
+            return c.getMethod(name, args);
+        } catch (NoSuchMethodException e) {
+            String parameters = args == null || args.length == 0 ? "" :
+                    " with arguments [" + Arrays.stream(args).map(Class::getName).collect(Collectors.joining(",")) + "]";
+            throw new TestRunException("Could not find method " + name + " in " + c + parameters);
+        }
+    }
+
+    public Method getTestClassMethod(String name, Class<?>... args) {
+        return getMethod(testMethod.getDeclaringClass(), name, args);
+    }
+
+    public boolean isC2Compiled(Method m) {
+        return TestFramework.isC2Compiled(testMethod);
+    }
+
+    public boolean isCompiledAtLevel(CompLevel compLevel) {
+        return TestFramework.isCompiledAtLevel(testMethod, compLevel);
+    }
+
+    public void assertDeoptimizedByC2() {
+        TestFramework.assertDeoptimizedByC2(testMethod);
+    }
+
+    public void assertCompiledByC2() {
+        TestFramework.assertCompiledByC2(testMethod);
+    }
+
+    public void assertCompiledAtLevel(CompLevel level) {
+        TestFramework.assertCompiledAtLevel(testMethod, level);
+    }
 }

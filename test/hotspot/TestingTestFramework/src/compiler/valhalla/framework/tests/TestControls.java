@@ -54,6 +54,7 @@ public class TestControls {
         Asserts.assertEQ(executed[10], 1);
         Asserts.assertEQ(executed[11], 2);
         Asserts.assertEQ(executed[12], 1);
+        Asserts.assertEQ(executed[13], 1);
         Asserts.assertFalse(wasExecuted);
         final long started = System.currentTimeMillis();
         long elapsed = 0;
@@ -180,46 +181,93 @@ public class TestControls {
     }
 
     @Test
-    public void testDontCompile3() {
+    public void testCompilation() {
         wasExecuted = true;
+    }
+
+    @DontCompile({CompLevel.C1})
+    public void dontCompileC1() {
+        for (int i = 0; i < 10; i++) {
+            iFld = 3;
+        }
     }
 
     @DontCompile({CompLevel.C1, CompLevel.C1_LIMITED_PROFILE, CompLevel.C1_FULL_PROFILE})
-    public void dontCompile3() {
-        for (int i = 0; i < 100; i++)
-            iFld = 3;
-    }
-
-
-    @Run(test = "testDontCompile3")
-    @Warmup(0)
-    public void runDontCompile3(TestInfo info) {
-        for (int i = 0; i < 10000; i++) {
-            dontCompile3();
+    public void dontCompileC1AllLevels(int x) {
+        for (int i = 0; i < 10; i++) {
+            iFld = x;
         }
-        TestFramework.assertCompiledByC2(info.getTest());
-        executed[13]++;
     }
 
-    @Test
-    public void testDontCompile4() {
+    @DontCompile({CompLevel.C2})
+    public void dontCompileC2(int x, boolean b) {
+        for (int i = 0; i < 10; i++) {
+            iFld = x;
+        }
+    }
+
+    // Default is C2.
+    @ForceCompile
+    public void forceCompileDefault() {
         wasExecuted = true;
     }
 
-    @DontCompile({CompLevel.C1_FULL_PROFILE, CompLevel.C2})
-    public void dontCompile4() {
-        for (int i = 0; i < 100; i++)
-            iFld = 3;
+    // ANY maps to C2.
+    @ForceCompile
+    public void forceCompileAny() {
+        wasExecuted = true;
     }
 
-
-    @Run(test = "testDontCompile4")
-    @Warmup(0)
-    public void runDontCompile4(TestInfo info) {
-        for (int i = 0; i < 10000; i++) {
-            dontCompile4();
+    @DontCompile({CompLevel.ANY})
+    public void dontCompileAny() {
+        for (int i = 0; i < 10; i++) {
+            iFld = i;
         }
-//        TestFramework.assertCompiledByC2(info.getTest());
-        executed[14]++;
+    }
+
+    @ForceCompile(CompLevel.C1)
+    public void forceCompileC1() {
+        wasExecuted = true;
+    }
+
+    @ForceCompile(CompLevel.C1_LIMITED_PROFILE)
+    public void forceCompileC1Limited() {
+        wasExecuted = true;
+    }
+
+    @ForceCompile(CompLevel.C1_FULL_PROFILE)
+    public void forceCompileC1Full() {
+        wasExecuted = true;
+    }
+
+    @ForceCompile(CompLevel.C2)
+    public void forceCompileC2() {
+        wasExecuted = true;
+    }
+
+    @Run(test = "testCompilation")
+    @Warmup(0)
+    public void runTestCompilation(TestInfo info) {
+        for (int i = 0; i < 10000; i++) {
+            dontCompileAny();
+            dontCompileC1();
+            dontCompileC1AllLevels(i);
+            dontCompileC2(i, i % 2 == 0);
+        }
+        TestFramework.assertCompiledByC2(info.getTest());
+        TestFramework.assertNotCompiled(info.getTestClassMethod("dontCompileAny"));
+        Asserts.assertTrue(TestFramework.isC2Compiled(info.getTestClassMethod("dontCompileC1")));
+        Asserts.assertTrue(TestFramework.isC2Compiled(info.getTestClassMethod("dontCompileC1AllLevels", int.class)));
+        Method dontCompileC2 = info.getTestClassMethod("dontCompileC2", int.class, boolean.class);
+        Asserts.assertFalse(TestFramework.isC2Compiled(dontCompileC2));
+        TestFramework.assertCompiled(dontCompileC2);
+
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileDefault"), CompLevel.C2);
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileAny"), CompLevel.C2);
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC2"), CompLevel.C2);
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC1"), CompLevel.C1);
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC1Limited"), CompLevel.C1_LIMITED_PROFILE);
+        TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileC1Full"), CompLevel.C1_FULL_PROFILE);
+        executed[13]++;
     }
 }

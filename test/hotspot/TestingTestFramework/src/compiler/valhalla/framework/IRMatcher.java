@@ -112,12 +112,13 @@ class IRMatcher {
         for (Method m : testClass.getDeclaredMethods()) {
             IR[] irAnnos =  m.getAnnotationsByType(IR.class);
             if (irAnnos.length > 0) {
+                // Validation of legal @IR attributes and placement of the annotation was already done in Test VM.
                 Integer[] ids = irRulesMap.get(m.getName());
                 TestFramework.check(ids != null, "Should find method name in validIrRulesMap for " + m);
                 TestFramework.check(ids.length > 0, "Did not find any rule indices for " + m);
                 TestFramework.check(ids[ids.length - 1] < irAnnos.length, "Invalid IR rule index found in validIrRulesMap for " + m);
                 if (ids[0] != IREncodingPrinter.NO_RULE_APPLIED) {
-                    // If -1, than there was no matching IR rule for given conditions.
+                    // If -1, than there was no matching IR rule for the given conditions.
                     applyRuleToMethod(m, irAnnos, ids);
                 }
             }

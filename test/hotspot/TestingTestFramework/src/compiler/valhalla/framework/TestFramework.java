@@ -667,7 +667,7 @@ public class TestFramework {
     private void addTest(Method m) {
         Test testAnno = getAnnotation(m, Test.class);
         checkTestAnnotations(m, testAnno);
-
+        checkIRAnnotations(m);
         Warmup warmup = getAnnotation(m, Warmup.class);
         int warmupIterations = WARMUP_ITERATIONS;
         if (warmup != null) {
@@ -704,8 +704,29 @@ public class TestFramework {
         TestFormat.check(checkAnno == null && runAnno == null,
                          m + " has invalid @Check or @Run annotation while @Test annotation is present.");
 
-        TestFormat.check(!Arrays.asList(m.getParameterTypes()).contains(TestInfo.class),
-                         "Forbidden use of " + TestInfo.class + " as parameter at @Test method " + m);
+        TestFormat.checkNoThrow(!Arrays.asList(m.getParameterTypes()).contains(TestInfo.class),
+                         "Cannot use of " + TestInfo.class + " as parameter type at @Test method " + m);
+
+        TestFormat.checkNoThrow(!m.getReturnType().equals(TestInfo.class),
+                         "Cannot use of " + TestInfo.class + " as return type at @Test method " + m);
+    }
+
+
+    private void checkIRAnnotations(Method m) {
+        IR[] irAnnos =  m.getAnnotationsByType(IR.class);
+        if (irAnnos.length == 0) {
+            return;
+        }
+        int i = 1;
+        for (IR ir : irAnnos) {
+            TestFormat.checkNoThrow(ir.counts().length != 0 || ir.failOn().length != 0,
+                                    "Must specify either counts or failOn constraint for @IR rule " + i + " at " + m);
+            System.out.println(Stream.of(ir.applyIf(), ir.applyIfNot(), ir.applyIfAnd(), ir.applyIfOr()).filter(a -> a.length != 0).count());
+            TestFormat.checkNoThrow(Stream.of(ir.applyIf(), ir.applyIfNot(), ir.applyIfAnd(), ir.applyIfOr()).filter(a -> a.length != 0).count() <= 1,
+                                    "Can only specify one apply constraint (applyIf, applyIfNot, applyIfAnd, applyIfOr) " +
+                                    "for @Ir rule " + i + " at " + m);
+            i++;
+        }
     }
 
 
@@ -783,16 +804,11 @@ public class TestFramework {
             default -> TestFormat.fail("@Check method " + m + " must provide either a none, single or two-parameter variant.");
         }
 
-        if (allTests.containsKey(testMethod)) {
-            TestFormat.fail("Method " + m + " and " + allTests.get(testMethod).getTestName()
-                            + " cannot both reference test method " + testMethod);
-        }
-
-        DeclaredTest test = declaredTests.remove(testMethod);
-        TestFormat.check(test != null, "Missing @Test annotation for associated test method " + checkAnno.test() + " for @Check at " + m);
+        DeclaredTest test = declaredTests.get(testMethod);
+        TestFormat.check(test != null, "Missing @Test annotation for associated test method " + testMethod + " for @Check at " + m);
         Method attachedMethod = test.getAttachedMethod();
         TestFormat.check(attachedMethod == null,
-                         "Cannot use @Test " + testMethod + " for more than one @Run/@Check method. Found: " + m + ", " + attachedMethod);
+                         "Cannot use @Test " + testMethod + " for more than one @Run or one @Check method. Found: " + m + ", " + attachedMethod);
         dontCompileMethod(m);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
@@ -812,7 +828,7 @@ public class TestFramework {
     }
 
     private void checkCustomRunTest(Method m, Run runAnno, Method testMethod, DeclaredTest test) {
-        TestFormat.check(testMethod != null, "Did not find associated test method \""  + m.getDeclaringClass().getName()
+        TestFormat.check(testMethod != null, "Did not find associated @Test method \""  + m.getDeclaringClass().getName()
                                              + "." + runAnno.test() + "\" specified in @Run at " + m);
         TestFormat.check(test != null, "Missing @Test annotation for associated test method " + runAnno.test() + " for @Run at " + m);
         Method attachedMethod = test.getAttachedMethod();

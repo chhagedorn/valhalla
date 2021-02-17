@@ -28,6 +28,6 @@ import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Run {
-    String test() default "";
+    String test();
     RunMode mode() default RunMode.NORMAL;
 }

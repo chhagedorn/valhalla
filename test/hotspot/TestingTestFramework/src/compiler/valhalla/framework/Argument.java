@@ -24,15 +24,48 @@
 package compiler.valhalla.framework;
 
 public enum Argument {
+    /**
+     * Provides the default value for any kind of primitive type and objects type if the class provides a default constructor.
+     */
     DEFAULT,
-    NUMBER_MINUS_42,
+    /**
+     * Provides the number 42 for any primitive number type.
+     */
     NUMBER_42,
-    BOOLEAN_TOGGLE_FIRST_FALSE,
-    BOOLEAN_TOGGLE_FIRST_TRUE,
-    TRUE,
-    FALSE,
-    RANDOM_ONCE,
-    RANDOM_EACH,
+    /**
+     * Provides the number -42 for any primitive number type.
+     */
+    NUMBER_MINUS_42,
+    /**
+     * Provides the minimum value of the specified primitive number type.
+     */
+    MIN,
+    /**
+     * Provides the maximum value of the specified primitive number type.
+     */
     MAX,
-    MIN
+    /**
+     * Provides the boolean value false.
+     */
+    FALSE,
+    /**
+     * Provides the boolean value true.
+     */
+    TRUE,
+    /**
+     * Provides a different boolean value on each test invocation, starting with false.
+     */
+    BOOLEAN_TOGGLE_FIRST_FALSE,
+    /**
+     * Provides a different boolean value on each test invocation, starting with true.
+     */
+    BOOLEAN_TOGGLE_FIRST_TRUE,
+    /**
+     * Provides a random primitive value on the first test invocation and reuses the same value for all invocation of the test.
+     */
+    RANDOM_ONCE,
+    /**
+     * Provides a different random primitive value on each test invocation.
+     */
+    RANDOM_EACH
 }

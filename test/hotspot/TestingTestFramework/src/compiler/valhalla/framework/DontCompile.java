@@ -26,8 +26,21 @@ package compiler.valhalla.framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-// Prevent method compilation
+/**
+ * Prevent compilation of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}):
+ *
+ * <ul>
+ *     <li><p>{@link CompLevel#ANY} (default): No C1 or C2 compilation.</li>
+ *     <li><p>{@link CompLevel#C1}: No C1 compilation, C2 compilation still possible.</li>
+ *     <li><p>{@link CompLevel#C2}: No C2 compilation, C1 compilation still possible.</li>
+ *     <li><p>The usage of any other compilation level is forbidden and results in a
+ *     {@link TestFormatException TestFormatException}.</li>
+ * </ul>
+ * <p>
+ * Using this annotation on <i>non-helper</i> methods results in a {@link TestFormatException TestFormatException}.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface DontCompile {
-    CompLevel[] value() default {};
+    CompLevel value() default CompLevel.ANY;
 }

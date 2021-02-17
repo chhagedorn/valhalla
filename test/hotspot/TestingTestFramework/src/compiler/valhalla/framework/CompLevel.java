@@ -32,10 +32,11 @@ public enum CompLevel {
      */
     SKIP(-3),
     /**
-     *  Any compilation level:
+     *  Use any compilation level depending on the usage:
      *  <ul>
-     *      <li>Defaults to C2 for {@link Test @Test} and {@link ForceCompile @ForceCompile}.</li>
-     *      <li>Excludes all compilations for {@link DontCompile @DontCompile}.</li>
+     *      <li><p>{@link Test @Test}, {@link ForceCompile @ForceCompile}: Use the highest available compilation level
+     *      which is usually C2.</li>
+     *      <li><p>{@link DontCompile @DontCompile}: Prevents any compilation of the associated helper method.</li>
      *  </ul>
      */
     ANY(-2),

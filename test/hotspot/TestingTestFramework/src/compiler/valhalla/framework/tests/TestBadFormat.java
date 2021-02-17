@@ -40,13 +40,13 @@ public class TestBadFormat {
     public static void main(String[] args) throws NoSuchMethodException {
         runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-//        expectTestFormatException(BadArgumentsAnnotation.class);
-//        expectTestFormatException(BadOverloadedMethod.class);
-//        expectTestFormatException(BadCompilerControl.class);
-//        expectTestFormatException(BadWarmup.class);
-//        expectTestFormatException(BadBaseTests.class);
-//        expectTestFormatException(BadRunTests.class);
-//        expectTestFormatException(BadCheckTest.class);
+        expectTestFormatException(BadArgumentsAnnotation.class);
+        expectTestFormatException(BadOverloadedMethod.class);
+        expectTestFormatException(BadCompilerControl.class);
+        expectTestFormatException(BadWarmup.class);
+        expectTestFormatException(BadBaseTests.class);
+        expectTestFormatException(BadRunTests.class);
+        expectTestFormatException(BadCheckTest.class);
         expectTestFormatException(BadIRAnnotations.class);
     }
 
@@ -63,7 +63,6 @@ public class TestBadFormat {
                 Asserts.fail("Unexpected exception: " + cause);
             }
             String msg = cause.getMessage();
-
             Violations violations = getViolations(clazz);
             violations.getFailedMethods().forEach(f -> Asserts.assertTrue(msg.contains(f), "Could not find " + f + " in violations"));
             Pattern pattern = Pattern.compile("Violations \\((\\d+)\\)");
@@ -292,9 +291,6 @@ class BadCompilerControl {
 
     @DontCompile(CompLevel.SKIP)
     public void invalidSkip2() {}
-
-    @DontCompile({CompLevel.C1, CompLevel.SKIP})
-    public void invalidSkip3() {}
 
     @ForceCompile(CompLevel.C1)
     @DontCompile(CompLevel.C1)

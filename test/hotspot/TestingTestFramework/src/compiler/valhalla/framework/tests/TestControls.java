@@ -90,7 +90,7 @@ public class TestControls {
     }
 
     @Check(test = "test2", when = CheckAt.COMPILED)
-    public void check2(TestInfo info) throws NoSuchMethodException{
+    public void check2(TestInfo info) {
         Asserts.assertTrue(!info.isWarmUp() && executed[1] == 101);
         TestFramework.assertCompiledByC2(info.getTest());
     }
@@ -141,7 +141,7 @@ public class TestControls {
         executed[6]++;
     }
 
-    @DontCompile({CompLevel.C1, CompLevel.C2})
+    @DontCompile(CompLevel.ANY)
     public static void dontCompile2() {
         executed[7]++;
     }
@@ -206,13 +206,6 @@ public class TestControls {
         }
     }
 
-    @DontCompile({CompLevel.C1, CompLevel.C2})
-    public void dontCompileC1C2(int x) {
-        for (int i = 0; i < 10; i++) {
-            iFld = x;
-        }
-    }
-
     // Default is C2.
     @ForceCompile
     public void forceCompileDefault() {
@@ -264,12 +257,10 @@ public class TestControls {
             dontCompileAny();
             dontCompileC1();
             dontCompileC2(i, i % 2 == 0);
-            dontCompileC1C2(i);
         }
         TestFramework.assertCompiledByC2(info.getTest());
         TestFramework.assertNotCompiled(info.getTestClassMethod("dontCompileAny"));
         TestFramework.assertCompiledByC2(info.getTestClassMethod("dontCompileC1"));
-        TestFramework.assertNotCompiled(info.getTestClassMethod("dontCompileC1C2", int.class));
         TestFramework.assertCompiledByC1(info.getTestClassMethod("dontCompileC2", int.class, boolean.class));
 
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceCompileDefault"), CompLevel.C2);

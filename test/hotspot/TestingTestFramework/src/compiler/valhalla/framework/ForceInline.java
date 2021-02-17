@@ -26,7 +26,11 @@ package compiler.valhalla.framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-// Force method inlining during compilation
+/**
+ * Force inlining of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}). Using this annotation on <i>non-helper</i> methods
+ * results in a {@link TestFormatException TestFormatException}.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ForceInline {
 }

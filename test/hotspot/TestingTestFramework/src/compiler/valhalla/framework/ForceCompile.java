@@ -26,7 +26,23 @@ package compiler.valhalla.framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-// Force method compilation
+/**
+ * Force compilation of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}) immediately at the specified level:
+ * <ul>
+ *     <li><p>{@link CompLevel#ANY} (default): Highest available compilation level which is usually C2.</li>
+ *     <li><p>{@link CompLevel#C1}: Level 1: C1 compilation without any profile information. </li>
+ *     <li><p>{@link CompLevel#C1_LIMITED_PROFILE}: Level 2: C1 compilation with limited profile information:
+ *     Includes Invocation and backedge counters.</li>
+ *     <li><p>{@link CompLevel#C1_FULL_PROFILE}: Level 3: C1 compilation with full profile information:
+ *     Includes Invocation and backedge counters with MDO.</li>
+ *     <li><p>{@link CompLevel#C2}: Level 4: C2 compilation with full optimizations.</li>
+ *     <li><p>{@link CompLevel#SKIP}: Does not apply to {@link ForceCompile @ForceCompile} and results in a
+ *     {@link TestFormatException TestFormatException}.</li>
+ * </ul>
+ * <p>
+ *  Using this annotation on <i>non-helper</i> methods results in a {@link TestFormatException TestFormatException}.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ForceCompile {
     CompLevel value() default CompLevel.C2;

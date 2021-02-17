@@ -27,6 +27,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 // Prevent method inlining during compilation
+/**
+ * Prevent inlining of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}). <i>Non-helper</i> methods are never inlined.
+ * Explicitly using this annotation on <i>non-helper</i> methods results in a
+ * {@link TestFormatException TestFormatException}.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface DontInline {
 }

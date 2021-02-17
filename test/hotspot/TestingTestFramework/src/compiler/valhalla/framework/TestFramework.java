@@ -563,16 +563,11 @@ public class TestFramework {
             WHITE_BOX.testSetForceInlineMethod(m, true);
         }
         if (dontCompileAnno != null) {
-            if (dontCompileAnno.value().length == 0) {
-                dontCompileMethod(m);
-            } else {
-                for (CompLevel compLevel : dontCompileAnno.value()) {
-                    TestFormat.check(compLevel == CompLevel.C1 || compLevel == CompLevel.C2 || compLevel == CompLevel.ANY,
-                                     "Can only specify compilation level C1 (no individual C1 levels), " +
-                                     "C2 or ANY (no compilation, same as specifying anything) in @DontCompile at " + m);
-                    dontCompileMethodAtLevel(m, compLevel);
-                }
-            }
+            CompLevel compLevel = dontCompileAnno.value();
+            TestFormat.check(compLevel == CompLevel.C1 || compLevel == CompLevel.C2 || compLevel == CompLevel.ANY,
+                             "Can only specify compilation level C1 (no individual C1 levels), " +
+                             "C2 or ANY (no compilation, same as specifying anything) in @DontCompile at " + m);
+            dontCompileMethodAtLevel(m, compLevel);
         }
     }
 
@@ -592,12 +587,12 @@ public class TestFramework {
         TestFormat.check(forceInlineAnno == null || dontInlineAnno == null, "Cannot have @ForceInline and @DontInline at the same time at " + m);
         if (forceCompileAnno != null && dontCompileAnno != null) {
             CompLevel forceCompile = forceCompileAnno.value();
-            CompLevel[] dontCompile = dontCompileAnno.value();
-            TestFormat.check(dontCompile.length != 0,
-                             "Cannot have @ForceCompile and default @DontCompile (CompLevel.ANY) at the same time at " + m);
+            CompLevel dontCompile = dontCompileAnno.value();
+            TestFormat.check(dontCompile != CompLevel.ANY,
+                             "Cannot have @DontCompile(CompLevel.ANY) and @ForceCompile at the same time at " + m);
             TestFormat.check(forceCompile != CompLevel.ANY,
                              "Cannot have @ForceCompile(CompLevel.ANY) and @DontCompile at the same time at " + m);
-            TestFormat.check(Arrays.stream(dontCompile).noneMatch(a -> CompLevel.overlapping(a, forceCompile)),
+            TestFormat.check(!CompLevel.overlapping(dontCompile, forceCompile),
                              "Overlapping compilation levels with @ForceCompile and @DontCompile at " + m);
         }
     }
@@ -721,7 +716,6 @@ public class TestFramework {
         for (IR ir : irAnnos) {
             TestFormat.checkNoThrow(ir.counts().length != 0 || ir.failOn().length != 0,
                                     "Must specify either counts or failOn constraint for @IR rule " + i + " at " + m);
-            System.out.println(Stream.of(ir.applyIf(), ir.applyIfNot(), ir.applyIfAnd(), ir.applyIfOr()).filter(a -> a.length != 0).count());
             TestFormat.checkNoThrow(Stream.of(ir.applyIf(), ir.applyIfNot(), ir.applyIfAnd(), ir.applyIfOr()).filter(a -> a.length != 0).count() <= 1,
                                     "Can only specify one apply constraint (applyIf, applyIfNot, applyIfAnd, applyIfOr) " +
                                     "for @Ir rule " + i + " at " + m);
@@ -736,8 +730,8 @@ public class TestFramework {
             return CompLevel.SKIP;
         }
         if (compLevel == CompLevel.ANY) {
-            // Use C2 by default.
-            compLevel = CompLevel.C2;
+            // Use highest available compilation level by default (usually C2).
+            compLevel = TIERED_COMPILATION_STOP_AT_LEVEL;
         }
         if (!TIERED_COMPILATION && compLevel.getValue() < CompLevel.C2.getValue()) {
             return CompLevel.SKIP;
@@ -911,10 +905,7 @@ public class TestFramework {
             return triState;
         }
         triState = compiledAtLevel(m, CompLevel.C1_FULL_PROFILE);
-        if (triState != TriState.No) {
-            return triState;
-        }
-        return TriState.No;
+        return triState;
     }
 
     private static TriState compiledByC2(Method m) {

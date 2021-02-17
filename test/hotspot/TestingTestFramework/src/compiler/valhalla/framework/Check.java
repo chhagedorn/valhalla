@@ -28,6 +28,6 @@ import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Check {
-    String test() default "";
+    String test();
     CheckAt when() default CheckAt.EACH_INVOCATION;
 }

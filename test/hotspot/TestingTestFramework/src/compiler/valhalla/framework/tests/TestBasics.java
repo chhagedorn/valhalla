@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 public class TestBasics {
     private static boolean wasExecuted = false;
     private boolean lastToggleBoolean = true;
-    private final static int[] executed = new int[94];
+    private final static int[] executed = new int[96];
     private final static int[] executedOnce = new int[5];
     private long[] nonFloatingRandomNumbers = new long[10];
     private double[] floatingRandomNumbers = new double[10];
@@ -840,6 +840,21 @@ public class TestBasics {
     }
 
     @Test
+    @Arguments(Argument.NUMBER_42)
+    public short testCheckWithArgs(short x) {
+        executed[94]++;
+        return x;
+    }
+
+    @Check(test = "testCheckWithArgs")
+    public void checkTestCheckWithArgs(short returnValue) {
+        if (returnValue != 42) {
+            throw new RuntimeException("Must be 42");
+        }
+        executed[95]++; // Executed on each invocation
+    }
+
+    @Test
     public int testCheckTestInfo() {
         executed[67]++;
         return 3;
@@ -934,6 +949,11 @@ public class TestBasics {
         executed[77]++;
     }
 
+
+    /*
+     * Custom run tests.
+     */
+
     @Test
     public void sameName2() {
         executed[92]++;
@@ -945,10 +965,6 @@ public class TestBasics {
         executed[93]++;
         sameName2();
     }
-
-    /*
-     * Custom run tests.
-     */
 
     @Test
     public void testRun() {

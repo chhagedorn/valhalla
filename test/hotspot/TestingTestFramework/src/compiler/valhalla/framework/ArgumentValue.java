@@ -109,6 +109,16 @@ class ArgumentValue {
                                          "Provided invalid MAX argument for non-number " + parameterObj + " for " + m);
                         arguments[i] = createMax(parameter);
                     }
+                    case FALSE -> {
+                        TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                         "Provided invalid FALSE argument for non-boolean " + parameterObj + " for " + m);
+                        arguments[i] = create(false);
+                    }
+                    case TRUE -> {
+                        TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                         "Provided invalid TRUE argument for non-boolean " + parameterObj + " for " + m);
+                        arguments[i] = create(true);
+                    }
                     case BOOLEAN_TOGGLE_FIRST_FALSE -> {
                         TestFormat.check(isBoolean(parameter),
                                          "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameterObj + " for " + m);
@@ -118,16 +128,6 @@ class ArgumentValue {
                         TestFormat.check(ArgumentValue.isBoolean(parameter),
                                          "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameterObj + " for " + m);
                         arguments[i] = createToggleBoolean(true);
-                    }
-                    case TRUE -> {
-                        TestFormat.check(ArgumentValue.isBoolean(parameter),
-                                         "Provided invalid TRUE argument for non-boolean " + parameterObj + " for " + m);
-                        arguments[i] = create(true);
-                    }
-                    case FALSE -> {
-                        TestFormat.check(ArgumentValue.isBoolean(parameter),
-                                         "Provided invalid FALSE argument for non-boolean " + parameterObj + " for " + m);
-                        arguments[i] = create(false);
                     }
                     case RANDOM_ONCE -> {
                         TestFormat.check(isPrimitiveType(parameter),

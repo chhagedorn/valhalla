@@ -40,7 +40,7 @@ public class TestInfo {
     private boolean onWarmUp = true;
     private final Method testMethod;
 
-    public TestInfo(Method testMethod) {
+    TestInfo(Method testMethod) {
         this.testMethod = testMethod;
     }
 

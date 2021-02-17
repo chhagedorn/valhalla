@@ -31,6 +31,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TestBadFormat {
 
@@ -38,11 +40,14 @@ public class TestBadFormat {
     public static void main(String[] args) throws NoSuchMethodException {
         runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
-        expectTestFormatException(BadArguments.class);
-        expectTestFormatException(BadOverloadedMethod.class);
-        expectTestFormatException(BadCompilerControl.class);
-        expectTestFormatException(BadWarmup.class);
-        expectTestFormatException(BadRunTests.class);
+//        expectTestFormatException(BadArgumentsAnnotation.class);
+//        expectTestFormatException(BadOverloadedMethod.class);
+//        expectTestFormatException(BadCompilerControl.class);
+//        expectTestFormatException(BadWarmup.class);
+//        expectTestFormatException(BadBaseTests.class);
+//        expectTestFormatException(BadRunTests.class);
+//        expectTestFormatException(BadCheckTest.class);
+        expectTestFormatException(BadIRAnnotations.class);
     }
 
     private static void expectTestFormatException(Class<?> clazz) {
@@ -60,8 +65,12 @@ public class TestBadFormat {
             String msg = cause.getMessage();
 
             Violations violations = getViolations(clazz);
-            Asserts.assertTrue(violations.getFailedMethods().stream().allMatch(msg::contains));
-            Asserts.assertTrue(msg.contains("Violations (" + violations.getViolationCount() + ")"));
+            violations.getFailedMethods().forEach(f -> Asserts.assertTrue(msg.contains(f), "Could not find " + f + " in violations"));
+            Pattern pattern = Pattern.compile("Violations \\((\\d+)\\)");
+            Matcher matcher = pattern.matcher(msg);
+            Asserts.assertTrue(matcher.find(), "Could not find violations");
+            int violationCount = Integer.parseInt(matcher.group(1));
+            Asserts.assertEQ(violationCount, violations.getViolationCount());
             return;
         }
         throw new RuntimeException("Should catch an exception");
@@ -88,7 +97,7 @@ public class TestBadFormat {
 
 }
 
-class BadArguments {
+class BadArgumentsAnnotation {
 
     @Test
     public void noArgAnnotation(int a) {}
@@ -140,7 +149,7 @@ class BadArguments {
     public void notNumber7(boolean a, boolean b) {}
 
     @Test
-    @Arguments({Argument.DEFAULT})
+    @Arguments(Argument.DEFAULT)
     public void missingDefaultConstructor(ClassNoDefaultConstructor a) {}
 }
 
@@ -350,7 +359,22 @@ class BadWarmup {
     public void noWarmupAtInvokeOnce() {}
 }
 
+class BadBaseTests {
+    @Test
+    @Arguments(Argument.DEFAULT)
+    @FailCount(3) // No default constructor + parameter + return
+    public TestInfo cannotUseTestInfoAsParameterOrReturn(TestInfo info) {
+        return null;
+    }
+}
+
 class BadRunTests {
+    @Run(test = "runForRun2")
+    public void runForRun() {}
+
+    @Run(test = "runForRun")
+    public void runForRun2() {}
+
     @Test
     public void sharedByTwo() {}
 
@@ -397,6 +421,156 @@ class BadRunTests {
     @FailCount(0) // Combined with invalidShare()
     @Run(test = "invalidShare")
     public void shareSameTestTwice2() {}
+
+    @Test
+    public void invalidShareCheckRun() {}
+
+    @FailCount(0) // Combined with invalidShare()
+    @Run(test = "invalidShareCheckRun")
+    public void invalidShareCheckRun1() {}
+
+    @FailCount(0) // Combined with invalidShare()
+    @Check(test = "invalidShareCheckRun")
+    public void invalidShareCheckRun2() {}
+
+    @NoFail
+    @Test
+    public void testInvalidRunWithArgAnnotation() {}
+
+    @Arguments(Argument.DEFAULT)
+    @Run(test = "testInvalidRunWithArgAnnotation")
+    public void invalidRunWithArgAnnotation(TestInfo info) {}
+}
+
+class BadCheckTest {
+    @Check(test = "checkForCheck2")
+    public void checkForCheck() {}
+
+    @Check(test = "checkForCheck")
+    public void checkForCheck2() {}
+
+    @Test
+    public void sharedByTwo() {}
+
+    @FailCount(0) // Combined with sharedByTwo()
+    @Check(test = "sharedByTwo")
+    public void share1() {}
+
+    @FailCount(0) // Combined with sharedByTwo()
+    @Check(test = "sharedByTwo")
+    public void share2() {}
+
+    @Check(test = "doesNotExist")
+    public void noTestExists() {}
+
+    @NoFail
+    @Test
+    public void test1() {}
+
+    @Check(test = "test1")
+    public void wrongReturnParameter1(int x) {}
+
+    @NoFail
+    @Test
+    public short test2() {
+        return 3;
+    }
+
+    @Check(test = "test2")
+    public void wrongReturnParameter2(int x) {}
+
+    @NoFail
+    @Test
+    public short test3() {
+        return 3;
+    }
+
+    @Check(test = "test3")
+    public void wrongReturnParameter3(String x) {}
+
+    @NoFail
+    @Test
+    public short test4() {
+        return 3;
+    }
+
+    @Check(test = "test4")
+    public void wrongReturnParameter4(TestInfo info, int x) {} // Must flip parameters
+
+    @NoFail
+    @Test
+    public int test5() {
+        return 3;
+    }
+
+    @Check(test = "test5")
+    public void wrongReturnParameter5(short x, TestInfo info) {}
+
+    @Test
+    public void invalidShare() {}
+
+    @FailCount(0) // Combined with invalidShare()
+    @Check(test = "invalidShare")
+    public void shareSameTestTwice1() {}
+
+    @FailCount(0) // Combined with invalidShare()
+    @Check(test = "invalidShare")
+    public void shareSameTestTwice2() {}
+
+    @NoFail
+    @Test
+    public void testInvalidRunWithArgAnnotation() {}
+
+    @Arguments(Argument.DEFAULT)
+    @Check(test = "testInvalidRunWithArgAnnotation")
+    public void invalidRunWithArgAnnotation(TestInfo info) {}
+}
+
+class BadIRAnnotations {
+
+    @IR(failOn = IRNode.CALL)
+    public void noIRAtNonTest() {}
+
+    @NoFail
+    @Test
+    public void test() {}
+
+    @Run(test = "test")
+    @IR(failOn = IRNode.CALL)
+    public void noIRAtRun() {}
+
+    @NoFail
+    @Test
+    public void test2() {}
+
+    @Check(test = "test2")
+    @IR(failOn = IRNode.CALL)
+    public void noIRAtCheck() {}
+
+    @Test
+    @IR
+    public void mustSpecifyAtLeastOneConstraint() {
+    }
+
+    @FailCount(2)
+    @Test
+    @IR
+    @IR
+    public void mustSpecifyAtLeastOneConstraint2() {
+    }
+
+    @Test
+    @IR(applyIf = {"SuspendRetryCount", "50"})
+    public void mustSpecifyAtLeastOneConstraint3() {
+    }
+
+    @FailCount(3)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}, applyIfNot = {"SuspendRetryCount", "50"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "50"}, applyIfOr = {"SuspendRetryCount", "50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}, applyIfNot = {"SuspendRetryCount", "50"}, applyIfAnd = {"SuspendRetryCount", "50"}, applyIfOr = {"SuspendRetryCount", "50"})
+    public void onlyOneApply() {
+    }
 }
 
 class ClassNoDefaultConstructor {
@@ -404,10 +578,12 @@ class ClassNoDefaultConstructor {
     }
 }
 
+// Test specific annotation:
 // All methods without such an annotation must occur in the violation messages.
 @Retention(RetentionPolicy.RUNTIME)
 @interface NoFail {}
 
+// Test specific annotation:
 // Specify a fail count for a method without @NoFail. Use the value 0 if multiple methods are part of the same violation.
 @Retention(RetentionPolicy.RUNTIME)
 @interface FailCount {
@@ -431,5 +607,3 @@ class Violations {
         violations += count;
     }
 }
-
-

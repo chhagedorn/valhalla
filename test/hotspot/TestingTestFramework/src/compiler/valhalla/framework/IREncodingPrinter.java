@@ -34,14 +34,17 @@ import java.util.function.Function;
 
 // Only used by TestVM
 class IREncodingPrinter {
+    public static final String START = "##### IRMatchRulesEncoding - used by TestFramework #####";
+    public static final String END = "----- END -----";
+    public static final int NO_RULE_APPLIED = -1;
     private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
     private static final List<Function<String, Object>> longGetters = Arrays.asList(
             WHITE_BOX::getIntVMFlag, WHITE_BOX::getUintVMFlag, WHITE_BOX::getIntxVMFlag,
             WHITE_BOX::getUintxVMFlag, WHITE_BOX::getUint64VMFlag, WHITE_BOX::getSizeTVMFlag);
-    public static final String START = "##### IRMatchRulesEncoding - used by TestFramework #####";
-    public static final String END = "----- END -----";
-    public static final int NO_RULE_APPLIED = -1;
     private final StringBuilder output = new StringBuilder();
+
+    private Method method;
+    private int ruleIndex;
 
     public IREncodingPrinter() {
         output.append(START).append("\n");
@@ -54,12 +57,18 @@ class IREncodingPrinter {
      * - "-1" if no @IR rule should not be applied
      */
     public void emitRuleEncoding(Method m) {
+        method = m;
         int i = 0;
         ArrayList<Integer> validRules = new ArrayList<>();
         IR[] irAnnos = m.getAnnotationsByType(IR.class);
         for (IR irAnno : irAnnos) {
-            if (shouldApplyIrRule(m, irAnno)) {
-                validRules.add(i);
+            ruleIndex = i + 1;
+            try {
+                if (shouldApplyIrRule(irAnno)) {
+                    validRules.add(i);
+                }
+            } catch (TestFormatException e) {
+                // Catch logged failure and continue to check other IR annotations.
             }
             i++;
         }
@@ -76,140 +85,194 @@ class IREncodingPrinter {
         }
     }
 
-    public void dump() {
-        output.append(END);
-        System.out.println(output.toString());
-    }
-
-    private boolean shouldApplyIrRule(Method m, IR irAnnotation) {
-        checkAnnotation(m, irAnnotation);
-        if (irAnnotation.applyIf().length != 0) {
-            return hasAllRequiredFlags(m, irAnnotation.applyIf(), "applyIf");
+    private boolean shouldApplyIrRule(IR irAnno) {
+        checkIRAnnotations(irAnno);
+        if (irAnno.applyIf().length != 0) {
+            return hasAllRequiredFlags(irAnno.applyIf(), "applyIf");
         }
 
-        if (irAnnotation.applyIfNot().length != 0) {
-            return hasNoRequiredFlags(m, irAnnotation.applyIfNot(), "applyIfNot");
+        if (irAnno.applyIfNot().length != 0) {
+            return hasNoRequiredFlags(irAnno.applyIfNot(), "applyIfNot");
         }
 
-        if (irAnnotation.applyIfAnd().length != 0) {
-            return hasAllRequiredFlags(m, irAnnotation.applyIfAnd(), "applyIfAnd");
+        if (irAnno.applyIfAnd().length != 0) {
+            return hasAllRequiredFlags(irAnno.applyIfAnd(), "applyIfAnd");
         }
 
-        if (irAnnotation.applyIfOr().length != 0) {
-            return !hasNoRequiredFlags(m, irAnnotation.applyIfOr(), "applyIfOr");
+        if (irAnno.applyIfOr().length != 0) {
+            return !hasNoRequiredFlags(irAnno.applyIfOr(), "applyIfOr");
         }
         // No conditions, always apply.
         return true;
     }
 
-    private static void checkAnnotation(Method m, IR irAnnotation) {
+    private void checkIRAnnotations(IR irAnno) {
+        TestFormat.checkNoThrow(irAnno.counts().length != 0 || irAnno.failOn().length != 0,
+                                "Must specify either counts or failOn constraint" + failAt());
         int applyRules = 0;
-        if (irAnnotation.applyIfAnd().length != 0) {
+        if (irAnno.applyIfAnd().length != 0) {
             applyRules++;
-            TestFormat.check(irAnnotation.applyIfAnd().length > 2,
-                             "Use [applyIf|applyIfNot] or at least 2 conditions for applyIfAnd in @IR at " + m);
+            TestFormat.checkNoThrow(irAnno.applyIfAnd().length > 2,
+                                    "Use applyIf or applyIfNot or at least 2 conditions for applyIfAnd" + failAt());
         }
-        if (irAnnotation.applyIfOr().length != 0) {
+        if (irAnno.applyIfOr().length != 0) {
             applyRules++;
-            TestFormat.check(irAnnotation.applyIfOr().length > 2,
-                             "Use [applyIf|applyIfNot] or at least 2 conditions for applyIfOr in @IR at " + m);
+            TestFormat.checkNoThrow(irAnno.applyIfOr().length > 2,
+                                    "Use applyIf or applyIfNot or at least 2 conditions for applyIfOr" + failAt());
         }
-        if (irAnnotation.applyIf().length != 0) {
+        if (irAnno.applyIf().length != 0) {
             applyRules++;
-            TestFormat.check(irAnnotation.applyIf().length <= 2,
-                             "Use [applyIfAnd|applyIfOr] or only 1 condition for applyIf in @IR at " + m);
+            TestFormat.checkNoThrow(irAnno.applyIf().length <= 2,
+                                    "Use applyIfAnd or applyIfOr or only 1 condition for applyIf" + failAt());
         }
-        if (irAnnotation.applyIfNot().length != 0) {
+        if (irAnno.applyIfNot().length != 0) {
             applyRules++;
-            TestFormat.check(irAnnotation.applyIfNot().length <= 2,
-                             "Use [applyIfAnd|applyIfOr] or only 1 condition for applyIfNot in @IR at " + m);
+            TestFormat.checkNoThrow(irAnno.applyIfNot().length <= 2,
+                                    "Use applyIfAnd or applyIfOr or only 1 condition for applyIfNot" + failAt());
         }
-        TestFormat.check(applyRules <= 1, "Can only use one of [applyIf|applyIfNot|applyIfAnd|applyIfOr] in @IR at " + m);
+        TestFormat.checkNoThrow(applyRules <= 1,
+                                "Can only specify one apply constraint " + failAt());
+
     }
 
-    private boolean hasAllRequiredFlags(Method m, String[] andRules, String ruleType) {
+    private boolean hasAllRequiredFlags(String[] andRules, String ruleType) {
+        boolean returnValue = true;
         for (int i = 0; i < andRules.length; i++) {
-            String flag = andRules[i];
+            String flag = andRules[i].trim();
             i++;
-            TestFormat.check(i < andRules.length, "Missing value for flag " + flag + " in " + ruleType + " for @IR at " + m);
-            String value = andRules[i];
-            if (!check(m, flag, value)) {
-                return false;
+            TestFormat.check(i < andRules.length, "Missing value for flag " + flag + " in " + ruleType + failAt());
+            String value = andRules[i].trim();
+            if (!check(flag, value) && returnValue) {
+                // Rule will not be applied but keep processing the other flags to verify that they are sane.
+                returnValue = false;
             }
         }
-        return true;
+        return returnValue;
     }
 
-    private boolean hasNoRequiredFlags(Method m, String[] orRules, String ruleType) {
+    private boolean hasNoRequiredFlags(String[] orRules, String ruleType) {
+        boolean returnValue = true;
         for (int i = 0; i < orRules.length; i++) {
             String flag = orRules[i];
             i++;
-            TestFormat.check(i < orRules.length, "Missing value for flag " + flag + " in " + ruleType + " for @IR at " + m);
+            TestFormat.check(i < orRules.length, "Missing value for flag " + flag + " in " + ruleType + failAt());
             String value = orRules[i];
-            if (check(m, flag, value)) {
-                return false;
+            if (check(flag, value) && returnValue) {
+                // Rule will not be applied but keep processing the other flags to verify that they are sane.
+                returnValue = false;
             }
         }
-        return true;
+        return returnValue;
     }
 
-    private boolean check(Method m, String flag, String value) {
-        TestFormat.check(!value.isEmpty(), "Provided empty value for flag " + flag + " at " + m);
-        Object actualFlagValue = longGetters.stream()
-                .map(f -> f.apply(flag))
-                .filter(Objects::nonNull)
-                .findAny().orElse(null);
-        if (actualFlagValue != null) {
-            long actualLongFlagValue = (Long) actualFlagValue;
-            long longValue;
-            ParsedComparator<Long> parsedComparator ;
-            try {
-                parsedComparator = ParsedComparator.parseComparator(value);
-                longValue = Long.parseLong(parsedComparator.getStrippedString());
-            } catch (NumberFormatException e) {
-                TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
-                return false;
-            } catch (Exception e) {
-                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag + ": " + e.getCause());
-                return false;
-            }
-            return parsedComparator.getPredicate().test(actualLongFlagValue, longValue);
+    private boolean check(String flag, String value) {
+        if (flag.isEmpty()) {
+            TestFormat.failNoThrow("Provided empty flag" + failAt());
+            return false;
         }
-        actualFlagValue = WHITE_BOX.getBooleanVMFlag(flag);
+        if (value.isEmpty()) {
+            TestFormat.failNoThrow("Provided empty value for flag " + flag + failAt());
+            return false;
+        }
+        Object actualFlagValue = WHITE_BOX.getBooleanVMFlag(flag);
         if (actualFlagValue != null) {
-            boolean actualBooleanFlagValue = (Boolean) actualFlagValue;
-            boolean booleanValue = false;
-            try {
-                booleanValue = Boolean.parseBoolean(value);
-            } catch (Exception e) {
-                TestFormat.fail("Invalid value " + value + " for boolean flag " + flag);
-            }
-            return booleanValue == actualBooleanFlagValue;
+            return checkBooleanFlag(flag, value, (Boolean) actualFlagValue);
+        }
+        actualFlagValue = longGetters.stream().map(f -> f.apply(flag)).filter(Objects::nonNull).findAny().orElse(null);
+        if (actualFlagValue != null) {
+            return checkLongFlag(flag, value, (Long) actualFlagValue);
         }
         actualFlagValue = WHITE_BOX.getDoubleVMFlag(flag);
         if (actualFlagValue != null) {
-            double actualDoubleFlagValue = (Double) actualFlagValue;
-            double doubleValue;
-            ParsedComparator<Double> parsedComparator;
-            try {
-                parsedComparator = ParsedComparator.parseComparator(value);
-                doubleValue = Double.parseDouble(parsedComparator.getStrippedString());
-            } catch (NumberFormatException e) {
-                TestFormat.fail("Invalid value " + value + " for number based flag " + flag);
-                return false;
-            } catch (Exception e) {
-                TestFormat.fail("Invalid comparator in \"" + value + "\" for number based flag " + flag + ": " + e.getCause());
-                return false;
-            }
-            return parsedComparator.getPredicate().test(actualDoubleFlagValue, doubleValue);
+            return checkDoubleFlag(flag, value, (Double) actualFlagValue);
         }
         actualFlagValue = WHITE_BOX.getStringVMFlag(flag);
         if (actualFlagValue != null) {
-            String actualStringFlagValue = (String) actualFlagValue;
-            return actualStringFlagValue.equals(value);
+            return value.equals(actualFlagValue);
         }
-        TestFormat.fail("Could not find flag " + flag);
+
+        // This could be improved if the Whitebox offers a "isVMFlag" function. For now, just check if we can actually set
+        // a value for a string flag. If we find this value, it's a string flag. If null is returned, the flag is unknown.
+        WHITE_BOX.setStringVMFlag(flag, "test");
+        String stringFlagValue = WHITE_BOX.getStringVMFlag(flag);
+        if (stringFlagValue == null) {
+            TestFormat.failNoThrow("Could not find VM flag \"" + flag + "\"" + failAt());
+            return false;
+        }
+        TestFramework.check(stringFlagValue.equals("test"),
+                         "Must find newly set flag value \"test\" but found " + failAt());
+        WHITE_BOX.setStringVMFlag(flag, null); // reset flag to NULL
         return false;
+    }
+
+    private boolean checkBooleanFlag(String flag, String value, Boolean actualFlagValue) {
+        boolean actualBooleanFlagValue = actualFlagValue;
+        boolean booleanValue = false;
+        if ("true".equalsIgnoreCase(value)) {
+            booleanValue = true;
+        } else if (!"false".equalsIgnoreCase(value)) {
+            TestFormat.failNoThrow("Invalid value \"" + value + "\" for boolean flag " + flag + failAt());
+            return false;
+        }
+        return booleanValue == actualBooleanFlagValue;
+    }
+
+
+    private boolean checkLongFlag(String flag, String value, Long actualFlagValue) {
+        long actualLongFlagValue = actualFlagValue;
+        long longValue;
+        ParsedComparator<Long> parsedComparator;
+        try {
+            parsedComparator = ParsedComparator.parseComparator(value);
+        } catch (CheckedTestFrameworkException e) {
+            TestFormat.failNoThrow("Invalid comparator in \"" + value + "\" for integer based flag " + flag + failAt());
+            return false;
+        }
+        try {
+            longValue = Long.parseLong(parsedComparator.getStrippedString());
+        } catch (NumberFormatException e) {
+            String comparator = parsedComparator.getComparator();
+            if (!comparator.isEmpty()) {
+                comparator = "after comparator \"" + parsedComparator.getComparator() + "\"";
+            }
+            TestFormat.failNoThrow("Invalid value \"" + parsedComparator.getStrippedString() + "\" "
+                            + comparator + " for integer based flag " + flag + failAt());
+            return false;
+        }
+        return parsedComparator.getPredicate().test(actualLongFlagValue, longValue);
+    }
+
+    private boolean checkDoubleFlag(String flag, String value, Double actualFlagValue) {
+        double actualDoubleFlagValue = actualFlagValue;
+        double doubleValue;
+        ParsedComparator<Double> parsedComparator;
+        try {
+            parsedComparator = ParsedComparator.parseComparator(value);
+        } catch (CheckedTestFrameworkException e) {
+            TestFormat.failNoThrow("Invalid comparator in \"" + value + "\" for floating point based flag " + flag + failAt());
+            return false;
+        }
+        try {
+            doubleValue = Double.parseDouble(parsedComparator.getStrippedString());
+        } catch (NumberFormatException e) {
+            String comparator = parsedComparator.getComparator();
+            if (!comparator.isEmpty()) {
+                comparator = "after comparator \"" + parsedComparator.getComparator() + "\"";
+            }
+            TestFormat.failNoThrow("Invalid value \"" + parsedComparator.getStrippedString() + "\" "
+                    + comparator + " for floating point based flag " + flag + failAt());
+            return false;
+        }
+        return parsedComparator.getPredicate().test(actualDoubleFlagValue, doubleValue);
+    }
+
+    private String failAt() {
+        return " for @IR rule " + ruleIndex + " at " + method;
+    }
+
+    public void emit() {
+        output.append(END);
+        System.out.println(output.toString());
     }
 }
 

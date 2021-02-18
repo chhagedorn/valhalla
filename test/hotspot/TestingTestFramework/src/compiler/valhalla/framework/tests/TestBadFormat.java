@@ -523,7 +523,6 @@ class BadCheckTest {
 }
 
 class BadIRAnnotations {
-
     @IR(failOn = IRNode.CALL)
     public void noIRAtNonTest() {}
 
@@ -562,11 +561,211 @@ class BadIRAnnotations {
 
     @FailCount(3)
     @Test
-    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}, applyIfNot = {"SuspendRetryCount", "50"})
-    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "50"}, applyIfOr = {"SuspendRetryCount", "50"})
-    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}, applyIfNot = {"SuspendRetryCount", "50"}, applyIfAnd = {"SuspendRetryCount", "50"}, applyIfOr = {"SuspendRetryCount", "50"})
-    public void onlyOneApply() {
-    }
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}, applyIfNot = {"UseTLAB", "true"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "50", "UseTLAB", "true"},
+        applyIfOr = {"SuspendRetryCount", "50", "UseTLAB", "true"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}, applyIfNot = {"SuspendRetryCount", "50"},
+        applyIfAnd = {"SuspendRetryCount", "50", "UseTLAB", "true"},
+        applyIfOr = {"SuspendRetryCount", "50", "UseTLAB", "true"})
+    public void onlyOneApply() {}
+
+    @FailCount(3)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50", "UseTLAB", "true"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "51", "UseTLAB"})
+    public void applyIfTooManyFlags() {}
+
+    @FailCount(2)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount"})
+    @IR(failOn = IRNode.CALL, applyIf = {"Bla"})
+    public void applyIfMissingValue() {}
+
+    @FailCount(2)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIf = {"PrintIdealGraphFilee", "true"})
+    @IR(failOn = IRNode.CALL, applyIf = {"Bla", "foo"})
+    public void applyIfUnknownFlag() {}
+
+    @FailCount(5)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIf = {"PrintIdealGraphFile", ""})
+    @IR(failOn = IRNode.CALL, applyIf = {"UseTLAB", ""})
+    @IR(failOn = IRNode.CALL, applyIf = {"", "true"})
+    @IR(failOn = IRNode.CALL, applyIf = {"", ""})
+    @IR(failOn = IRNode.CALL, applyIf = {" ", " "})
+    public void applyIfEmptyValue() {}
+
+    @FailCount(5)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "! 34"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!== 34"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<<= 34"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "=<34"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<"})
+    public void applyIfFaultyComparator() {}
+
+    @FailCount(3)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "50", "UseTLAB", "true"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "50", "UseTLAB"})
+    public void applyIfNotTooManyFlags() {}
+
+    @FailCount(2)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"Bla"})
+    public void applyIfNotMissingValue() {}
+
+    @FailCount(2)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfNot = {"PrintIdealGraphFilee", "true"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"Bla", "foo"})
+    public void applyIfNotUnknownFlag() {}
+
+    @FailCount(5)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfNot = {"PrintIdealGraphFile", ""})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"UseTLAB", ""})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"", "true"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"", ""})
+    @IR(failOn = IRNode.CALL, applyIfNot = {" ", " "})
+    public void applyIfNotEmptyValue() {}
+
+    @FailCount(5)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "! 34"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "!== 34"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "<<= 34"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "=<34"})
+    @IR(failOn = IRNode.CALL, applyIfNot = {"SuspendRetryCount", "<"})
+    public void applyIfNotFaultyComparator() {}
+
+
+    @FailCount(2)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "50"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "51", "UseTLAB"})
+    public void applyIfAndNotEnoughFlags() {}
+
+    @FailCount(5)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "51", "UseTLAB"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"Bla"})
+    public void applyIfAndMissingValue() {}
+
+    @FailCount(3)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"PrintIdealGraphFilee", "true", "SuspendRetryCount", "< 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "!= 50", "Bla", "bla", "Bla2", "bla2"})
+    public void applyIfAndUnknownFlag() {}
+
+    @FailCount(18)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"PrintIdealGraphFile", ""})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"PrintIdealGraphFile", "", "PrintIdealGraphFile", ""})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"UseTLAB", ""})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"UseTLAB", "", "UseTLAB", ""})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"", "true"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"", "true", "", "true"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"", ""})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"", "", "", ""})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {" ", " ", " ", " "})
+    public void applyIfAndEmptyValue() {}
+
+    @FailCount(20)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "! 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "! 34", "SuspendRetryCount", "! 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "!== 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "!== 34", "SuspendRetryCount", "=== 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "<<= 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "<<= 34", "SuspendRetryCount", ">>= 34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "=<34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "=<34", "SuspendRetryCount", "=<34"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "<"})
+    @IR(failOn = IRNode.CALL, applyIfAnd = {"SuspendRetryCount", "<", "SuspendRetryCount", "!="})
+    public void applyIfAndFaultyComparator() {}
+
+    @FailCount(2)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "50"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "51", "UseTLAB"})
+    public void applyIfOrNotEnoughFlags() {}
+
+    @FailCount(5)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "51", "UseTLAB"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"Bla"})
+    public void applyIfOrMissingValue() {}
+
+    @FailCount(3)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfOr = {"PrintIdealGraphFilee", "true", "SuspendRetryCount", "< 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "!= 50", "Bla", "bla", "Bla2", "bla2"})
+    public void applyIfOrUnknownFlag() {}
+
+    @FailCount(18)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfOr = {"PrintIdealGraphFile", ""})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"PrintIdealGraphFile", "", "PrintIdealGraphFile", ""})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"UseTLAB", ""})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"UseTLAB", "", "UseTLAB", ""})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"", "true"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"", "true", "", "true"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"", ""})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"", "", "", ""})
+    @IR(failOn = IRNode.CALL, applyIfOr = {" ", " ", " ", " "})
+    public void applyIfOrEmptyValue() {}
+
+    @FailCount(20)
+    @Test
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "! 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "! 34", "SuspendRetryCount", "! 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "!== 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "!== 34", "SuspendRetryCount", "=== 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "<<= 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "<<= 34", "SuspendRetryCount", ">>= 34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "=<34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "=<34", "SuspendRetryCount", "=<34"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "<"})
+    @IR(failOn = IRNode.CALL, applyIfOr = {"SuspendRetryCount", "<", "SuspendRetryCount", "!="})
+    public void applyIfOrFaultyComparator() {}
+
+
+    @Test
+    @FailCount(3)
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "true"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "SomeString"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "48"}) // valid
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "48.5"})
+    public void wrongFlagValueLongFlag() {}
+
+    @Test
+    @FailCount(3)
+    @IR(failOn = IRNode.CALL, applyIf = {"UseTLAB", "true"}) // valid
+    @IR(failOn = IRNode.CALL, applyIf = {"UseTLAB", "SomeString"})
+    @IR(failOn = IRNode.CALL, applyIf = {"UseTLAB", "48"})
+    @IR(failOn = IRNode.CALL, applyIf = {"UseTLAB", "48.5"})
+    public void wrongFlagValueBooleanFlag() {}
+
+    @Test
+    @FailCount(2)
+    @IR(failOn = IRNode.CALL, applyIf = {"CompileThresholdScaling", "true"})
+    @IR(failOn = IRNode.CALL, applyIf = {"CompileThresholdScaling", "SomeString"})
+    @IR(failOn = IRNode.CALL, applyIf = {"CompileThresholdScaling", "48"}) // valid
+    @IR(failOn = IRNode.CALL, applyIf = {"CompileThresholdScaling", "48.5"}) // valid
+    public void wrongFlagValueDoubleFlag() {}
+
+    @Test
+    @NoFail
+    @IR(failOn = IRNode.CALL, applyIf = {"ErrorFile", "true"}) // valid
+    @IR(failOn = IRNode.CALL, applyIf = {"ErrorFile", "SomeString"}) // valid
+    @IR(failOn = IRNode.CALL, applyIf = {"ErrorFile", "48"}) // valid
+    @IR(failOn = IRNode.CALL, applyIf = {"ErrorFile", "48.5"}) // valid
+    public void anyValueForStringFlags() {}
 }
 
 class ClassNoDefaultConstructor {

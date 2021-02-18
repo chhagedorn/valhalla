@@ -47,6 +47,10 @@ public class TestFormat {
         throw new TestFormatException(failureMessage);
     }
 
+    public static void failNoThrow(String failureMessage) {
+        FAILURES.add(failureMessage);
+    }
+
     public static void reportIfAnyFailures() {
         if (FAILURES.isEmpty()) {
             // No format violation detected.

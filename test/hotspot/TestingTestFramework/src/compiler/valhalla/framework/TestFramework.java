@@ -28,7 +28,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 
 import jdk.test.lib.Asserts;
@@ -655,14 +654,13 @@ public class TestFramework {
             }
         }
         if (PRINT_VALID_IR_RULES) {
-            irMatchRulePrinter.dump();
+            irMatchRulePrinter.emit();
         }
     }
 
     private void addTest(Method m) {
         Test testAnno = getAnnotation(m, Test.class);
         checkTestAnnotations(m, testAnno);
-        checkIRAnnotations(m);
         Warmup warmup = getAnnotation(m, Warmup.class);
         int warmupIterations = WARMUP_ITERATIONS;
         if (warmup != null) {
@@ -704,23 +702,6 @@ public class TestFramework {
 
         TestFormat.checkNoThrow(!m.getReturnType().equals(TestInfo.class),
                          "Cannot use of " + TestInfo.class + " as return type at @Test method " + m);
-    }
-
-
-    private void checkIRAnnotations(Method m) {
-        IR[] irAnnos =  m.getAnnotationsByType(IR.class);
-        if (irAnnos.length == 0) {
-            return;
-        }
-        int i = 1;
-        for (IR ir : irAnnos) {
-            TestFormat.checkNoThrow(ir.counts().length != 0 || ir.failOn().length != 0,
-                                    "Must specify either counts or failOn constraint for @IR rule " + i + " at " + m);
-            TestFormat.checkNoThrow(Stream.of(ir.applyIf(), ir.applyIfNot(), ir.applyIfAnd(), ir.applyIfOr()).filter(a -> a.length != 0).count() <= 1,
-                                    "Can only specify one apply constraint (applyIf, applyIfNot, applyIfAnd, applyIfOr) " +
-                                    "for @Ir rule " + i + " at " + m);
-            i++;
-        }
     }
 
 
@@ -933,6 +914,10 @@ class TestFrameworkException extends RuntimeException {
     public TestFrameworkException(String message, Exception e) {
         super(message, e);
     }
+}
+
+// Checked exceptions in the framework to propagate error handling.
+class CheckedTestFrameworkException extends Exception {
 }
 
 class DeclaredTest {
@@ -1293,62 +1278,3 @@ class CustomRunTest extends BaseTest {
 }
 
 
-class ParsedComparator<T extends Comparable<T>>  {
-    private final String strippedString;
-    private final BiPredicate<T, T> predicate;
-
-    public ParsedComparator(String strippedString, BiPredicate<T, T> predicate) {
-        this.strippedString = strippedString;
-        this.predicate = predicate;
-    }
-
-    public String getStrippedString() {
-        return strippedString;
-    }
-
-    public BiPredicate<T, T> getPredicate() {
-        return predicate;
-    }
-
-
-    public static <T extends Comparable<T>> ParsedComparator<T> parseComparator(String value) {
-        BiPredicate<T, T> comparison = null;
-        value = value.trim();
-        try {
-            switch (value.charAt(0)) {
-                case '<':
-                    if (value.charAt(1) == '=') {
-                        comparison = (x, y) -> x.compareTo(y) <= 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        comparison = (x, y) -> x.compareTo(y) < 0;
-                        value = value.substring(1).trim();
-                    }
-                    break;
-                case '>':
-                    if (value.charAt(1) == '=') {
-                        comparison = (x, y) -> x.compareTo(y) >= 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        comparison = (x, y) -> x.compareTo(y) > 0;
-                        value = value.substring(1).trim();
-                    }
-                    break;
-                case '!':
-                    TestFormat.check(value.charAt(1) == '=', "Invalid comparator sign used.");
-                    comparison = (x, y) -> x.compareTo(y) != 0;
-                    value = value.substring(2).trim();
-                    break;
-                case '=': // Allowed syntax, equivalent to not using any symbol.
-                    value = value.substring(1).trim();
-                default:
-                    comparison = (x, y) -> x.compareTo(y) == 0;
-                    value = value.trim();
-                    break;
-            }
-        } catch (IndexOutOfBoundsException e) {
-            TestFormat.fail("Invalid value format.");
-        }
-        return new ParsedComparator<>(value, comparison);
-    }
-}

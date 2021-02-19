@@ -45,25 +45,35 @@ public class IRNode {
     private static final String STORE_OF_CLASS_POSTFIX = "(:|\\+)\\S* \\*" + END;
     public static final String STORE_OF_FIELD = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
     private static final String STORE_OF_FIELD_POSTFIX = ",.*" + END;
+
     public static final String LOAD = START + "Load(B|S|I|L|F|D|P|N)" + MID + END;
     public static final String LOAD_OF_CLASS = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@\\S*";
     private static final String LOAD_OF_CLASS_POSTFIX = "(:|\\+)\\S* \\*" + END;
     public static final String LOAD_OF_FIELD = START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=";
     private static final String LOAD_OF_FIELD_POSTFIX = ",.*" + END;
+    public static final String LOAD_KLASS  = START + "LoadK" + MID + END;
+
 
 
     public static final String LOOP   = START + "Loop" + MID + "" + END;
     public static final String COUNTEDLOOP = START + "CountedLoop\\b" + MID + "" + END;
+    public static final String COUNTEDLOOP_MAIN = START + "CountedLoop\\b" + MID + "main" + END;
+
+    public static final String CALL = START + "CallStaticJava" + MID + END;
+    public static final String TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*reason" + END;
+    public static final String PREDICATE_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*predicate" + END;
+    public static final String UNSTABLE_IF_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*unstable_if" + END;
+    public static final String CLASS_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*class_check" + END;
+    public static final String NULL_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*null_check" + END;
+    public static final String NULL_ASSERT_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*null_assert" + END;
+    public static final String RANGE_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*range_check" + END;
+    public static final String UNHANDLED_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*unhandled" + END;
+
 
     // Inline type allocation
     public static final String ALLOCA = "(.*precise klass \\[(L|Q)compiler/valhalla/inlinetypes/MyValue.*\\R(.*(movl|xorl|nop|spill).*\\R)*.*_new_array_Java" + END;
-    public static final String LOADK  = START + "LoadK" + MID + END;
-    public static final String COUNTEDLOOP_MAIN = START + "CountedLoop\\b" + MID + "main" + END;
-    public static final String TRAP   = START + "CallStaticJava" + MID + "uncommon_trap.*(unstable_if|predicate)" + END;
-    public static final String RETURN = START + "Return" + MID + END;
     public static final String LINKTOSTATIC = START + "CallStaticJava" + MID + "linkToStatic" + END;
     public static final String NPE = START + "CallStaticJava" + MID + "null_check" + END;
-    public static final String CALL = START + "CallStaticJava" + MID + END;
     public static final String STORE_INLINE_FIELDS = START + "CallStaticJava" + MID + "store_inline_type_fields" + END;
     public static final String SCOBJ = "(.*# ScObj.*" + END;
     public static final String LOAD_UNKNOWN_INLINE = "(.*call_leaf,runtime  load_unknown_inline.*" + END;
@@ -71,12 +81,7 @@ public class IRNode {
     public static final String INLINE_ARRAY_NULL_GUARD = "(.*call,static  wrapper for: uncommon_trap.*reason='null_check' action='none'.*" + END;
     public static final String INTRINSIC_SLOW_PATH = "(.*call,static  wrapper for: uncommon_trap.*reason='intrinsic_or_type_checked_inlining'.*" + END;
     public static final String CLONE_INTRINSIC_SLOW_PATH = "(.*call,static.*java.lang.Object::clone.*" + END;
-    public static final String CLASS_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*class_check" + END;
-    public static final String NULL_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*null_check" + END;
-    public static final String NULL_ASSERT_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*null_assert" + END;
-    public static final String RANGE_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*range_check" + END;
-    public static final String UNHANDLED_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*unhandled" + END;
-    public static final String PREDICATE_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*predicate" + END;
+
     public static final String MEMBAR = START + "MemBar" + MID + END;
     public static final String CHECKCAST_ARRAY = "(cmp.*precise klass \\[(L|Q)compiler/valhalla/inlinetypes/MyValue.*" + END;
     public static final String CHECKCAST_ARRAYCOPY = "(.*call_leaf_nofp,runtime  checkcast_arraycopy.*" + END;

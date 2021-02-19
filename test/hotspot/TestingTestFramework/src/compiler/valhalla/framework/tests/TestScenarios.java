@@ -35,11 +35,13 @@ public class TestScenarios {
         Scenario s3dup = new Scenario(3, "-XX:SuspendRetryCount=53");
         try {
             TestFramework.runWithScenarios(sDefault, s1, s2, s3);
+            Asserts.fail("Should not reach");
         } catch (TestRunException e) {
             Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #0, #1, #3"));
         }
         try {
             TestFramework.runWithScenarios(s1, s2, s3);
+            Asserts.fail("Should not reach");
         } catch (TestRunException e) {
             Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #1, #3"));
         }
@@ -47,26 +49,27 @@ public class TestScenarios {
         TestFramework.runWithScenarios(ScenarioTest.class, s1, s2, s3);
         try {
             TestFramework.runWithScenarios(s1, s3dup, s2, s3);
+            Asserts.fail("Should not reach");
         } catch (RuntimeException e) {
             Asserts.assertTrue(e.getMessage().contains("Cannot define two scenarios with the same index 3"));
         }
     }
 
     @Test
-    @IR(applyIf = {"SuspendRetryCount", "50"}, failOn = {IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "50"}, counts = {IRNode.CALL, "1"})
     public void failDefault() {
     }
 
     @Test
-    @IR(applyIf = {"SuspendRetryCount", "51"}, failOn = {IRNode.RETURN})
-    @IR(applyIf = {"SuspendRetryCount", "53"}, failOn = {IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "51"}, counts = {IRNode.CALL, "1"})
+    @IR(applyIf = {"SuspendRetryCount", "53"}, counts = {IRNode.CALL, "1"})
     public void failS3() {
     }
 }
 
 class ScenarioTest {
     @Test
-    @IR(applyIf = {"SuspendRetryCount", "54"}, failOn = {IRNode.RETURN})
+    @IR(applyIf = {"SuspendRetryCount", "54"}, counts = {IRNode.CALL, "1"})
     public void doesNotFail() {
     }
 }

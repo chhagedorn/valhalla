@@ -30,71 +30,103 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TestIRMatching {
 
     public static void main(String[] args) {
-        runFailOnTests(Constraint.failOnNodes(AndOr1.class, "test1(int)", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:+UsePerfData", "-XX:+UseTLAB");
-        runFailOnTests(Constraint.failOnNodes(AndOr1.class, "test2()", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:-UsePerfData", "-XX:+UseTLAB");
+//        runFailOnTests(Constraint.failOnMatches(AndOr1.class, "test1(int)", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:+UsePerfData", "-XX:+UseTLAB");
+//        runFailOnTests(Constraint.failOnMatches(AndOr1.class, "test2()", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:-UsePerfData", "-XX:+UseTLAB");
+//
+//        runWithArguments(AndOr1.class, "-XX:SuspendRetryCount=52", "-XX:+UsePerfData", "-XX:+UseTLAB");
+//
+//        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
+//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
+//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
+//
+//        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
+//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
+//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
+//
+//        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
+//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
+//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
+//
+//        runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
+//
+//        runFailOnTests(Constraint.failOnMatches(MultipleFailOnBad.class, "fail1()", 1,true, "Store"),
+//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail2()", 1,true, "CallStaticJava"),
+//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail3()", 1,true, "Store"),
+//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail4()", 1,true, "Store"),
+//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail5()", 1,true, "Store", "iFld"),
+//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail6()", 1,true, "MyClass"),
+//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail7()", 1,true, "MyClass"),
+//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail8()", 1,true, "MyClass"),
+//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail9()", 1,true, "Store", "CallStaticJava"),
+//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail10()", 1,true, "Store", "iFld"));
+//
+//        runWithArguments(CountComparisons.class, "-XX:SuspendRetryCount=50");
+//        runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
+//        runFailOnTests(Constraint.countsMatches(BadCount.class, "bad1()", 1,true),
+//                       Constraint.countsMatches(BadCount.class, "bad1()", 2,false),
+//                       Constraint.countsMatches(BadCount.class, "bad2()", 1,false),
+//                       Constraint.countsMatches(BadCount.class, "bad2()", 2,true),
+//                       Constraint.countsMatches(BadCount.class, "bad3()", 1,true),
+//                       Constraint.countsMatches(BadCount.class, "bad3()", 2,true));
+//
+//        runFailOnTests(Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 1, true, "MyClass"),
+//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 2, true, "MyClass"),
+//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 3, false, "MyClass"),
+//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 4, false, "MyClass"),
+//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 5, true, "MyClass"));
+//
+//        runFailOnTests(new String[] {"-XX:-UseCompressedClassPointers"},
+//                       Constraint.failOnMatches(Loads.class, "load()", 1, true, "Load"),
+//                       Constraint.failOnMatches(Loads.class, "load()", 2, true, "Loads"),
+//                       Constraint.failOnMatches(Loads.class, "load()", 3, true, "Loads"),
+//                       Constraint.failOnMatches(Loads.class, "load()", 4, true, "Load", "iFld"),
+//                       Constraint.failOnMatches(Loads.class, "load()", 5, false, "Load"),
+//                       Constraint.failOnMatches(Loads.class, "load()", 6, false, "LoadKlass"),
+//                       Constraint.failOnMatches(Loads.class, "loadKlass()", 1, false, "LoadKlass"));
+//
+//        runFailOnTests(Constraint.failOnMatches(Loops.class, "loop()", 1, true, "Loop"),
+//                       Constraint.failOnMatches(Loops.class, "loop()", 2, false, "CountedLoop"),
+//                       Constraint.failOnMatches(Loops.class, "loop()", 3, false, "CountedLoop", "main"),
+//                       Constraint.failOnMatches(Loops.class, "countedLoop()", 1, false, "Loop"),
+//                       Constraint.failOnMatches(Loops.class, "countedLoop()", 2, true, "CountedLoop"),
+//                       Constraint.failOnMatches(Loops.class, "countedLoop()", 3, false, "CountedLoop", "main"),
+//                       Constraint.failOnMatches(Loops.class, "loopAndCountedLoop()", 1, true, "Loop"),
+//                       Constraint.failOnMatches(Loops.class, "loopAndCountedLoop()", 2, true, "CountedLoop"),
+//                       Constraint.failOnMatches(Loops.class, "loopAndCountedLoop()", 3, false, "CountedLoop", "main"),
+//                       Constraint.failOnMatches(Loops.class, "countedLoopMain()", 1, false, "Loop"),
+//                       Constraint.failOnMatches(Loops.class, "countedLoopMain()", 2, true, "CountedLoop"),
+//                       Constraint.failOnMatches(Loops.class, "countedLoopMain()", 3, true, "CountedLoop", "main"));
+    runFailOnTests(Constraint.failOnMatches(Traps.class, "traps()", 1, true, "CallStaticJava", "uncommon_trap"),
+                   Constraint.failOnMatches(Traps.class, "traps()", 2, true, "CallStaticJava", "uncommon_trap", "predicate"),
+                   Constraint.failOnMatches(Traps.class, "traps()", 3, false, "Store", "iFld"),
+                   Constraint.failOnMatches(Traps.class, "noTraps()", 1, false, "CallStaticJava", "uncommon_trap"),
+                   Constraint.failOnMatches(Traps.class, "noTraps()", 2, true, "Store", "iFld"),
+                   Constraint.failOnMatches(Traps.class, "nullCheck()", 1, true, "CallStaticJava", "uncommon_trap"),
+                   Constraint.failOnMatches(Traps.class, "nullCheck()", 2, true, "CallStaticJava", "uncommon_trap", "null_check")
+    );
 
-        runWithArguments(AndOr1.class, "-XX:SuspendRetryCount=52", "-XX:+UsePerfData", "-XX:+UseTLAB");
-
-        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
-
-        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
-
-        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
-
-        runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
-
-        runFailOnTests(Constraint.failOnNodes(MultipleFailOnBad.class, "fail1()", 1,true, "Store"),
-                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail2()", 1,true, "CallStaticJava"),
-                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail3()", 1,true, "Store"),
-                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail4()", 1,true, "Store"),
-                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail5()", 1,true, "Store", "iFld"),
-                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail6()", 1,true, "MyClass"),
-                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail7()", 1,true, "MyClass"),
-                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail8()", 1,true, "MyClass"),
-                       Constraint.failOnNodes(MultipleFailOnBad.class, "fail9()", 1,true, "Store", "CallStaticJava"),
-                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail10()", 1,true, "Store", "iFld"));
-
-        runFailOnTests(Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 1, true, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 2, true, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 3, false, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 4, false, "MyClass"),
-                       Constraint.failOnArrayAlloc(VariousIRNodes.class, "allocArray()", 5, true, "MyClass"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "loop()", 1, true, "Loop"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "loop()", 2, false, "CountedLoop"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "countedLoop()", 1, false, "Loop"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "countedLoop()", 2, true, "CountedLoop"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "loopAndCountedLoop()", 1, true, "Loop"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "loopAndCountedLoop()", 2, true, "CountedLoop"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 1, true, "Load"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 2, true, "VariousIRNodes"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 3, true, "VariousIRNodes"),
-                       Constraint.failOnMatches(VariousIRNodes.class, "load()", 4, true, "Load", "iFld"),
-                       Constraint.failOnNodes(VariousIRNodes.class, "load()", 5, false, "Load")
-        );
-
-        runWithArguments(CountComparisons.class, "-XX:SuspendRetryCount=50");
-        runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
-        runFailOnTests(Constraint.countsMatches(BadCount.class, "bad1()", 1,true),
-                       Constraint.countsMatches(BadCount.class, "bad1()", 2,false),
-                       Constraint.countsMatches(BadCount.class, "bad2()", 1,false),
-                       Constraint.countsMatches(BadCount.class, "bad2()", 2,true),
-                       Constraint.countsMatches(BadCount.class, "bad3()", 1,true),
-                       Constraint.countsMatches(BadCount.class, "bad3()", 2,true));
     }
 
     private static void runWithArguments(Class<?> clazz, String... args) {
         TestFramework.runWithScenarios(clazz, new Scenario(0, args));
+    }
+
+    private static void runFailOnTests(String[] args , Constraint... constraints) {
+        try {
+            Scenario s = new Scenario(0, args);
+            TestFramework.runWithScenarios(constraints[0].getKlass(), s); // All constraints have the same class.
+            shouldNotReach();
+        } catch (ShouldNotReachException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            checkConstraints(e, constraints);
+        }
     }
 
     private static void runFailOnTests(Constraint... constraints) {
@@ -104,10 +136,31 @@ public class TestIRMatching {
         } catch (ShouldNotReachException e) {
             throw e;
         } catch (RuntimeException e) {
-            System.out.println(e.getMessage());
+            checkConstraints(e, constraints);
+        }
+    }
+
+    private static void checkConstraints(RuntimeException e, Constraint[] constraints) {
+        String message = e.getMessage();
+        try {
+            long expectedFailures = Arrays.stream(constraints).filter(Constraint::shouldMatch).count();
+            Pattern pattern = Pattern.compile("Failures \\((\\d+)\\)");
+            Matcher matcher = pattern.matcher(message);
+            if (expectedFailures > 0) {
+                Asserts.assertTrue(matcher.find(), "Could not find failures");
+                long foundFailuresCount = Long.parseLong(matcher.group(1));
+                Asserts.assertEQ(foundFailuresCount, expectedFailures);
+            } else {
+                Asserts.assertFalse(matcher.find(), "Should not have found failures");
+            }
+
             for (Constraint constraint : constraints) {
                 constraint.checkConstraint(e);
             }
+        } catch (Exception e1) {
+            System.out.println(TestFramework.getLastVmOutput());
+            System.out.println(message);
+            throw e1;
         }
     }
 
@@ -168,7 +221,7 @@ class MultipleFailOnGood {
     @Test
     @IR(applyIf = {"SuspendRetryCount", "50"}, failOn = {IRNode.STORE, IRNode.CALL})
     @IR(failOn = {IRNode.STORE, IRNode.CALL})
-    @IR(applyIfOr = {"SuspendRetryCount", "99", "SuspendRetryCount", "100"}, failOn = {IRNode.RETURN, IRNode.CALL}) // Not applied
+    @IR(applyIfOr = {"SuspendRetryCount", "99", "SuspendRetryCount", "100"}, failOn = {IRNode.LOOP, IRNode.CALL}) // Not applied
     public void good1() {
         forceInline();
     }
@@ -293,56 +346,56 @@ class MultipleFailOnBad {
 class FlagComparisons {
     // Applies all IR rules if SuspendRetryCount=50
     @Test
-    @IR(applyIf = {"SuspendRetryCount", "50"}) // Index 0
-    @IR(applyIf = {"SuspendRetryCount", "=50"})
-    @IR(applyIf = {"SuspendRetryCount", "= 50"})
-    @IR(applyIf = {"SuspendRetryCount", " =   50"})
-    @IR(applyIf = {"SuspendRetryCount", "<=50"}) // Index 4
-    @IR(applyIf = {"SuspendRetryCount", "<= 50"})
-    @IR(applyIf = {"SuspendRetryCount", " <=  50"})
-    @IR(applyIf = {"SuspendRetryCount", ">=50"}) // Index 7
-    @IR(applyIf = {"SuspendRetryCount", ">= 50"})
-    @IR(applyIf = {"SuspendRetryCount", " >=  50"})
-    @IR(applyIf = {"SuspendRetryCount", ">49"})
-    @IR(applyIf = {"SuspendRetryCount", "> 49"})
-    @IR(applyIf = {"SuspendRetryCount", " >  49"})
-    @IR(applyIf = {"SuspendRetryCount", "<51"}) // Index 13
-    @IR(applyIf = {"SuspendRetryCount", "< 51"})
-    @IR(applyIf = {"SuspendRetryCount", " <  51"})
-    @IR(applyIf = {"SuspendRetryCount", "!=51"})
-    @IR(applyIf = {"SuspendRetryCount", "!= 51"})
-    @IR(applyIf = {"SuspendRetryCount", " !=  51"})
-    @IR(applyIf = {"SuspendRetryCount", "!=49"})
-    @IR(applyIf = {"SuspendRetryCount", "!= 49"})
-    @IR(applyIf = {"SuspendRetryCount", " !=  49"}) // Index 21
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "50"}) // Index 0
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "=50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "= 50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " =   50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<=50"}) // Index 4
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<= 50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " <=  50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", ">=50"}) // Index 7
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", ">= 50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " >=  50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", ">49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "> 49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " >  49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<51"}) // Index 13
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "< 51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " <  51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!=51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!= 51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " !=  51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!=49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!= 49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " !=  49"}) // Index 21
     public void testMatchAllIf50() {
     }
 
     // Applies no IR rules if SuspendRetryCount=50
     @Test
-    @IR(applyIf = {"SuspendRetryCount", "49"}) // Index 0
-    @IR(applyIf = {"SuspendRetryCount", "=49"})
-    @IR(applyIf = {"SuspendRetryCount", "= 49"})
-    @IR(applyIf = {"SuspendRetryCount", " =  49"})
-    @IR(applyIf = {"SuspendRetryCount", "51"}) // Index 4
-    @IR(applyIf = {"SuspendRetryCount", "=51"})
-    @IR(applyIf = {"SuspendRetryCount", "= 51"})
-    @IR(applyIf = {"SuspendRetryCount", " =  51"})
-    @IR(applyIf = {"SuspendRetryCount", "<=49"}) // Index 8
-    @IR(applyIf = {"SuspendRetryCount", "<= 49"})
-    @IR(applyIf = {"SuspendRetryCount", " <=  49"})
-    @IR(applyIf = {"SuspendRetryCount", ">=51"}) // Index 11
-    @IR(applyIf = {"SuspendRetryCount", ">= 51"})
-    @IR(applyIf = {"SuspendRetryCount", " >=  51"})
-    @IR(applyIf = {"SuspendRetryCount", ">50"})
-    @IR(applyIf = {"SuspendRetryCount", "> 50"})
-    @IR(applyIf = {"SuspendRetryCount", " >  50"})
-    @IR(applyIf = {"SuspendRetryCount", "<50"}) // Index 17
-    @IR(applyIf = {"SuspendRetryCount", "< 50"})
-    @IR(applyIf = {"SuspendRetryCount", " <  50"})
-    @IR(applyIf = {"SuspendRetryCount", "!=50"})
-    @IR(applyIf = {"SuspendRetryCount", "!= 50"})
-    @IR(applyIf = {"SuspendRetryCount", " !=  50"}) // Index 22
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "49"}) // Index 0
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "=49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "= 49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " =  49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "51"}) // Index 4
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "=51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "= 51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " =  51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<=49"}) // Index 8
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<= 49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " <=  49"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", ">=51"}) // Index 11
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", ">= 51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " >=  51"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", ">50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "> 50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " >  50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "<50"}) // Index 17
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "< 50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " <  50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!=50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!= 50"})
+    @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " !=  50"}) // Index 22
     public void testMatchNoneIf50() {
     }
 }
@@ -388,7 +441,6 @@ class GoodCount {
     MyClass myClass = new MyClass();
     MyClass myClassSubPoly = new MyClassSub();
     MyClassSub myClassSub = new MyClassSub();
-
 
     @Test
     @IR(counts = {IRNode.STORE, "1"})
@@ -488,12 +540,35 @@ class BadCount {
     }
 }
 
-// Test on remaining IR nodes that we have not tested above, yet.
-class VariousIRNodes {
-    MyClass[] myClassArray;
-    int limit = 1024;
+class Loads {
     int iFld = 34;
     int result = 0;
+    Object[] myClassArr = new MyClass[3];
+    Object myClass = new MyClass();
+
+    @Test
+    @IR(failOn = {IRNode.LOAD})
+    @IR(failOn = {IRNode.LOAD_OF_CLASS, "compiler/valhalla/framework/tests/Loads"})
+    @IR(failOn = {IRNode.LOAD_OF_CLASS, "Loads"})
+    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld"})
+    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld2", IRNode.LOAD_OF_CLASS, "Load"}) // Does not fail
+    @IR(failOn = {IRNode.LOAD_KLASS}) // Does not fail
+    public void load() {
+        result = iFld;
+    }
+
+    @Test
+    @IR(failOn = {IRNode.LOAD_KLASS})
+    public void loadKlass() {
+        if (myClass instanceof MyClass) {
+            result = 3;
+        }
+    }
+}
+
+class AllocArray {
+    MyClass[] myClassArray;
+
     @Test
     @IR(failOn = {IRNode.ALLOC_ARRAY})
     @IR(failOn = {IRNode.ALLOC_ARRAY_OF, "MyClass"})
@@ -503,10 +578,19 @@ class VariousIRNodes {
     public void allocArray() {
         myClassArray = new MyClass[2];
     }
+}
+
+class Loops {
+    int limit = 1024;
+    int[] iArr = new int[100];
+
+    @DontInline
+    public void dontInline() {}
 
     @Test
-    @IR(failOn = {IRNode.LOOP})
-    @IR(failOn = {IRNode.COUNTEDLOOP}) // Does not fail
+    @IR(failOn = IRNode.LOOP) // fails
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(failOn = IRNode.COUNTEDLOOP_MAIN)
     public void loop() {
         for (int i = 0; i < limit; i++) {
             dontInline();
@@ -514,8 +598,9 @@ class VariousIRNodes {
     }
 
     @Test
-    @IR(failOn = {IRNode.LOOP}) // Does not fail
-    @IR(failOn = {IRNode.COUNTEDLOOP})
+    @IR(failOn = IRNode.LOOP)
+    @IR(failOn = IRNode.COUNTEDLOOP) // fails
+    @IR(failOn = IRNode.COUNTEDLOOP_MAIN)
     public void countedLoop() {
         for (int i = 0; i < 2000; i++) {
             dontInline();
@@ -523,8 +608,9 @@ class VariousIRNodes {
     }
 
     @Test
-    @IR(failOn = {IRNode.LOOP})
-    @IR(failOn = {IRNode.COUNTEDLOOP})
+    @IR(failOn = IRNode.LOOP) // fails
+    @IR(failOn = IRNode.COUNTEDLOOP) // fails
+    @IR(failOn = IRNode.COUNTEDLOOP_MAIN)
     public void loopAndCountedLoop() {
         for (int i = 0; i < 2000; i++) {
             for (int j = 0; j < limit; j++) {
@@ -533,25 +619,67 @@ class VariousIRNodes {
         }
     }
 
-    @DontInline
-    public void dontInline() {}
-
     @Test
-    @IR(failOn = {IRNode.LOAD})
-    @IR(failOn = {IRNode.LOAD_OF_CLASS, "compiler/valhalla/framework/tests/VariousIRNodes"})
-    @IR(failOn = {IRNode.LOAD_OF_CLASS, "VariousIRNodes"})
-    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld"})
-    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld2", IRNode.LOAD_OF_CLASS, "Various"}) // Does not fail
-    public void load() {
-        result = iFld;
+    @IR(failOn = IRNode.LOOP) // fails
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(failOn = IRNode.COUNTEDLOOP_MAIN) // fails
+    public void countedLoopMain() {
+        // Cannot unroll completely -> create pre/main/post
+        for (int i = 0; i < 100; i++) {
+            iArr[i] = i;
+        }
     }
 
     @Test
-    @IR(failOn = {IRNode.RETURN})
-    public void returns() {
-        dontInline();
+    @IR(failOn = IRNode.LOOP) // fails
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(failOn = IRNode.COUNTEDLOOP_MAIN)
+    public void countedLoopUnrolled() {
+        // Completely unrolled -> no pre/main/post
+        for (int i = 0; i < 8; i++) {
+            iArr[i] = i;
+        }
+    }
+}
+
+class Traps {
+    int number42 = 42;
+    int iFld = 42;
+    MyClass myClass = new MyClass();
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.PREDICATE_TRAP) // fails
+    @IR(failOn = {IRNode.STORE_OF_FIELD, "iFld"})
+    public void traps() {
+        for (int i = 0; i < 100; i++) {
+            if (number42 != 42) {
+                // Never reached
+                iFld = i;
+            }
+        }
     }
 
+    @Test
+    @IR(failOn = IRNode.TRAP)
+    @IR(failOn = {IRNode.STORE_OF_FIELD, "iFld"}) // fails
+    public void noTraps() {
+        for (int i = 0; i < 100; i++) {
+            if (i < 42) {
+                // Reached, no uncommon trap
+                iFld = i;
+            }
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
+    public void nullCheck() {
+        if (myClass instanceof MyClassSub) {
+            iFld = 4;
+        }
+    }
 }
 
 class MyClass {
@@ -568,14 +696,14 @@ enum FailType {
 }
 
 class Constraint {
-    final private Class<?> klass;
-    final private int ruleIdx;
-    final private Pattern irPattern;
-    final private List<String> matches;
-    final private Pattern methodPattern;
+    private final Class<?> klass;
+    private final int ruleIdx;
+    private final Pattern irPattern;
+    private final List<String> matches;
+    private final Pattern methodPattern;
     private final String classAndMethod;
-    final FailType failType;
-    final boolean shouldMatch;
+    private final FailType failType;
+    private final boolean shouldMatch;
 
     private Constraint(Class<?> klass, String methodName, int ruleIdx, FailType failType, List<String> matches, boolean shouldMatch) {
         this.klass = klass;
@@ -596,8 +724,8 @@ class Constraint {
         return klass;
     }
 
-    public static Constraint failOnNodes(Class<?> klass, String methodName, int ruleIdx, boolean shouldMatch, String... nodes) {
-        return new Constraint(klass, methodName, ruleIdx, FailType.FAIL_ON, new ArrayList<>(Arrays.asList(nodes)), shouldMatch);
+    public boolean shouldMatch() {
+        return shouldMatch;
     }
 
     public static Constraint failOnAlloc(Class<?> klass, String methodName, int ruleIdx, boolean shouldMatch, String allocKlass) {

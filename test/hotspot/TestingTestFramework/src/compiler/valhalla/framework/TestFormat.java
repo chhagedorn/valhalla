@@ -59,10 +59,11 @@ public class TestFormat {
         StringBuilder builder = new StringBuilder();
         builder.append("\nOne or more format violations have been detected:\n\n");
         builder.append("Violations (").append(FAILURES.size()).append(")\n");
-        builder.append("--------------\n");
+        builder.append("-------------").append("-".repeat(String.valueOf(FAILURES.size()).length())).append("\n");
         for (String failure : FAILURES) {
             builder.append(" - ").append(failure).append("\n");
         }
+        builder.append("/============/");
         FAILURES.clear();
         throw new TestFormatException(builder.toString());
     }

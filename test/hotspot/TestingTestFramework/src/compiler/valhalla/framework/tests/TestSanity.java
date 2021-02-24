@@ -23,9 +23,7 @@
 
 package compiler.valhalla.framework.tests;
 
-import compiler.valhalla.framework.Scenario;
-import compiler.valhalla.framework.Test;
-import compiler.valhalla.framework.TestFramework;
+import compiler.valhalla.framework.*;
 
 import java.util.ArrayList;
 
@@ -61,8 +59,7 @@ public class TestSanity {
     }
 
     @Test
-    public void test() {
-    }
+    public void test() {}
 }
 
 class HelperA { }

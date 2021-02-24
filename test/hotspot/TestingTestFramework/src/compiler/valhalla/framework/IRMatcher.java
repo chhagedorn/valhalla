@@ -138,10 +138,10 @@ class IRMatcher {
                 list.forEach(s -> builder.append("  * ").append(s.replace("\n", "\n    ").trim()).append("\n"));
                 builder.append("\n");
             }
-            builder.insert(0, "------------\n");
-            builder.insert(0, "Failures (" + failures + ")\n");
-            builder.insert(0, ("\nOne or more @IR rules failed:\n\n"));
-            Asserts.fail(builder.toString());
+            builder.insert(0, ("\nOne or more @IR rules failed:\n\n"
+                               + "Failed IR Rules (" + failures + ")\n")
+                               + "-----------------" + "-".repeat(String.valueOf(failures).length()) + "\n");
+            throw new IRViolationException(builder.toString());
         }
     }
 
@@ -152,25 +152,51 @@ class IRMatcher {
         }
         for (Integer id : ids) {
             IR irAnno = irAnnos[id];
-            applyFailOn(m, testOutput, irAnno, id + 1);
-            applyCount(m, testOutput, irAnno, id + 1);
-        }
-    }
-
-    private void applyFailOn(Method m, String testOutput, IR irAnno, int annoId) {
-        if (irAnno.failOn().length != 0) {
-            String failOnRegex = String.join("|", IRNode.mergeNodes(irAnno.failOn()));
-            Pattern pattern = Pattern.compile(failOnRegex);
-            Matcher matcher = pattern.matcher(testOutput);
-            boolean found = matcher.find();
-            if (found) {
-                addFail(m, irAnno, annoId, matcher, "contains forbidden node(s)");
+            StringBuilder failMsg = new StringBuilder();
+            applyFailOn(testOutput, failMsg, irAnno);
+            applyCounts(m, testOutput, failMsg, irAnno);
+            if (!failMsg.isEmpty()) {
+                failMsg.insert(0, "@IR rule " + (id + 1) + ": \"" + irAnno + "\"\n");
+                fails.computeIfAbsent(m, k -> new ArrayList<>()).add(failMsg.toString());
             }
         }
     }
 
-    private void applyCount(Method m, String testOutput, IR irAnno, int annoId) {
+    private void applyFailOn(String testOutput, StringBuilder failMsg, IR irAnno) {
+        if (irAnno.failOn().length != 0) {
+            String failOnRegex = String.join("|", IRNode.mergeNodes(irAnno.failOn()));
+            Pattern pattern = Pattern.compile(failOnRegex);
+            Matcher matcher = pattern.matcher(testOutput);
+            if (matcher.find()) {
+                addFailOnFails(irAnno, failMsg, testOutput);
+            }
+        }
+    }
+
+    private void addFailOnFails(IR irAnno, StringBuilder failMsg, String testOutput) {
+        List<String> failOnNodes = IRNode.mergeNodes(irAnno.failOn());
+        Pattern pattern;
+        Matcher matcher;
+        failMsg.append("- failOn: Graph contains forbidden nodes:\n");
+        int nodeId = 1;
+        for (String nodeRegex : failOnNodes) {
+            pattern = Pattern.compile(nodeRegex);
+            matcher = pattern.matcher(testOutput);
+            long matchCount = matcher.results().count();
+            if (matchCount > 0) {
+                matcher.reset();
+                failMsg.append("    Regex ").append(nodeId).append(") ").append(nodeRegex).append("\n");
+                failMsg.append("    Matched forbidden node").append(matchCount > 1 ? "s" : "").append(":\n");
+                matcher.results().forEach(r -> failMsg.append("      ").append(r.group()).append("\n"));
+            }
+            nodeId++;
+        }
+    }
+
+    private void applyCounts(Method m, String testOutput, StringBuilder failMsg, IR irAnno) {
         if (irAnno.counts().length != 0) {
+            boolean hasFails = false;
+            int countsId = 1;
             final List<String> nodesWithCount = IRNode.mergeNodes(irAnno.counts());
             for (int i = 0; i < nodesWithCount.size(); i += 2) {
                 String node = nodesWithCount.get(i);
@@ -194,21 +220,26 @@ class IRMatcher {
                 Matcher matcher = pattern.matcher(testOutput);
                 long actualCount = matcher.results().count();
                 if (!parsedComparator.getPredicate().test(actualCount, expectedCount)) {
-                    String message = "contains wrong number of nodes. Failed constraint: " + actualCount + " (found) " + countString.trim();
-                    addFail(m, irAnno, annoId, matcher, message);
+                    if (!hasFails) {
+                        failMsg.append("- counts: Graph contains wrong number of nodes:\n");
+                        hasFails = true;
+                    }
+                    addCountsFail(failMsg, node, matcher, expectedCount, actualCount, countsId);
                 }
+                countsId++;
             }
         }
     }
 
-    private void addFail(Method m, IR irAnno, int annoId, Matcher matcher, String message) {
+    private void addCountsFail(StringBuilder failMsg, String node, Matcher matcher, long expectedCount, long actualCount, int countsId) {
         matcher.reset();
-        StringBuilder builder = new StringBuilder();
-        builder.append("@IR rule ").append(annoId).append(": \"").append(irAnno).append("\"\n");
-        builder.append("Failing Regex: ").append(matcher.pattern().toString()).append("\n");
-        builder.append("Failure: Graph for '").append(m).append(" ").append(message).append(":\n");
-        matcher.results().forEach(r -> builder.append(r.group()).append("\n"));
-        List<String> failsList = fails.computeIfAbsent(m, k -> new ArrayList<>());
-        failsList.add(builder.toString());
+        failMsg.append("    Regex ").append(countsId).append(") ").append(node).append("\n");
+        failMsg.append("    Expected ").append(expectedCount).append(" but found ").append(actualCount);
+        if (actualCount > 0) {
+            failMsg.append(" node").append(actualCount > 1 ? "s" : "").append(":\n");
+            matcher.results().forEach(r -> failMsg.append("      ").append(r.group()).append("\n"));
+        } else {
+            failMsg.append(" nodes.\n");
+        }
     }
 }

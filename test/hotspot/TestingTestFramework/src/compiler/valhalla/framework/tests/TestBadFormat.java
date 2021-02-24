@@ -150,6 +150,26 @@ class BadArgumentsAnnotation {
     @Test
     @Arguments(Argument.DEFAULT)
     public void missingDefaultConstructor(ClassNoDefaultConstructor a) {}
+
+    @Test
+    @Arguments(Argument.TRUE)
+    public void wrongArgumentNumberWithRun(Object o1, Object o2) {
+    }
+
+    // Also fails: Cannot use @Arguments together with @Run
+    @Run(test="wrongArgumentNumberWithRun")
+    public void forRun() {
+    }
+
+    @Test
+    @Arguments(Argument.TRUE)
+    public void wrongArgumentNumberWithCheck(Object o1, Object o2) {
+    }
+
+    @NoFail
+    @Check(test="wrongArgumentNumberWithCheck")
+    public void forCheck() {
+    }
 }
 
 class BadOverloadedMethod {

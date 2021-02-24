@@ -110,8 +110,10 @@ public class TestIRMatching {
                  BadFailOnConstraint.create(Loads.class, "load()", 7, "Load"),
                  GoodRuleConstraint.create(Loads.class, "load()", 8),
                  GoodRuleConstraint.create(Loads.class, "load()", 9),
-                 BadFailOnConstraint.create(Loads.class, "loadKlass()", 1)
-        );
+                 GoodRuleConstraint.create(Loads.class, "load()", 10),
+                 BadFailOnConstraint.create(Loads.class, "loadKlass()", 1),
+                 BadCountsConstraint.create(Loads.class, "loadKlass()", 2, 2,"Field")
+                 );
 
         // Loops
         runCheck(BadFailOnConstraint.create(Loops.class, "loop()", 1, "Loop"),
@@ -157,7 +159,11 @@ public class TestIRMatching {
                  BadFailOnConstraint.create(Traps.class, "rangeCheck()", 1, "CallStaticJava", "uncommon_trap"),
                  BadFailOnConstraint.create(Traps.class, "rangeCheck()", 2, "CallStaticJava", "uncommon_trap", "range_check"),
                  BadFailOnConstraint.create(Traps.class, "rangeCheck()", 3, "CallStaticJava", "uncommon_trap", "null_check"),
-                 GoodRuleConstraint.create(Traps.class, "rangeCheck()", 4)
+                 GoodRuleConstraint.create(Traps.class, "rangeCheck()", 4),
+                 BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 2, "CallStaticJava", "uncommon_trap", "intrinsic_or_type_checked_inlining"),
+                 BadFailOnConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 3, "CallStaticJava", "uncommon_trap", "null_check"),
+                 GoodRuleConstraint.create(Traps.class, "instrinsicOrTypeCheckedInlining()", 4)
         );
 
 
@@ -168,6 +174,13 @@ public class TestIRMatching {
         );
 
         runCheck(BadFailOnConstraint.create(ScopeObj.class, "scopeObject()", 1, "ScObj"));
+        runCheck(BadFailOnConstraint.create(Membar.class, "membar()", 1, "MemBar"));
+        runCheck(BadFailOnConstraint.create(CheckCastArray.class, "array()", 1, "cmp", "precise klass"),
+                 BadFailOnConstraint.create(CheckCastArray.class, "array()", 2, 1,"cmp", "precise klass", "MyClass"),
+                 BadFailOnConstraint.create(CheckCastArray.class, "array()", 2, 2,"cmp", "precise klass", "tests/MyClass"),
+                 GoodFailOnConstraint.create(CheckCastArray.class, "array()", 3),
+                 BadFailOnConstraint.create(CheckCastArray.class, "arrayCopy(java.lang.Object[],java.lang.Class)", 1, "checkcast_arraycopy")
+        );
     }
 
     private static void runWithArguments(Class<?> clazz, String... args) {
@@ -222,7 +235,7 @@ public class TestIRMatching {
         }
     }
 
-    private static void shouldNotReach() {
+    public static void shouldNotReach() {
         throw new ShouldNotReachException("Framework did not fail but it should have!");
     }
 
@@ -606,6 +619,48 @@ class GoodCount {
     public void good9() {
         result = iFld + MyClass.lFldStatic + myClass.iFld; // 1 + 1 + 2 loads (myClass is LoadN of GoodCount and myClass.iFld a LoadI of MyClass)
     }
+
+    @Test
+    @IR(counts = {IRNode.LOAD, "8",
+                  IRNode.LOAD_B, "1",
+                  IRNode.LOAD_UB, "1",
+                  IRNode.LOAD_S, "1",
+                  IRNode.LOAD_US, "1",
+                  IRNode.LOAD_I, "1",
+                  IRNode.LOAD_L, "1",
+                  IRNode.LOAD_F, "1",
+                  IRNode.LOAD_D, "1"})
+    public void good10() {
+        bFld++;
+        cFld++;
+        sFld++;
+        iFld++;
+        lFld++;
+        fFld++;
+        dFld++;
+        flag = !flag;
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD, "8", IRNode.LOAD_OF_CLASS, "GoodCount", "8",
+                  IRNode.LOAD_B, "1", IRNode.LOAD_B_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_UB, "1", IRNode.LOAD_UB_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_S, "1", IRNode.LOAD_S_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_US, "1", IRNode.LOAD_US_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_I, "1", IRNode.LOAD_I_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_L, "1", IRNode.LOAD_L_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_F, "1", IRNode.LOAD_F_OF_CLASS, "GoodCount", "1",
+                  IRNode.LOAD_D, "1", IRNode.LOAD_D_OF_CLASS, "GoodCount", "1"})
+    public void good11() {
+        bFld++;
+        cFld++;
+        sFld++;
+        iFld++;
+        lFld++;
+        fFld++;
+        dFld++;
+        flag = !flag;
+    }
 }
 
 class BadCount {
@@ -664,6 +719,7 @@ class Loads {
     @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld"})
     @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld2", IRNode.LOAD_OF_CLASS, "Load"}) // Does not fail
     @IR(failOn = {IRNode.LOAD_KLASS}) // Does not fail
+    @IR(counts = {IRNode.FIELD_ACCESS, "3"}) // Does not fail
     public void load() {
         result = iFld;
         iFld = 3;
@@ -671,6 +727,7 @@ class Loads {
 
     @Test
     @IR(failOn = {IRNode.LOAD_KLASS})
+    @IR(counts = {IRNode.FIELD_ACCESS, "3"})
     public void loadKlass() {
         if (myClass instanceof MyClass) {
             result = 3;
@@ -747,6 +804,8 @@ class Traps {
     MyClass myClass = new MyClass();
     MyClassSub myClassSub = new MyClassSub();
     NotLoaded notLoaded = new NotLoaded();
+    Object[] oArr = new Object[10];
+    MyClass[] mArr = new MyClass[10];
 
     @Test
     @IR(failOn = IRNode.TRAP)
@@ -757,6 +816,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void noTraps() {
         for (int i = 0; i < 100; i++) {
@@ -776,6 +836,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void predicateTrap() {
         for (int i = 0; i < 100; i++) {
@@ -794,6 +855,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void nullCheck() {
         if (myClass instanceof MyClassSub) {
@@ -809,6 +871,7 @@ class Traps {
                   IRNode.UNSTABLE_IF_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public Object nullAssert() {
         return notLoaded.notLoadedFld;
@@ -823,6 +886,7 @@ class Traps {
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void unstableIf(boolean flag) {
         if (flag) {
@@ -840,6 +904,7 @@ class Traps {
                   IRNode.UNSTABLE_IF_TRAP,
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.RANGE_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void classCheck() {
         try {
@@ -857,9 +922,25 @@ class Traps {
                   IRNode.UNSTABLE_IF_TRAP,
                   IRNode.NULL_ASSERT_TRAP,
                   IRNode.CLASS_CHECK_TRAP,
+                  IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP,
                   IRNode.UNHANDLED_TRAP})
     public void rangeCheck() {
         iArr[1] = 3;
+    }
+
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP) // fails
+    @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
+    public void instrinsicOrTypeCheckedInlining() {
+        System.arraycopy(oArr, 0, mArr, 0, 8);
     }
 }
 
@@ -900,6 +981,44 @@ class ScopeObj {
     }
 }
 
+class Membar {
+    volatile MyClass myClass;
+
+    @Test
+    @IR(failOn = IRNode.MEMBAR) // fails
+    public int membar() {
+        myClass = new MyClass();
+        return myClass.x;
+    }
+}
+
+class CheckCastArray {
+    Object[] oArr = new Object[10];
+    MyClass[] mArr = new MyClass[10];
+
+    @Test
+    @IR(failOn = IRNode.CHECKCAST_ARRAY) // fails
+    @IR(failOn = {IRNode.CHECKCAST_ARRAY_OF, "MyClass", // fails
+                  IRNode.CHECKCAST_ARRAY_OF, "tests/MyClass"}) // fails
+    @IR(failOn = {IRNode.CHECKCAST_ARRAY_OF, "MyClasss", IRNode.CHECKCAST_ARRAY_OF, "Object"})
+    public boolean array() {
+        return oArr instanceof MyClass[];
+    }
+
+    @Test
+    @IR(failOn = IRNode.CHECKCAST_ARRAYCOPY) // fails
+    public Object[] arrayCopy(Object[] src, Class klass) {
+        return Arrays.copyOf(src, 8, klass);
+    }
+
+    @Run(test = "arrayCopy")
+    public void testArrayCopy() {
+        arrayCopy(mArr, MyClass[].class);
+        arrayCopy(mArr, Object[].class);
+        arrayCopy(mArr, MyClass2[].class);
+    }
+}
+
 // Used only by class Traps
 class NotLoaded {
     NotLoadedHelper notLoadedFld;
@@ -913,6 +1032,8 @@ class MyClass {
     int x = 5;
     static long lFldStatic;
 }
+
+class MyClass2 {}
 
 class MyClassSub extends MyClass {
     int iFld;

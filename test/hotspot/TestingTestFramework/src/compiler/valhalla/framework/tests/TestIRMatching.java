@@ -29,95 +29,152 @@ import jdk.test.lib.Asserts;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TestIRMatching {
 
     public static void main(String[] args) {
-//        runFailOnTests(Constraint.failOnMatches(AndOr1.class, "test1(int)", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:+UsePerfData", "-XX:+UseTLAB");
-//        runFailOnTests(Constraint.failOnMatches(AndOr1.class, "test2()", 1, true,"CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:-UsePerfData", "-XX:+UseTLAB");
-//
-//        runWithArguments(AndOr1.class, "-XX:SuspendRetryCount=52", "-XX:+UsePerfData", "-XX:+UseTLAB");
-//
-//        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
-//
-//        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
-//
-//        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
-//        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
-//
-//        runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
-//
-//        runFailOnTests(Constraint.failOnMatches(MultipleFailOnBad.class, "fail1()", 1,true, "Store"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail2()", 1,true, "CallStaticJava"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail3()", 1,true, "Store"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail4()", 1,true, "Store"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail5()", 1,true, "Store", "iFld"),
-//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail6()", 1,true, "MyClass"),
-//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail7()", 1,true, "MyClass"),
-//                       Constraint.failOnAlloc(MultipleFailOnBad.class, "fail8()", 1,true, "MyClass"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail9()", 1,true, "Store", "CallStaticJava"),
-//                       Constraint.failOnMatches(MultipleFailOnBad.class, "fail10()", 1,true, "Store", "iFld"));
-//
-//        runWithArguments(CountComparisons.class, "-XX:SuspendRetryCount=50");
-//        runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
-//        runFailOnTests(Constraint.countsMatches(BadCount.class, "bad1()", 1,true),
-//                       Constraint.countsMatches(BadCount.class, "bad1()", 2,false),
-//                       Constraint.countsMatches(BadCount.class, "bad2()", 1,false),
-//                       Constraint.countsMatches(BadCount.class, "bad2()", 2,true),
-//                       Constraint.countsMatches(BadCount.class, "bad3()", 1,true),
-//                       Constraint.countsMatches(BadCount.class, "bad3()", 2,true));
-//
-//        runFailOnTests(Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 1, true, "MyClass"),
-//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 2, true, "MyClass"),
-//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 3, false, "MyClass"),
-//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 4, false, "MyClass"),
-//                       Constraint.failOnArrayAlloc(AllocArray.class, "allocArray()", 5, true, "MyClass"));
-//
-//        runFailOnTests(new String[] {"-XX:-UseCompressedClassPointers"},
-//                       Constraint.failOnMatches(Loads.class, "load()", 1, true, "Load"),
-//                       Constraint.failOnMatches(Loads.class, "load()", 2, true, "Loads"),
-//                       Constraint.failOnMatches(Loads.class, "load()", 3, true, "Loads"),
-//                       Constraint.failOnMatches(Loads.class, "load()", 4, true, "Load", "iFld"),
-//                       Constraint.failOnMatches(Loads.class, "load()", 5, false, "Load"),
-//                       Constraint.failOnMatches(Loads.class, "load()", 6, false, "LoadKlass"),
-//                       Constraint.failOnMatches(Loads.class, "loadKlass()", 1, false, "LoadKlass"));
-//
-//        runFailOnTests(Constraint.failOnMatches(Loops.class, "loop()", 1, true, "Loop"),
-//                       Constraint.failOnMatches(Loops.class, "loop()", 2, false, "CountedLoop"),
-//                       Constraint.failOnMatches(Loops.class, "loop()", 3, false, "CountedLoop", "main"),
-//                       Constraint.failOnMatches(Loops.class, "countedLoop()", 1, false, "Loop"),
-//                       Constraint.failOnMatches(Loops.class, "countedLoop()", 2, true, "CountedLoop"),
-//                       Constraint.failOnMatches(Loops.class, "countedLoop()", 3, false, "CountedLoop", "main"),
-//                       Constraint.failOnMatches(Loops.class, "loopAndCountedLoop()", 1, true, "Loop"),
-//                       Constraint.failOnMatches(Loops.class, "loopAndCountedLoop()", 2, true, "CountedLoop"),
-//                       Constraint.failOnMatches(Loops.class, "loopAndCountedLoop()", 3, false, "CountedLoop", "main"),
-//                       Constraint.failOnMatches(Loops.class, "countedLoopMain()", 1, false, "Loop"),
-//                       Constraint.failOnMatches(Loops.class, "countedLoopMain()", 2, true, "CountedLoop"),
-//                       Constraint.failOnMatches(Loops.class, "countedLoopMain()", 3, true, "CountedLoop", "main"));
-    runFailOnTests(Constraint.failOnMatches(Traps.class, "traps()", 1, true, "CallStaticJava", "uncommon_trap"),
-                   Constraint.failOnMatches(Traps.class, "traps()", 2, true, "CallStaticJava", "uncommon_trap", "predicate"),
-                   Constraint.failOnMatches(Traps.class, "traps()", 3, false, "Store", "iFld"),
-                   Constraint.failOnMatches(Traps.class, "noTraps()", 1, false, "CallStaticJava", "uncommon_trap"),
-                   Constraint.failOnMatches(Traps.class, "noTraps()", 2, true, "Store", "iFld"),
-                   Constraint.failOnMatches(Traps.class, "nullCheck()", 1, true, "CallStaticJava", "uncommon_trap"),
-                   Constraint.failOnMatches(Traps.class, "nullCheck()", 2, true, "CallStaticJava", "uncommon_trap", "null_check")
-    );
+        runFailOnTestsArgs(BadFailOnConstraint.create(AndOr1.class, "test1(int)", 1, "CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:+UsePerfData", "-XX:+UseTLAB");
+        runFailOnTestsArgs(BadFailOnConstraint.create(AndOr1.class, "test2()", 1, "CallStaticJava"), "-XX:SuspendRetryCount=50", "-XX:-UsePerfData", "-XX:+UseTLAB");
 
+        runWithArguments(AndOr1.class, "-XX:SuspendRetryCount=52", "-XX:+UsePerfData", "-XX:+UseTLAB");
+        runWithArguments(CountComparisons.class, "-XX:SuspendRetryCount=50");
+        runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
+        runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
+
+        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
+
+        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
+
+        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
+        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
+
+        String[] allocMatches = { "MyClass", "call,static  wrapper for: _new_instance_Java" };
+        runCheck(BadFailOnConstraint.create(MultipleFailOnBad.class, "fail1()", 1, 1, "Store"),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail1()", 1,  3, "Store"),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail1()", 1,  2, 4),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail2()", 1,  1),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail2()", 1,  2, "CallStaticJava"),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail3()", 1,  2, "Store"),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail3()", 1,  1, 3),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail4()", 1,  1, "Store"),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail4()", 1,  2, 3),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail5()", 1,  1, "Store"),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail5()", 1,  2, 3),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail6()", 1,  1),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail6()", 1,  2, allocMatches),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail6()", 1,  3, "CallStaticJava"),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail7()", 1,  1),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail7()", 1,  2, allocMatches),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail8()", 1,  1),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail8()", 1,  2, allocMatches),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail9()", 1,  1, "Store"),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail9()", 1,  2, "CallStaticJava"),
+                 BadFailOnConstraint.create(MultipleFailOnBad.class, "fail10()", 1,  1, "Store", "iFld"),
+                 GoodFailOnRegexConstraint.create(MultipleFailOnBad.class, "fail10()", 1,  2, 3)
+        );
+
+        runCheck(BadCountsConstraint.create(BadCount.class, "bad1()", 1, 1, "Load"),
+                 GoodCountsConstraint.create(BadCount.class, "bad1()", 2),
+                 GoodCountsConstraint.create(BadCount.class, "bad2()", 1),
+                 BadCountsConstraint.create(BadCount.class, "bad2()", 2,  1, "Store"),
+                 BadCountsConstraint.create(BadCount.class, "bad3()", 1,  1, "Load"),
+                 BadCountsConstraint.create(BadCount.class, "bad3()", 2,  1, "Store")
+        );
+
+        String[] allocArrayMatches = { "MyClass", "call,static  wrapper for: _new_array_Java"};
+        runCheck(BadFailOnConstraint.create(AllocArray.class, "allocArray()", 1, allocArrayMatches),
+                 BadFailOnConstraint.create(AllocArray.class, "allocArray()", 2,  allocArrayMatches),
+                 GoodFailOnConstraint.create(AllocArray.class, "allocArray()", 3),
+                 GoodFailOnConstraint.create(AllocArray.class, "allocArray()", 4),
+                 BadFailOnConstraint.create(AllocArray.class, "allocArray()", 5,  allocArrayMatches)
+        );
+
+        runCheck(new String[] {"-XX:-UseCompressedClassPointers"},
+                 BadFailOnConstraint.create(Loads.class, "load()", 1, 1, "Load"),
+                 BadFailOnConstraint.create(Loads.class, "load()", 1, 3, "LoadI"),
+                 BadCountsConstraint.create(Loads.class, "load()", 1, 1, 0),
+                 BadCountsConstraint.create(Loads.class, "load()", 1, 2, 1,"Load"),
+                 GoodRuleConstraint.create(Loads.class, "load()", 2),
+                 GoodFailOnConstraint.create(Loads.class, "load()", 3),
+                 BadCountsConstraint.create(Loads.class, "load()", 3, 2, 2,"Store"),
+                 BadFailOnConstraint.create(Loads.class, "load()", 4, 2, "Store"),
+                 BadFailOnConstraint.create(Loads.class, "load()", 5, "Load"),
+                 BadFailOnConstraint.create(Loads.class, "load()", 6, "Load"),
+                 BadFailOnConstraint.create(Loads.class, "load()", 7, "Load"),
+                 GoodRuleConstraint.create(Loads.class, "load()", 8),
+                 GoodRuleConstraint.create(Loads.class, "load()", 9),
+                 BadFailOnConstraint.create(Loads.class, "loadKlass()", 1)
+        );
+
+        // Loops
+        runCheck(BadFailOnConstraint.create(Loops.class, "loop()", 1, "Loop"),
+                 GoodRuleConstraint.create(Loops.class, "loop()", 2),
+                 GoodRuleConstraint.create(Loops.class, "loop()", 3),
+                 GoodRuleConstraint.create(Loops.class, "countedLoop()", 1),
+                 BadFailOnConstraint.create(Loops.class, "countedLoop()", 2, "CountedLoop"),
+                 GoodRuleConstraint.create(Loops.class, "countedLoop()", 3),
+                 BadFailOnConstraint.create(Loops.class, "loopAndCountedLoop()", 1, "Loop"),
+                 BadFailOnConstraint.create(Loops.class, "loopAndCountedLoop()", 2, "CountedLoop"),
+                 GoodRuleConstraint.create(Loops.class, "loopAndCountedLoop()", 3),
+                 GoodRuleConstraint.create(Loops.class, "countedLoopMain()", 1),
+                 BadFailOnConstraint.create(Loops.class, "countedLoopMain()", 2, "CountedLoop"),
+                 BadFailOnConstraint.create(Loops.class, "countedLoopMain()", 3, "CountedLoop", "main"),
+                 GoodRuleConstraint.create(Loops.class, "countedLoopUnrolled()", 1),
+                 GoodRuleConstraint.create(Loops.class, "countedLoopUnrolled()", 2),
+                 GoodRuleConstraint.create(Loops.class, "countedLoopUnrolled()", 3)
+        );
+
+        // Traps
+        runCheck(GoodRuleConstraint.create(Traps.class, "noTraps()", 1),
+                 BadFailOnConstraint.create(Traps.class, "noTraps()", 2, "Store", "iFld"),
+                 GoodRuleConstraint.create(Traps.class, "noTraps()", 3),
+                 BadFailOnConstraint.create(Traps.class, "predicateTrap()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "predicateTrap()", 2, "CallStaticJava", "uncommon_trap", "predicate"),
+                 GoodRuleConstraint.create(Traps.class, "predicateTrap()", 3),
+                 GoodRuleConstraint.create(Traps.class, "predicateTrap()", 4),
+                 BadFailOnConstraint.create(Traps.class, "nullCheck()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "nullCheck()", 2, "CallStaticJava", "uncommon_trap", "null_check"),
+                 BadFailOnConstraint.create(Traps.class, "nullCheck()", 3, "uncommon_trap", "unstable_if"),
+                 GoodRuleConstraint.create(Traps.class, "nullCheck()", 4),
+                 BadFailOnConstraint.create(Traps.class, "nullAssert()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "nullAssert()", 2, "CallStaticJava", "uncommon_trap", "null_assert"),
+                 BadFailOnConstraint.create(Traps.class, "nullAssert()", 3, "CallStaticJava", "uncommon_trap", "null_check"),
+                 GoodRuleConstraint.create(Traps.class, "nullAssert()", 4),
+                 BadFailOnConstraint.create(Traps.class, "unstableIf(boolean)", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "unstableIf(boolean)",  2, "CallStaticJava", "uncommon_trap", "unstable_if"),
+                 GoodRuleConstraint.create(Traps.class, "unstableIf(boolean)", 3),
+                 BadFailOnConstraint.create(Traps.class, "classCheck()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "classCheck()", 2, "CallStaticJava", "uncommon_trap", "class_check"),
+                 BadFailOnConstraint.create(Traps.class, "classCheck()", 3, "CallStaticJava", "uncommon_trap", "null_check"),
+                 GoodRuleConstraint.create(Traps.class, "classCheck()", 4),
+                 BadFailOnConstraint.create(Traps.class, "rangeCheck()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(Traps.class, "rangeCheck()", 2, "CallStaticJava", "uncommon_trap", "range_check"),
+                 BadFailOnConstraint.create(Traps.class, "rangeCheck()", 3, "CallStaticJava", "uncommon_trap", "null_check"),
+                 GoodRuleConstraint.create(Traps.class, "rangeCheck()", 4)
+        );
+
+
+        runCheck(new String[] {"-XX:+BailoutToInterpreterForThrows"},
+                 BadFailOnConstraint.create(UnhandledTrap.class, "unhandled()", 1, "CallStaticJava", "uncommon_trap"),
+                 BadFailOnConstraint.create(UnhandledTrap.class, "unhandled()", 2, "CallStaticJava", "uncommon_trap", "unhandled"),
+                 GoodRuleConstraint.create(UnhandledTrap.class, "unhandled()", 3)
+        );
+
+        runCheck(BadFailOnConstraint.create(ScopeObj.class, "scopeObject()", 1, "ScObj"));
     }
 
     private static void runWithArguments(Class<?> clazz, String... args) {
         TestFramework.runWithScenarios(clazz, new Scenario(0, args));
     }
 
-    private static void runFailOnTests(String[] args , Constraint... constraints) {
+    private static void runCheck(String[] args , Constraint... constraints) {
         try {
             Scenario s = new Scenario(0, args);
             TestFramework.runWithScenarios(constraints[0].getKlass(), s); // All constraints have the same class.
@@ -129,7 +186,7 @@ public class TestIRMatching {
         }
     }
 
-    private static void runFailOnTests(Constraint... constraints) {
+    private static void runCheck(Constraint... constraints) {
         try {
             TestFramework.run(constraints[0].getKlass()); // All constraints have the same class.
             shouldNotReach();
@@ -143,17 +200,6 @@ public class TestIRMatching {
     private static void checkConstraints(RuntimeException e, Constraint[] constraints) {
         String message = e.getMessage();
         try {
-            long expectedFailures = Arrays.stream(constraints).filter(Constraint::shouldMatch).count();
-            Pattern pattern = Pattern.compile("Failures \\((\\d+)\\)");
-            Matcher matcher = pattern.matcher(message);
-            if (expectedFailures > 0) {
-                Asserts.assertTrue(matcher.find(), "Could not find failures");
-                long foundFailuresCount = Long.parseLong(matcher.group(1));
-                Asserts.assertEQ(foundFailuresCount, expectedFailures);
-            } else {
-                Asserts.assertFalse(matcher.find(), "Should not have found failures");
-            }
-
             for (Constraint constraint : constraints) {
                 constraint.checkConstraint(e);
             }
@@ -165,7 +211,7 @@ public class TestIRMatching {
     }
 
     // Single constraint
-    private static void runFailOnTests(Constraint constraint, String... args) {
+    private static void runFailOnTestsArgs(Constraint constraint, String... args) {
         try {
             Scenario scenario = new Scenario(0, args);
             TestFramework.runWithScenarios(constraint.getKlass(), scenario); // All constraints have the same class.
@@ -267,16 +313,16 @@ class MultipleFailOnGood {
     }
 
     @ForceInline
-    private void forceInline() {
-    }
+    private void forceInline() {}
 }
 
 class MultipleFailOnBad {
     private int iFld;
     private int myInt;
     private MyClass myClass;
+
     @Test
-    @IR(failOn = {IRNode.STORE, IRNode.CALL})
+    @IR(failOn = {IRNode.STORE, IRNode.CALL, IRNode.STORE_I, IRNode.LOOP})
     public void fail1() {
         iFld = 42;
     }
@@ -306,7 +352,7 @@ class MultipleFailOnBad {
     }
 
     @Test
-    @IR(failOn = {IRNode.STORE_OF_CLASS, "MyClass", IRNode.ALLOC})
+    @IR(failOn = {IRNode.STORE_OF_CLASS, "MyClass", IRNode.ALLOC, IRNode.CALL})
     public void fail6() {
         myClass = new MyClass();
     }
@@ -338,8 +384,7 @@ class MultipleFailOnBad {
     }
 
     @DontInline
-    private void dontInline() {
-    }
+    private void dontInline() {}
 }
 
 // Called with -XX:SuspendRetryCount=X.
@@ -368,8 +413,7 @@ class FlagComparisons {
     @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!=49"})
     @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!= 49"})
     @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " !=  49"}) // Index 21
-    public void testMatchAllIf50() {
-    }
+    public void testMatchAllIf50() {}
 
     // Applies no IR rules if SuspendRetryCount=50
     @Test
@@ -396,8 +440,7 @@ class FlagComparisons {
     @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!=50"})
     @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", "!= 50"})
     @IR(failOn = IRNode.CALL, applyIf = {"SuspendRetryCount", " !=  50"}) // Index 22
-    public void testMatchNoneIf50() {
-    }
+    public void testMatchNoneIf50() {}
 }
 
 class CountComparisons {
@@ -435,47 +478,98 @@ class CountComparisons {
 }
 
 class GoodCount {
+    boolean flag;
+    char cFld;
+    byte bFld;
+    short sFld;
     int iFld;
-    int iFld2;
+    long lFld;
+    float fFld;
+    double dFld;
+    long x;
+
     long result;
     MyClass myClass = new MyClass();
     MyClass myClassSubPoly = new MyClassSub();
     MyClassSub myClassSub = new MyClassSub();
 
     @Test
-    @IR(counts = {IRNode.STORE, "1"})
+    @IR(counts = {IRNode.STORE, "1", IRNode.STORE_I, "1"},
+        failOn = {IRNode.STORE_B, IRNode.STORE_C, IRNode.STORE_D,
+                  IRNode.STORE_F, IRNode.STORE_L})
     public void good1() {
         iFld = 3;
     }
 
     @Test
-    @IR(counts = {IRNode.STORE, "2"})
+    @IR(counts = {IRNode.STORE, "8",
+                  IRNode.STORE_B, "2", // bFld + flag
+                  IRNode.STORE_C, "2", // cFld + sFld
+                  IRNode.STORE_I, "1",
+                  IRNode.STORE_L, "1",
+                  IRNode.STORE_F, "1",
+                  IRNode.STORE_D, "1"})
     public void good2() {
+        flag = true;
+        cFld = 'a';
+        bFld = 1;
+        sFld = 2;
         iFld = 3;
-        iFld2 = 4;
+        lFld = 4L;
+        fFld = 5.0f;
+        dFld = 6.0;
     }
 
     @Test
-    @IR(counts = {IRNode.STORE, "2", IRNode.STORE_OF_CLASS, "GoodCount", "2"})
+    @IR(counts = {IRNode.STORE, "8", IRNode.STORE_OF_CLASS, "GoodCount", "8",
+                  IRNode.STORE_B, "2", IRNode.STORE_B_OF_CLASS, "GoodCount", "2",
+                  IRNode.STORE_C, "2", IRNode.STORE_C_OF_CLASS, "GoodCount", "2",
+                  IRNode.STORE_I, "1", IRNode.STORE_I_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_L, "1", IRNode.STORE_L_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_F, "1", IRNode.STORE_F_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_D, "1", IRNode.STORE_D_OF_CLASS, "GoodCount", "1"})
     public void good3() {
+        flag = true;
+        cFld = 'a';
+        bFld = 1;
+        sFld = 2;
         iFld = 3;
-        iFld2 = 4;
+        lFld = 4L;
+        fFld = 5.0f;
+        dFld = 6.0;
     }
 
     @Test
-    @IR(counts = {IRNode.STORE_OF_FIELD, "iFld", "1", IRNode.STORE, "2", IRNode.STORE_OF_CLASS, "GoodCount", "2"})
+    @IR(counts = {IRNode.STORE, "8", IRNode.STORE_OF_CLASS, "GoodCount", "8",
+                  IRNode.STORE_B, "2", IRNode.STORE_B_OF_CLASS, "GoodCount", "2",
+                  IRNode.STORE_C, "2", IRNode.STORE_C_OF_CLASS, "GoodCount", "2",
+                  IRNode.STORE_I, "1", IRNode.STORE_I_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_L, "1", IRNode.STORE_L_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_F, "1", IRNode.STORE_F_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_D, "1", IRNode.STORE_D_OF_CLASS, "GoodCount", "1",
+                  IRNode.STORE_OF_FIELD, "lFld", "1"})
     public void good4() {
+        flag = true;
+        cFld = 'a';
+        bFld = 1;
+        sFld = 2;
         iFld = 3;
-        iFld2 = 4;
+        lFld = 4L;
+        fFld = 5.0f;
+        dFld = 6.0;
     }
 
     @Test
-    @IR(counts = {IRNode.STORE_OF_FIELD, "iFld", "2", IRNode.STORE, "2", IRNode.STORE_OF_CLASS, "GoodCount", "1",
+    @IR(counts = {IRNode.STORE, "2", IRNode.STORE_I, "1", IRNode.STORE_L, "1",
+                  IRNode.STORE_OF_CLASS, "GoodCount", "1", IRNode.STORE_L_OF_CLASS, "GoodCount", "1",
                   IRNode.STORE_OF_CLASS, "compiler/valhalla/framework/tests/MyClass", "1",
-                  IRNode.STORE_OF_CLASS, "framework/tests/GoodCount", "1"})
+                  IRNode.STORE_I_OF_CLASS, "compiler/valhalla/framework/tests/MyClass", "1",
+                  IRNode.STORE_OF_CLASS, "framework/tests/GoodCount", "1",
+                  IRNode.STORE_L_OF_CLASS, "framework/tests/GoodCount", "1",
+                  IRNode.STORE_OF_FIELD, "x", "2"})
     public void good5() {
-        iFld = 3;
-        myClass.iFld = 4;
+        x = 3; // long
+        myClass.x = 4; // int
     }
 
     @Test
@@ -540,31 +634,6 @@ class BadCount {
     }
 }
 
-class Loads {
-    int iFld = 34;
-    int result = 0;
-    Object[] myClassArr = new MyClass[3];
-    Object myClass = new MyClass();
-
-    @Test
-    @IR(failOn = {IRNode.LOAD})
-    @IR(failOn = {IRNode.LOAD_OF_CLASS, "compiler/valhalla/framework/tests/Loads"})
-    @IR(failOn = {IRNode.LOAD_OF_CLASS, "Loads"})
-    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld"})
-    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld2", IRNode.LOAD_OF_CLASS, "Load"}) // Does not fail
-    @IR(failOn = {IRNode.LOAD_KLASS}) // Does not fail
-    public void load() {
-        result = iFld;
-    }
-
-    @Test
-    @IR(failOn = {IRNode.LOAD_KLASS})
-    public void loadKlass() {
-        if (myClass instanceof MyClass) {
-            result = 3;
-        }
-    }
-}
 
 class AllocArray {
     MyClass[] myClassArray;
@@ -577,6 +646,35 @@ class AllocArray {
     @IR(failOn = {IRNode.ALLOC_ARRAY_OF, "compiler/valhalla/framework/tests/MyClass"})
     public void allocArray() {
         myClassArray = new MyClass[2];
+    }
+}
+
+class Loads {
+    int iFld = 34;
+    int result = 0;
+    Object myClass = new MyClass();
+
+    @Test
+    @IR(failOn = {IRNode.LOAD, IRNode.LOOP, IRNode.LOAD_I}, counts = {IRNode.LOOP, "2", IRNode.LOAD, "2", IRNode.STORE, "2"})
+    @IR(failOn = {IRNode.LOOP, IRNode.LOOP}, counts = {IRNode.LOOP, "0", IRNode.LOAD, "1"}) // Does not fail
+    @IR(failOn = {IRNode.LOOP, IRNode.LOOP}, counts = {IRNode.LOOP, "0", IRNode.STORE, "1"})
+    @IR(failOn = {IRNode.LOOP, IRNode.STORE}, counts = {IRNode.LOOP, "0", IRNode.LOAD, "1"})
+    @IR(failOn = {IRNode.LOAD_OF_CLASS, "compiler/valhalla/framework/tests/Loads"})
+    @IR(failOn = {IRNode.LOAD_OF_CLASS, "Loads"})
+    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld"})
+    @IR(failOn = {IRNode.LOAD_OF_FIELD, "iFld2", IRNode.LOAD_OF_CLASS, "Load"}) // Does not fail
+    @IR(failOn = {IRNode.LOAD_KLASS}) // Does not fail
+    public void load() {
+        result = iFld;
+        iFld = 3;
+    }
+
+    @Test
+    @IR(failOn = {IRNode.LOAD_KLASS})
+    public void loadKlass() {
+        if (myClass instanceof MyClass) {
+            result = 3;
+        }
     }
 }
 
@@ -620,8 +718,8 @@ class Loops {
     }
 
     @Test
-    @IR(failOn = IRNode.LOOP) // fails
-    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(failOn = IRNode.LOOP)
+    @IR(failOn = IRNode.COUNTEDLOOP) // fails
     @IR(failOn = IRNode.COUNTEDLOOP_MAIN) // fails
     public void countedLoopMain() {
         // Cannot unroll completely -> create pre/main/post
@@ -631,7 +729,7 @@ class Loops {
     }
 
     @Test
-    @IR(failOn = IRNode.LOOP) // fails
+    @IR(failOn = IRNode.LOOP)
     @IR(failOn = IRNode.COUNTEDLOOP)
     @IR(failOn = IRNode.COUNTEDLOOP_MAIN)
     public void countedLoopUnrolled() {
@@ -644,25 +742,22 @@ class Loops {
 
 class Traps {
     int number42 = 42;
-    int iFld = 42;
+    int iFld = 10;
+    int[] iArr = new int[2];
     MyClass myClass = new MyClass();
-
-    @Test
-    @IR(failOn = IRNode.TRAP) // fails
-    @IR(failOn = IRNode.PREDICATE_TRAP) // fails
-    @IR(failOn = {IRNode.STORE_OF_FIELD, "iFld"})
-    public void traps() {
-        for (int i = 0; i < 100; i++) {
-            if (number42 != 42) {
-                // Never reached
-                iFld = i;
-            }
-        }
-    }
+    MyClassSub myClassSub = new MyClassSub();
+    NotLoaded notLoaded = new NotLoaded();
 
     @Test
     @IR(failOn = IRNode.TRAP)
     @IR(failOn = {IRNode.STORE_OF_FIELD, "iFld"}) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.NULL_CHECK_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
     public void noTraps() {
         for (int i = 0; i < 100; i++) {
             if (i < 42) {
@@ -674,118 +769,443 @@ class Traps {
 
     @Test
     @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.PREDICATE_TRAP) // fails
+    @IR(failOn = {IRNode.STORE_OF_FIELD, "iFld"})
+    @IR(failOn = {IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.NULL_CHECK_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
+    public void predicateTrap() {
+        for (int i = 0; i < 100; i++) {
+            if (number42 != 42) {
+                // Never reached
+                iFld = i;
+            }
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
     @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
+    @IR(failOn = IRNode.UNSTABLE_IF_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
     public void nullCheck() {
         if (myClass instanceof MyClassSub) {
             iFld = 4;
         }
     }
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.NULL_ASSERT_TRAP) // fails
+    @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
+    public Object nullAssert() {
+        return notLoaded.notLoadedFld;
+    }
+
+    @Test
+    @Arguments(Argument.TRUE)
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.UNSTABLE_IF_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.NULL_CHECK_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
+    public void unstableIf(boolean flag) {
+        if (flag) {
+            iFld++;
+        } else {
+            iFld--;
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.CLASS_CHECK_TRAP) // fails
+    @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
+    public void classCheck() {
+        try {
+            myClassSub = (MyClassSub) myClass;
+        } catch (ClassCastException e) {
+            // Expected
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.RANGE_CHECK_TRAP) // fails
+    @IR(failOn = IRNode.NULL_CHECK_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.CLASS_CHECK_TRAP,
+                  IRNode.UNHANDLED_TRAP})
+    public void rangeCheck() {
+        iArr[1] = 3;
+    }
 }
 
+class UnhandledTrap {
+    int iFld = 34;
+
+    @Test
+    @IR(failOn = IRNode.TRAP) // fails
+    @IR(failOn = IRNode.UNHANDLED_TRAP) // fails
+    @IR(failOn = {IRNode.PREDICATE_TRAP,
+                  IRNode.UNSTABLE_IF_TRAP,
+                  IRNode.NULL_CHECK_TRAP,
+                  IRNode.NULL_ASSERT_TRAP,
+                  IRNode.RANGE_CHECK_TRAP,
+                  IRNode.CLASS_CHECK_TRAP})
+    public void unhandled() {
+        try {
+            throw new RuntimeException();
+        } catch (RuntimeException e) {
+            // Expected
+        }
+    }
+}
+
+class ScopeObj {
+
+    @DontInline
+    public void dontInline(int i) {}
+
+    @Test
+    @IR(failOn = IRNode.SCOPE_OBJECT) // fails
+    public int scopeObject() {
+        MyClass myClass = new MyClass();
+        for (int i = 0; i < 100; i++) {
+            dontInline(myClass.iFld);
+        }
+        return 3;
+    }
+}
+
+// Used only by class Traps
+class NotLoaded {
+    NotLoadedHelper notLoadedFld;
+}
+
+// Used only by class Traps
+class NotLoadedHelper {}
+
 class MyClass {
-    int iFld;
+    int iFld = 3;
+    int x = 5;
     static long lFldStatic;
 }
+
 class MyClassSub extends MyClass {
     int iFld;
     static int iFldStatic;
 }
 
-enum FailType {
-    FAIL_ON, COUNTS
+class ShouldNotReachException extends RuntimeException {
+    ShouldNotReachException(String s) {
+        super(s);
+    }
 }
 
-class Constraint {
+
+// Base class for any kind of constraint that is used to verify if the framework reports the correct IR failures.
+abstract class Constraint {
     private final Class<?> klass;
-    private final int ruleIdx;
-    private final Pattern irPattern;
-    private final List<String> matches;
+    protected final int ruleIdx;
     private final Pattern methodPattern;
     private final String classAndMethod;
-    private final FailType failType;
-    private final boolean shouldMatch;
+    protected final Pattern irPattern;
+    private final String methodName;
+    protected boolean matched;
 
-    private Constraint(Class<?> klass, String methodName, int ruleIdx, FailType failType, List<String> matches, boolean shouldMatch) {
+    Constraint(Class<?> klass, String methodName, int ruleIdx, Pattern irPattern) {
         this.klass = klass;
         classAndMethod = klass.getSimpleName() + "." + methodName;
         this.ruleIdx = ruleIdx;
-        this.failType = failType;
         this.methodPattern = Pattern.compile(Pattern.quote(classAndMethod));
-        if (failType == FailType.FAIL_ON) {
-            irPattern = Pattern.compile("rule " + ruleIdx + ":.*\\R.*Failing Regex.*\\R.*Failure:.*contains forbidden node\\(s\\):");
-        } else {
-            irPattern = Pattern.compile("rule " + ruleIdx + ":.*\\R.*Failing Regex.*\\R.*Failure:.*contains wrong number of nodes. Failed constraint:.*");
-        }
-        this.shouldMatch = shouldMatch;
-        this.matches = matches;
+        this.irPattern = irPattern;
+        this.methodName = methodName;
+        this.matched = false;
+    }
+
+    // For good constraints only
+    Constraint(Class<?> klass, String methodName, int ruleIdx) {
+        this.klass = klass;
+        classAndMethod = klass.getSimpleName() + "." + methodName;
+        this.ruleIdx = ruleIdx;
+        this.methodPattern = Pattern.compile(Pattern.quote(classAndMethod));
+        this.irPattern = null;
+        this.methodName = methodName;
+        this.matched = false;
+    }
+
+    @Override
+    public String toString() {
+        return "Constraint " + getClass().getSimpleName() + ", method: " + methodName + ", rule: " + ruleIdx;
     }
 
     public Class<?> getKlass() {
         return klass;
     }
 
-    public boolean shouldMatch() {
-        return shouldMatch;
-    }
-
-    public static Constraint failOnAlloc(Class<?> klass, String methodName, int ruleIdx, boolean shouldMatch, String allocKlass) {
-        List<String> list = new ArrayList<>();
-        list.add(allocKlass);
-        list.add("call,static  wrapper for: _new_instance_Java");
-        return new Constraint(klass, methodName, ruleIdx, FailType.FAIL_ON, list, shouldMatch);
-    }
-
-    public static Constraint failOnArrayAlloc(Class<?> klass, String methodName, int ruleIdx, boolean shouldMatch, String allocKlass) {
-        List<String> list = new ArrayList<>();
-        list.add(allocKlass);
-        list.add("call,static  wrapper for: _new_array_Java");
-        return new Constraint(klass, methodName, ruleIdx, FailType.FAIL_ON, list, shouldMatch);
-    }
-
-    public static Constraint failOnMatches(Class<?> klass, String methodName, int ruleIdx, boolean shouldMatch, String... matches) {
-        return new Constraint(klass, methodName, ruleIdx, FailType.FAIL_ON, new ArrayList<>(Arrays.asList(matches)), shouldMatch);
-    }
-
-    public static Constraint countsMatches(Class<?> klass, String methodName, int ruleIdx, boolean shouldMatch) {
-        return new Constraint(klass, methodName, ruleIdx, FailType.COUNTS, new ArrayList<>(), shouldMatch);
+    protected String errorPrefix() {
+        return "Method " + methodName + ", Rule " + ruleIdx;
     }
 
     public void checkConstraint(RuntimeException e) {
         String message = e.getMessage();
         String[] splitMethods = message.split("Method");
-        for (String method : splitMethods) {
+        for (int i = 1; i < splitMethods.length; i++) {
+            String method = splitMethods[i];
             if (methodPattern.matcher(method).find()) {
-                String[] splitIrRules = method.split("@IR");
-                for (String irRule : splitIrRules) {
-                    if (irPattern.matcher(irRule).find()) {
-                        boolean allMatch = matches.stream().allMatch(irRule::contains);
-                        if (shouldMatch) {
-                            Asserts.assertTrue(allMatch, "Constraint for method " + classAndMethod + ", rule " + ruleIdx + " could not be matched:\n" + message);
-                        } else {
-                            Asserts.assertFalse(allMatch, "Constraint for method " + classAndMethod  + ", rule " + ruleIdx + " should not have been matched:\n" + message);
-                        }
-                        return;
+                String[] splitIrRules = method.split("@IR ");
+                for (int j = 1; j < splitIrRules.length; j++) {
+                    String irRule = splitIrRules[j];
+                    if (irRule.startsWith("rule " + ruleIdx)) {
+                        checkIRRule(irRule);
                     }
                 }
-                Predicate<String> irPredicate = s -> irPattern.matcher(s).find();
-                if (shouldMatch) {
-                    Asserts.assertTrue(Arrays.stream(splitIrRules).anyMatch(irPredicate), "Constraint for method " + classAndMethod + ", rule "
-                                       + ruleIdx + " could not be matched:\n" + message);
-                } else {
-                    Asserts.assertTrue(Arrays.stream(splitIrRules).noneMatch(irPredicate), "Constraint for method " + classAndMethod + ", rule "
-                                       + ruleIdx + " should not have been matched:\n" + message);
-                }
-                return;
             }
         }
-        if (shouldMatch) {
-            Asserts.fail("Constraint for method " + classAndMethod + ", rule " + ruleIdx + " could not be matched:\n" + message);
+        Asserts.assertTrue(matched, toString() + " should have been matched");
+    }
+
+    abstract protected void checkIRRule(String irRule);
+
+    protected void checkOnMethod(String method) {}
+}
+
+// Constraint for rule that does not fail.
+class GoodRuleConstraint extends Constraint {
+
+    GoodRuleConstraint(Class<?> klass, String methodName, int ruleIdx) {
+        super(klass, methodName, ruleIdx);
+        matched = true;
+    }
+
+    public static GoodRuleConstraint create(Class<?> klass, String methodName, int ruleIdx) {
+        return new GoodRuleConstraint(klass, methodName, ruleIdx);
+    }
+
+    @Override
+    protected void checkIRRule(String irRule) {
+        Asserts.fail(errorPrefix() + " should not fail:\n" + irRule);
+    }
+}
+
+// Constraint for rule that might fail but not with "failOn".
+class GoodFailOnConstraint extends GoodRuleConstraint {
+
+    private GoodFailOnConstraint(Class<?> klass, String methodName, int ruleIdx) {
+        super(klass, methodName, ruleIdx);
+    }
+
+    public static GoodFailOnConstraint create(Class<?> klass, String methodName, int ruleIdx) {
+        return new GoodFailOnConstraint(klass, methodName, ruleIdx);
+    }
+
+    @Override
+    protected void checkIRRule(String irRule) {
+        Asserts.assertFalse(irRule.contains("- failOn"), errorPrefix() + " should not have failed:\n" + irRule);
+    }
+}
+
+// Constraint for rule that might fail but not with "counts".
+class GoodCountsConstraint extends GoodRuleConstraint {
+
+    private GoodCountsConstraint(Class<?> klass, String methodName, int ruleIdx) {
+        super(klass, methodName, ruleIdx);
+    }
+
+    public static GoodCountsConstraint create(Class<?> klass, String methodName, int ruleIdx) {
+        return new GoodCountsConstraint(klass, methodName, ruleIdx);
+    }
+
+    @Override
+    protected void checkIRRule(String irRule) {
+        Asserts.assertFalse(irRule.contains("- counts"), errorPrefix() + " should not have failed with counts:\n" + irRule);
+    }
+}
+
+// Base class for all Regex based constraint.
+abstract class RegexConstraint extends Constraint {
+    final String category;
+    final String otherCategory;
+    final int[] regexIndexes;
+    final boolean isGood;
+    final List<String> matches;
+
+    RegexConstraint(Class<?> klass, String methodName, String category, boolean isGood, List<String> matches, int ruleIdx, int... regexIndexes) {
+        super(klass, methodName, ruleIdx, initIRPattern(category, ruleIdx));
+        this.category = category;
+        this.regexIndexes = regexIndexes;
+        if (category.equals("failOn")) {
+            this.otherCategory = "counts";
+        } else {
+            Asserts.assertTrue(category.equals("counts"));
+            this.otherCategory = "failOn";
+        }
+        this.isGood = isGood;
+        this.matches = matches;
+    }
+
+    @Override
+    public String toString() {
+        String msg = super.toString() + ", ";
+        if (regexIndexes.length > 1) {
+            msg += "regexes: [" + String.join(", ", Arrays.stream(regexIndexes).mapToObj(String::valueOf).toArray(String[]::new)) + "]";
+        } else {
+            msg += "regex: " + regexIndexes[0];
+        }
+        return msg;
+    }
+
+    @Override
+    protected String errorPrefix() {
+        return super.errorPrefix() + " with \"" + category + "\"";
+    }
+
+    private static Pattern initIRPattern(String category, int ruleIdx) {
+        if (category.equals("failOn")) {
+            return Pattern.compile("rule " + ruleIdx + ":.*\\R.*- failOn: Graph contains forbidden nodes.*\\R" +
+                                   ".*Regex \\d+\\).*\\R.*Matched forbidden node.*");
+        } else {
+            return Pattern.compile("rule " + ruleIdx + ":.*\\R.*- counts: Graph contains wrong number of nodes:\\R" +
+                                   ".*Regex \\d+\\).*\\R.*Expected.*");
+        }
+    }
+
+    @Override
+    protected void checkIRRule(String irRule) {
+        int categoryIndex = irRule.indexOf("- " + category);
+        Asserts.assertTrue(categoryIndex != -1, errorPrefix() + " should have failed");
+
+        int endIndex;
+        int otherCategoryIndex = irRule.indexOf("- " + otherCategory);
+        if (otherCategoryIndex == -1 || categoryIndex > otherCategoryIndex) {
+            endIndex = irRule.length();
+        } else {
+            endIndex = otherCategoryIndex;
+        }
+        String categoryString = irRule.substring(irRule.indexOf("- " + category), endIndex);
+        Pattern pattern;
+        Matcher matcher;
+        for (int regexIndex : this.regexIndexes) {
+            pattern = Pattern.compile("Regex " + regexIndex + "\\).*");
+            matcher = pattern.matcher(categoryString);
+            if (isGood) {
+                Asserts.assertFalse(matcher.find(), errorPrefix() + " failed with Regex " + regexIndex);
+                matched = true;
+            } else {
+                Asserts.assertTrue(matcher.find(), errorPrefix() + " should have failed at Regex " + regexIndex);
+                String[] splitRegex = categoryString.split("Regex ");
+                if (matches != null) {
+                    for (int i = 1; i < splitRegex.length; i++) {
+                        String regexString = splitRegex[i];
+                        if (regexString.startsWith(String.valueOf(regexIndex))) {
+                            Asserts.assertTrue(matches.stream().allMatch(regexString::contains),
+                                               errorPrefix() + " could not find all matches at Regex " + regexIndex);
+                            matched = true;
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-class ShouldNotReachException extends RuntimeException {
-    ShouldNotReachException(String s) {
-        super(s);
+// Base class for all good regex based constraints.
+abstract class GoodRegexConstraint extends RegexConstraint {
+
+    GoodRegexConstraint(Class<?> klass, String methodName, String category, int ruleIdx, int... regexIndexes) {
+        super(klass, methodName, category, true, null, ruleIdx, regexIndexes);
+    }
+}
+
+// Constraint for rule that might fail with "counts" or "failOn", but the specified regex in "failOn" does not fail.
+class GoodFailOnRegexConstraint extends GoodRegexConstraint {
+
+    private GoodFailOnRegexConstraint(Class<?> klass, String methodName, int ruleIdx, int... regexIndexes) {
+        super(klass, methodName, "failOn", ruleIdx, regexIndexes);
+    }
+
+
+    public static GoodFailOnRegexConstraint create(Class<?> klass, String methodName, int ruleIdx, int... regexIndexes) {
+        return new GoodFailOnRegexConstraint(klass, methodName, ruleIdx, regexIndexes);
+    }
+}
+
+
+// Constraint for rule that might fail with "counts" or "failOn", but the specified regex in "counts" does not fail.
+class GoodCountsRegexConstraint extends GoodRegexConstraint {
+
+    private GoodCountsRegexConstraint(Class<?> klass, String methodName, int ruleIdx, int... regexIndexes) {
+        super(klass, methodName, "counts", ruleIdx, regexIndexes);
+    }
+
+
+    public static GoodCountsRegexConstraint create(Class<?> klass, String methodName, int ruleIdx, int... regexIndexes) {
+        return new GoodCountsRegexConstraint(klass, methodName, ruleIdx, regexIndexes);
+    }
+}
+
+// Constraint for rule that fails with "failOn" and the specified regex must also fail.
+class BadFailOnConstraint extends RegexConstraint {
+
+    BadFailOnConstraint(Class<?> klass, String methodName, int ruleIdx, List<String> matches, int... regexIndexes) {
+        super(klass, methodName, "failOn", false, matches, ruleIdx, regexIndexes);
+    }
+
+    public static BadFailOnConstraint create(Class<?> klass, String methodName, int ruleIdx, int regexId, String... matches) {
+        return new BadFailOnConstraint(klass, methodName, ruleIdx, new ArrayList<>(Arrays.asList(matches)), regexId);
+    }
+
+    public static BadFailOnConstraint create(Class<?> klass, String methodName, int ruleIdx, String... matches) {
+        return new BadFailOnConstraint(klass, methodName, ruleIdx, new ArrayList<>(Arrays.asList(matches)), 1);
+    }
+}
+
+// Constraint for rule that fails with "counts" and the specified regex must also fail.
+class BadCountsConstraint extends RegexConstraint {
+
+    BadCountsConstraint(Class<?> klass, String methodName, int ruleIdx, List<String> matches, int... regexIndexes) {
+        super(klass, methodName, "counts", false, matches, ruleIdx, regexIndexes);
+    }
+
+    public static BadCountsConstraint create(Class<?> klass, String methodName, int ruleIdx, int regexId, int foundCount, String... matches) {
+        List<String> matchesList = getMatchesList(foundCount, matches, Arrays.asList(matches));
+        return new BadCountsConstraint(klass, methodName, ruleIdx, matchesList, regexId);
+    }
+
+    public static BadCountsConstraint create(Class<?> klass, String methodName, int ruleIdx, int foundCount, String... matches) {
+        List<String> matchesList = getMatchesList(foundCount, matches, Arrays.asList(matches));
+        return new BadCountsConstraint(klass, methodName, ruleIdx, matchesList, 1);
+    }
+
+    private static List<String> getMatchesList(int foundCount, String[] matches, List<String> strings) {
+        List<String> matchesList = new ArrayList<>();
+        matchesList.add("but found " + foundCount);
+        if (matches != null) {
+            matchesList.addAll(strings);
+        }
+        return matchesList;
     }
 }

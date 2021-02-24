@@ -23,20 +23,24 @@
 
 package compiler.valhalla.framework;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.*;
-import java.util.stream.Stream;
-
 import jdk.test.lib.Asserts;
+import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
 import jdk.test.lib.management.InputArguments;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
 import sun.hotspot.WhiteBox;
-import jdk.test.lib.Platform;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 
 public class TestFramework {
@@ -75,7 +79,7 @@ public class TestFramework {
     private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
     private static final String TESTLIST = System.getProperty("Testlist", "");
     private static final String EXCLUDELIST = System.getProperty("Exclude", "");
-    public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "251"));
+    public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "2000"));
     private static final boolean DUMP_REPLAY = Boolean.parseBoolean(System.getProperty("DumpReplay", "false"));
     private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
@@ -345,10 +349,30 @@ public class TestFramework {
             for (Map.Entry<String, Exception> entry: exceptionMap.entrySet()) {
                 String title = "Stacktrace for Scenario #" + entry.getKey();
                 builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
-                builder.append(entry.getValue().getMessage()).append("\n");
+                Exception e = entry.getValue();
+                if (e instanceof TestFormatException || e instanceof IRViolationException) {
+                    // For format or IR violations, only show the actual message and not the (uninteresting) stack trace.
+                    builder.append(e.getMessage());
+                } else {
+                    // Print stack trace if it was not a format violation or test run exception
+                    StringWriter errors = new StringWriter();
+                    entry.getValue().printStackTrace(new PrintWriter(errors));
+                    builder.append(errors.toString());
+                }
+                builder.append("\n");
             }
             TestRun.fail(builder.toString());
         }
+    }
+
+    // Only called by tests testing the framework itself. Accessed by reflection. Do not expose this to normal users.
+    private static void runTestsOnSameVM(Class<?> testClass) {
+        if (testClass == null) {
+            StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+            testClass = walker.getCallerClass();
+        }
+        TestFramework framework = new TestFramework(testClass);
+        framework.runTestsOnSameVM();
     }
 
     private void runTestsOnSameVM() {
@@ -360,16 +384,6 @@ public class TestFramework {
         }
         parseTestClass();
         runTests();
-    }
-
-    // Only called by tests testing the framework itself. Accessed by reflection. Do not expose this to normal users.
-    private static void runTestsOnSameVM(Class<?> testClass) {
-        if (testClass == null) {
-            StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-            testClass = walker.getCallerClass();
-        }
-        TestFramework framework = new TestFramework(testClass);
-        framework.runTestsOnSameVM();
     }
 
     private void runTestVM(Scenario scenario) {
@@ -393,11 +407,15 @@ public class TestFramework {
             scenario.setVMOutput(output);
         }
 
-        if (VERBOSE || oa.getExitValue() != 0) {
+        final int exitCode = oa.getExitValue();
+        if (VERBOSE || exitCode != 0) {
             System.out.println(" ----- OUTPUT -----");
             System.out.println(output);
+
         }
-        oa.shouldHaveExitValue(0);
+        if (exitCode != 0) {
+            throwTestException(oa, exitCode);
+        }
 
         if (VERIFY_IR) {
             IRMatcher irMatcher = new IRMatcher(output, testClass);
@@ -429,7 +447,7 @@ public class TestFramework {
 
         // TODO: Only for debugging
         if (cmds.get(0).startsWith("-agentlib")) {
-            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=y,server=y");
+            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
         }
 
         if (PREFER_COMMAND_LINE_FLAGS) {
@@ -472,6 +490,18 @@ public class TestFramework {
 
     private void addBoolOptionForClass(ArrayList<String> cmds, Class<?> testClass, String option) {
         cmds.add("-XX:CompileCommand=option," + testClass.getCanonicalName() + "::*,bool," + option + ",true");
+    }
+
+    private void throwTestException(OutputAnalyzer oa, int exitCode) {
+        String stdErr = oa.getStderr();
+        if (stdErr.contains("TestFormat.reportIfAnyFailures")) {
+            Pattern pattern = Pattern.compile("Violations \\(\\d+\\)[\\s\\S]*(?=/============/)");
+            Matcher matcher = pattern.matcher(stdErr);
+            TestFramework.check(matcher.find(), "Must find violation matches");
+            throw new TestFormatException("\n\n" + matcher.group());
+        } else {
+            throw new TestRunException("\nVM exited with " + exitCode + "\n\nError Output:\n" + stdErr);
+        }
     }
 
     private void parseTestClass() {
@@ -866,7 +896,7 @@ public class TestFramework {
 
     static void check(boolean test, String failureMessage) {
         if (!test) {
-            throw new TestFrameworkException("Internal TestFramework exception:\n" + failureMessage);
+            throw new TestFrameworkException("Internal TestFramework exception - please file a bug:\n" + failureMessage);
         }
     }
 

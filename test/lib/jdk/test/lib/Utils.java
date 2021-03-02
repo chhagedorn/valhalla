@@ -96,6 +96,11 @@ public final class Utils {
     public static final String TEST_SRC = System.getProperty("test.src", "").trim();
 
     /**
+     * Returns the value of 'test.src.path' system property
+     */
+    public static final String TEST_SRC_PATH = System.getProperty("test.src.path", "").trim();
+
+    /**
      * Returns the value of 'test.root' system property.
      */
     public static final String TEST_ROOT = System.getProperty("test.root", "").trim();
@@ -121,9 +126,15 @@ public final class Utils {
     public static final String TEST_NAME = System.getProperty("test.name", ".");
 
     /**
+     * Returns the value of 'test.file' system property
+     */
+    public static final String TEST_FILE = System.getProperty("test.file", "").trim();
+
+    /**
      * Returns the value of 'test.nativepath' system property
      */
     public static final String TEST_NATIVE_PATH = System.getProperty("test.nativepath", ".");
+
 
     /**
      * Defines property name for seed value.

@@ -21,14 +21,14 @@
  * questions.
  */
 
+package testframework;
 
 import jdk.test.lib.Utils;
+import jdk.test.lib.util.ClassFileInstaller;
 import jdk.test.lib.management.InputArguments;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
 import sun.hotspot.WhiteBox;
-import testframework.TestFormatException;
-import testframework.TestRunException;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -38,7 +38,6 @@ import java.io.File;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -51,18 +50,23 @@ import java.util.List;
  * public class Test { ... }
  */
 public class TestFrameworkDriver {
-    public static void main(String[] args) throws Exception {
+
+    public static void main(String... args) {
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        var test = walker.getCallerClass();
         if (args.length == 0) {
-            throw new TestFormatException("Must specify at least the test as argument for the driver:\n" +
-                                          "@run driver TestFrameworkDriver some.package.Test");
+          installWhiteBox();
+          runJtregTestInVM(test);
+        } else {
+            if (args.length != 1 || !"run".equals(args[0])) {
+                throw new TestFormatException("unexpected arguments: " + Arrays.toString(args));
+            }
+            TestFramework.run(test);
         }
-        compileTest();
-        installWhiteBox();
-        runJtregTestInVM(args);
     }
 
-    private static void runJtregTestInVM(String[] args) throws Exception {
-        LinkedList<String> testVMArgs = new LinkedList<>();
+    private static void runJtregTestInVM(Class<?> test) {
+        var testVMArgs = new ArrayList<String>();
         testVMArgs.add("-Dtest.jdk=" + Utils.TEST_JDK);
         testVMArgs.add("-cp");
         testVMArgs.add(Utils.TEST_CLASS_PATH);
@@ -70,32 +74,25 @@ public class TestFrameworkDriver {
         testVMArgs.add("-Xbootclasspath/a:.");
         testVMArgs.add("-XX:+UnlockDiagnosticVMOptions");
         testVMArgs.add("-XX:+WhiteBoxAPI");
-        testVMArgs.addAll(Arrays.asList(args)); // add all specified flags
-        OutputAnalyzer oa = ProcessTools.executeProcess(ProcessTools.createTestJvm(testVMArgs));
+        testVMArgs.add(test.getName());
+        testVMArgs.add("run");
+        OutputAnalyzer oa;
+        try {
+          oa = ProcessTools.executeProcess(ProcessTools.createTestJvm(testVMArgs));
+        } catch (Exception e) {
+            throw new TestRunException("Failed to execute test VM", e);
+        }
         if (oa.getExitValue() != 0) {
             System.err.println(oa.getOutput());
             throw new TestRunException("Non-zero exit value of VM: " + oa.getExitValue());
         }
     }
 
-    private static void installWhiteBox() throws Exception {
-        ClassFileInstaller.main(WhiteBox.class.getName());
-    }
-
-    private static void compileTest() {
-        JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
-        StringWriter output = new StringWriter();
-        StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
-        Iterable<? extends JavaFileObject> compilationSource = fileManager.getJavaFileObjects(Utils.TEST_FILE);
-        List<String> javacOptions = new ArrayList<>();
-        javacOptions.add("-sourcepath");
-        javacOptions.add(Utils.TEST_CLASS_PATH + File.pathSeparator + Utils.TEST_SRC_PATH);
-        javacOptions.add("-d");
-        javacOptions.add(Utils.TEST_CLASS_PATH.split(File.pathSeparator)[0]);
-        boolean success = javac.getTask(output, fileManager, null, javacOptions,
-                                        null, compilationSource).call();
-        if (!success) {
-            throw new TestFormatException("Compilation of " + Utils.TEST_FILE + " failed: " + output);
+    private static void installWhiteBox() {
+        try {
+            ClassFileInstaller.main(WhiteBox.class.getName());
+        } catch (Exception e) {
+            throw new Error("failed to install whitebox classes", e);
         }
     }
 }

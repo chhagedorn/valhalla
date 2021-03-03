@@ -25,9 +25,9 @@
  * @test
  * @summary Example test to use the new test framework.
  * @library /test/lib
- * @run driver TestFrameworkDriver compiler.valhalla.testframework.TestSimpleExample
+ * @run driver compiler.valhalla.testframework.TestSimpleExample
  */
- 
+
 package compiler.valhalla.testframework;
 
 import testframework.*;
@@ -36,8 +36,8 @@ public class TestSimpleExample {
 
     int iFld;
 
-    public static void main(String[] args) {
-        TestFramework.run(); // Framework will use this class (TestSimpleExample.class) as test class.
+    public static void main(String[] args) throws Exception {
+      TestFrameworkDriver.main(args);
     }
 
     // TestFramework will verify that this @IR rule works if it is called with a debug build.

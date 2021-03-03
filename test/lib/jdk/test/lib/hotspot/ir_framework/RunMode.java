@@ -21,31 +21,17 @@
  * questions.
  */
 
-/*
- * @test
- * @summary Example test to use the new test framework.
- * @library /test/lib
- * @run driver compiler.valhalla.testframework.TestSimpleExample
- */
- 
-package compiler.valhalla.testframework;
+package jdk.test.lib.hotspot.ir_framework;
 
-import jdk.test.lib.hotspot.ir_framework.*;
-
-public class TestSimpleExample {
-
-    int iFld;
-
-    public static void main(String[] args) {
-        TestFramework.run();
-    }
-
-    // TestFramework will verify that this @IR rule works if it is called with a debug build.
-    // With a product build, it just executes this method without IR verification (Print flags
-    // for verification are only available in debug builds).
-    @Test
-    @IR(failOn = IRNode.LOOP, counts = {IRNode.STORE_I, "1"})
-    public void test() {
-        iFld = 42;
-    }
+public enum RunMode {
+    /**
+     * Default mode: First warm up run method, then compile the associated
+     * test method and finally invoke the run method once more.
+     */
+    NORMAL,
+    /**
+     * Standalone mode: There is no warm up and no forced compilation.
+     * The run method is responsible to trigger the compilation(s).
+     */
+    STANDALONE
 }

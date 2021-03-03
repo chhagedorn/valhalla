@@ -21,31 +21,23 @@
  * questions.
  */
 
-/*
- * @test
- * @summary Example test to use the new test framework.
- * @library /test/lib
- * @run driver compiler.valhalla.testframework.TestSimpleExample
- */
- 
-package compiler.valhalla.testframework;
+package jdk.test.lib.hotspot.ir_framework;
 
-import jdk.test.lib.hotspot.ir_framework.*;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-public class TestSimpleExample {
+@Retention(RetentionPolicy.RUNTIME)
+@Repeatable(IRs.class)
+public @interface IR {
+    // Regular expression used to match forbidden IR nodes
+    // in the C2 IR emitted for this test.
+    String[] failOn() default {};
 
-    int iFld;
-
-    public static void main(String[] args) {
-        TestFramework.run();
-    }
-
-    // TestFramework will verify that this @IR rule works if it is called with a debug build.
-    // With a product build, it just executes this method without IR verification (Print flags
-    // for verification are only available in debug builds).
-    @Test
-    @IR(failOn = IRNode.LOOP, counts = {IRNode.STORE_I, "1"})
-    public void test() {
-        iFld = 42;
-    }
+    // Regular expressions used to match and count IR nodes.
+    String[] counts() default {};
+    String[] applyIf() default {};
+    String[] applyIfNot() default {};
+    String[] applyIfAnd() default {};
+    String[] applyIfOr() default {};
 }

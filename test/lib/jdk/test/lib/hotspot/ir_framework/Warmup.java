@@ -21,31 +21,13 @@
  * questions.
  */
 
-/*
- * @test
- * @summary Example test to use the new test framework.
- * @library /test/lib
- * @run driver compiler.valhalla.testframework.TestSimpleExample
- */
- 
-package compiler.valhalla.testframework;
+package jdk.test.lib.hotspot.ir_framework;
 
-import jdk.test.lib.hotspot.ir_framework.*;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-public class TestSimpleExample {
-
-    int iFld;
-
-    public static void main(String[] args) {
-        TestFramework.run();
-    }
-
-    // TestFramework will verify that this @IR rule works if it is called with a debug build.
-    // With a product build, it just executes this method without IR verification (Print flags
-    // for verification are only available in debug builds).
-    @Test
-    @IR(failOn = IRNode.LOOP, counts = {IRNode.STORE_I, "1"})
-    public void test() {
-        iFld = 42;
-    }
+// Number of warmup iterations
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Warmup {
+    int value();
 }

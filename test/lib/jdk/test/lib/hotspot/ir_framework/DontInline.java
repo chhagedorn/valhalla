@@ -21,31 +21,18 @@
  * questions.
  */
 
-/*
- * @test
- * @summary Example test to use the new test framework.
- * @library /test/lib
- * @run driver compiler.valhalla.testframework.TestSimpleExample
+package jdk.test.lib.hotspot.ir_framework;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+// Prevent method inlining during compilation
+/**
+ * Prevent inlining of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}). <i>Non-helper</i> methods are never inlined.
+ * Explicitly using this annotation on <i>non-helper</i> methods results in a
+ * {@link TestFormatException TestFormatException}.
  */
- 
-package compiler.valhalla.testframework;
-
-import jdk.test.lib.hotspot.ir_framework.*;
-
-public class TestSimpleExample {
-
-    int iFld;
-
-    public static void main(String[] args) {
-        TestFramework.run();
-    }
-
-    // TestFramework will verify that this @IR rule works if it is called with a debug build.
-    // With a product build, it just executes this method without IR verification (Print flags
-    // for verification are only available in debug builds).
-    @Test
-    @IR(failOn = IRNode.LOOP, counts = {IRNode.STORE_I, "1"})
-    public void test() {
-        iFld = 42;
-    }
+@Retention(RetentionPolicy.RUNTIME)
+public @interface DontInline {
 }

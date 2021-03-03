@@ -44,16 +44,16 @@ public class TestIRMatching {
         runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
 
         runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 0, 21);
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", -1, -1);
+        findIrIds(TestFramework.getLastVMOutput(), "testMatchAllIf50", 0, 21);
+        findIrIds(TestFramework.getLastVMOutput(), "testMatchNoneIf50", -1, -1);
 
         runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 4, 6, 13, 18);
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
+        findIrIds(TestFramework.getLastVMOutput(), "testMatchAllIf50", 4, 6, 13, 18);
+        findIrIds(TestFramework.getLastVMOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
 
         runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchAllIf50", 7, 12, 19, 21);
-        findIrIds(TestFramework.getLastVmOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
+        findIrIds(TestFramework.getLastVMOutput(), "testMatchAllIf50", 7, 12, 19, 21);
+        findIrIds(TestFramework.getLastVMOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
 
         String[] allocMatches = { "MyClass", "call,static  wrapper for: _new_instance_Java" };
         runCheck(BadFailOnConstraint.create(MultipleFailOnBad.class, "fail1()", 1, 1, "Store"),
@@ -217,7 +217,7 @@ public class TestIRMatching {
                 constraint.checkConstraint(e);
             }
         } catch (Exception e1) {
-            System.out.println(TestFramework.getLastVmOutput());
+            System.out.println(TestFramework.getLastVMOutput());
             System.out.println(message);
             throw e1;
         }

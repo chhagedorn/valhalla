@@ -32,13 +32,10 @@ import java.util.stream.Collectors;
 
 public class TestInfo {
     private static final Random random = new Random();
-    private static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
-    protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
-    protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
 
+    private final Method testMethod;
     private boolean toggleBool = false;
     private boolean onWarmUp = true;
-    private final Method testMethod;
 
     TestInfo(Method testMethod) {
         this.testMethod = testMethod;

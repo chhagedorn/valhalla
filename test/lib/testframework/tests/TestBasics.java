@@ -49,10 +49,10 @@ public class TestBasics {
         }
         for (int i = 0; i < executed.length; i++) {
             int value = executed[i];
-            if (value != TestFramework.WARMUP_ITERATIONS + 1) {
+            if (value != TestFrameworkExecution.WARMUP_ITERATIONS + 1) {
                 // Warmups + 1 C2 compiled invocation
                 throw new RuntimeException("Test " + i + "  was executed " + value + " times stead of "
-                        + TestFramework.WARMUP_ITERATIONS + 1 + " times." );
+                        + TestFrameworkExecution.WARMUP_ITERATIONS + 1 + " times." );
             }
         }
 
@@ -1017,7 +1017,7 @@ public class TestBasics {
 
     @Run(test = "testRunOnce2", mode = RunMode.STANDALONE)
     public void runTestRunOnce2(TestInfo info) {
-        for (int i = 0; i < TestFramework.WARMUP_ITERATIONS + 1; i++) {
+        for (int i = 0; i < TestFrameworkExecution.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();
         }
     }

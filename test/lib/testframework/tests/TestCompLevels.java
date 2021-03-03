@@ -38,17 +38,17 @@ public class TestCompLevels {
         runTestsOnSameVM.invoke(null, new Object[]{null});
         for (int i = 0; i < testExecuted.length; i++) {
             int value = testExecuted[i];
-            if (value != TestFramework.WARMUP_ITERATIONS + 1) {
+            if (value != TestFrameworkExecution.WARMUP_ITERATIONS + 1) {
                 // Warmups + 1 compiled invocation
                 throw new RuntimeException("Test " + i + "  was executed " + value + " times stead of "
-                                                   + TestFramework.WARMUP_ITERATIONS + 1 + " times." );
+                                                   + TestFrameworkExecution.WARMUP_ITERATIONS + 1 + " times." );
             }
         }
         Scenario s = new Scenario(1, "-XX:-TieredCompilation");
         TestFramework.runWithScenarios(TestNoTiered.class, s);
         s = new Scenario(2, "-XX:TieredStopAtLevel=1");
         TestFramework.runWithScenarios(TestStopAtLevel1.class, s);
-        Asserts.assertTrue(TestFramework.getLastVmOutput().contains("TestStopAtLevel1=34"));
+        Asserts.assertTrue(s.getVMOutput().contains("TestStopAtLevel1=34"));
     }
 
     @Test(compLevel = CompLevel.C1)

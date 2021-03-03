@@ -40,7 +40,7 @@ public class TestControls {
         Method runTestsOnSameVM = TestFramework.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
         runTestsOnSameVM.invoke(null, new Object[]{ null });
-        final int defaultIterations = TestFramework.WARMUP_ITERATIONS + 1;
+        final int defaultIterations = TestFrameworkExecution.WARMUP_ITERATIONS + 1;
         Asserts.assertEQ(executed[0], 1001);
         Asserts.assertEQ(executed[1], 101);
         Asserts.assertEQ(executed[2], 10000);

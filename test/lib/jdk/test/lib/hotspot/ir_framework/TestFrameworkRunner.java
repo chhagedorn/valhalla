@@ -59,6 +59,7 @@ class TestFrameworkRunner {
     private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1 && COMPILE_COMMANDS
                                        && Platform.isDebugBuild() && !Platform.isInt();
     private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
+    private static final String SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
 
     private static String[] getDefaultFlags() {
@@ -95,19 +96,22 @@ class TestFrameworkRunner {
         ArrayList<String> cmds = prepareTestVmFlags(testClass, args);
         OutputAnalyzer oa;
         try {
-            // Calls 'main' of this class to run all specified tests with commands 'cmds'.
+            // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
+            // It also prepends all -Dtest* properties as flags for the test VM.
             oa = ProcessTools.executeTestJvm(cmds);
         } catch (Exception e) {
             throw new TestFrameworkException("Error while executing Test VM", e);
         }
         String output = oa.getOutput();
         final int exitCode = oa.getExitValue();
-        if (VERBOSE || exitCode != 0) {
-            System.out.println(" ----- OUTPUT -----");
+        if (VERBOSE && exitCode == 0) {
+            System.out.println(" ----- OUTPUT Test VM-----");
             System.out.println(output);
 
         }
         if (exitCode != 0) {
+            System.err.println(" ----- OUTPUT Test VM -----");
+            System.err.println(output);
             throw new RuntimeException("\nTestFramework runner VM exited with " + exitCode);
         }
 
@@ -123,7 +127,9 @@ class TestFrameworkRunner {
         if (!PREFER_COMMAND_LINE_FLAGS) {
             cmds.addAll(Arrays.asList(vmInputArguments));
         }
-
+        if (!SCENARIO_FLAGS.isEmpty()) {
+            cmds.addAll(Arrays.asList(SCENARIO_FLAGS.split("\\s+")));
+        }
         setupIrVerificationFlags(testClass, cmds);
 
         if (VERIFY_VM) {

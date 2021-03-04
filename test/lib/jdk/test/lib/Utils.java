@@ -96,11 +96,6 @@ public final class Utils {
     public static final String TEST_SRC = System.getProperty("test.src", "").trim();
 
     /**
-     * Returns the value of 'test.src.path' system property
-     */
-    public static final String TEST_SRC_PATH = System.getProperty("test.src.path", "").trim();
-
-    /**
      * Returns the value of 'test.root' system property.
      */
     public static final String TEST_ROOT = System.getProperty("test.root", "").trim();
@@ -126,15 +121,9 @@ public final class Utils {
     public static final String TEST_NAME = System.getProperty("test.name", ".");
 
     /**
-     * Returns the value of 'test.file' system property
-     */
-    public static final String TEST_FILE = System.getProperty("test.file", "").trim();
-
-    /**
      * Returns the value of 'test.nativepath' system property
      */
     public static final String TEST_NATIVE_PATH = System.getProperty("test.nativepath", ".");
-
 
     /**
      * Defines property name for seed value.
@@ -223,6 +212,23 @@ public final class Utils {
         Collections.addAll(opts, safeSplitString(VM_OPTIONS));
         Collections.addAll(opts, safeSplitString(JAVA_OPTIONS));
         return opts.toArray(new String[0]);
+    }
+
+    /**
+     * Returns the default JTReg arguments as property flags for a jvm running a test.
+     * This is the combination of JTReg arguments test.vm.opts with a "-Dtest.vm.opts="
+     * and test.java.opts with a "-Dtest.java.opts=" prefix.
+     * @return A list of prefixed options, or an empty list if no options.
+     */
+    public static List<String> getTestJavaOptsAsPropertyFlags() {
+        List<String> opts = new ArrayList<>();
+        if (!VM_OPTIONS.isEmpty()) {
+            opts.add("-Dtest.vm.opts=" + VM_OPTIONS);
+        }
+        if (!JAVA_OPTIONS.isEmpty()) {
+            opts.add("-Dtest.java.opts=" + JAVA_OPTIONS);
+        }
+        return opts;
     }
 
     /**

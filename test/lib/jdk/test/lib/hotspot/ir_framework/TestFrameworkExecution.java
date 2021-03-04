@@ -26,9 +26,6 @@ package jdk.test.lib.hotspot.ir_framework;
 import jdk.test.lib.Asserts;
 import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
-import jdk.test.lib.management.InputArguments;
-import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.process.ProcessTools;
 import sun.hotspot.WhiteBox;
 
 import java.lang.annotation.Annotation;
@@ -36,8 +33,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 
@@ -64,30 +59,18 @@ public class TestFrameworkExecution {
     static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "true"));
     private static final boolean PRINT_TIMES = Boolean.parseBoolean(System.getProperty("PrintTimes", "false"));
 
-    private static final boolean COMPILE_COMMANDS = Boolean.parseBoolean(System.getProperty("CompileCommands", "true")) && !XCOMP;
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
     static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
-    private static final boolean REQUESTED_VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
-    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1 && COMPILE_COMMANDS
-                                       && Platform.isDebugBuild() && !Platform.isInt();
-    private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
     private static final String TESTLIST = System.getProperty("Testlist", "");
     private static final String EXCLUDELIST = System.getProperty("Exclude", "");
     public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "2000"));
     private static final boolean DUMP_REPLAY = Boolean.parseBoolean(System.getProperty("DumpReplay", "false"));
     private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
-    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
     private static final boolean PRINT_VALID_IR_RULES = Boolean.parseBoolean(System.getProperty("PrintValidIRRules", "false"));
     protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
     protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
     private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
-
-    private final String[] fixedDefaultFlags;
-    private final String[] compileCommandFlags;
-    private final String[] printFlags;
-    private final String[] verifyFlags;
-
 
     private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
     private final LinkedHashMap<Method, BaseTest> allTests = new LinkedHashMap<>(); // Keep order
@@ -101,12 +84,6 @@ public class TestFrameworkExecution {
     private TestFrameworkExecution(Class<?> testClass) {
         TestRun.check(testClass != null, "Test class cannot be null");
         this.testClass = testClass;
-        // These flags can be overridden
-        fixedDefaultFlags = initDefaultFlags();
-        compileCommandFlags = initCompileCommandFlags();
-        printFlags = initPrintFlags();
-        verifyFlags = initVerifyFlags();
-
         this.includeList = createTestFilterList(TESTLIST, testClass);
         this.excludeList = createTestFilterList(EXCLUDELIST, testClass);
 
@@ -115,24 +92,6 @@ public class TestFrameworkExecution {
         } else {
             irMatchRulePrinter = null;
         }
-    }
-
-    protected String[] initDefaultFlags() {
-        return new String[] {"-XX:-BackgroundCompilation"};
-    }
-
-    protected String[] initCompileCommandFlags() {
-        return new String[] {"-XX:CompileCommand=quiet"};
-    }
-
-    protected String[] initPrintFlags() {
-        return new String[] {"-XX:+PrintCompilation", "-XX:+UnlockDiagnosticVMOptions"};
-    }
-
-    protected String[] initVerifyFlags() {
-        return new String[] {
-                "-XX:+UnlockDiagnosticVMOptions", "-XX:+VerifyOops", "-XX:+VerifyStack", "-XX:+VerifyLastFrame", "-XX:+VerifyBeforeGC",
-                "-XX:+VerifyAfterGC", "-XX:+VerifyDuringGC", "-XX:+VerifyAdapterSharing"};
     }
 
     private List<String> createTestFilterList(String list, Class<?> testClass) {
@@ -167,7 +126,7 @@ public class TestFrameworkExecution {
 
         TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
         framework.addHelperClasses(args);
-        framework.runTestsOnSameVM();
+        framework.start();
     }
 
     private void addHelperClasses(String[] args) {
@@ -206,10 +165,10 @@ public class TestFrameworkExecution {
             testClass = walker.getCallerClass();
         }
         TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
-        framework.runTestsOnSameVM();
+        framework.start();
     }
 
-    private void runTestsOnSameVM() {
+    private void start() {
         if (helperClasses != null) {
             for (Class<?> helperClass : helperClasses) {
                 // Process the helper classes and apply the explicit compile commands
@@ -218,109 +177,6 @@ public class TestFrameworkExecution {
         }
         parseTestClass();
         runTests();
-    }
-
-    private void runTestVM() {
-        ArrayList<String> cmds = prepareTestVmFlags();
-        OutputAnalyzer oa;
-        try {
-            // Calls 'main' of this class to run all specified tests with commands 'cmds'.
-            oa = ProcessTools.executeTestJvm(cmds);
-        } catch (Exception e) {
-            throw new TestFrameworkException("Error while executing Test VM", e);
-        }
-        String output = oa.getOutput();
-        final int exitCode = oa.getExitValue();
-        if (VERBOSE || exitCode != 0) {
-            System.out.println(" ----- OUTPUT -----");
-            System.out.println(output);
-
-        }
-        if (exitCode != 0) {
-            throwTestException(oa, exitCode);
-        }
-
-        if (VERIFY_IR) {
-            IRMatcher irMatcher = new IRMatcher(output, testClass);
-            irMatcher.applyRules();
-        }
-    }
-
-    private ArrayList<String> prepareTestVmFlags() {
-        String[] vmInputArguments = InputArguments.getVmInputArgs();
-        ArrayList<String> cmds = new ArrayList<>();
-        if (!PREFER_COMMAND_LINE_FLAGS) {
-            cmds.addAll(Arrays.asList(vmInputArguments));
-        }
-
-        setupIrVerificationFlags(testClass, cmds);
-
-        if (VERIFY_VM) {
-            cmds.addAll(Arrays.asList(verifyFlags));
-        }
-
-        cmds.addAll(Arrays.asList(fixedDefaultFlags));
-        if (COMPILE_COMMANDS) {
-            cmds.addAll(Arrays.asList(compileCommandFlags));
-        }
-
-        // TODO: Only for debugging
-        if (cmds.get(0).startsWith("-agentlib")) {
-            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
-        }
-
-        if (PREFER_COMMAND_LINE_FLAGS) {
-            // Prefer flags set via the command line over the ones set by scenarios.
-            cmds.addAll(Arrays.asList(vmInputArguments));
-        }
-
-        cmds.add(getClass().getCanonicalName());
-        cmds.add(testClass.getCanonicalName());
-        if (helperClasses != null) {
-            helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
-        }
-        return cmds;
-    }
-
-    private void setupIrVerificationFlags(Class<?> testClass, ArrayList<String> cmds) {
-        if (VERIFY_IR && cmds.stream().anyMatch(flag -> flag.startsWith("-XX:CompileThreshold"))) {
-            // Disable IR verification if non-default CompileThreshold is set
-            if (VERBOSE) {
-                System.out.println("Disabled IR verification due to CompileThreshold flag");
-            }
-            VERIFY_IR = false;
-        } else if (!VERIFY_IR && REQUESTED_VERIFY_IR) {
-            System.out.println("IR Verification disabled either due to not running a debug build, running with -Xint, or other " +
-                               "VM flags that make the verification inaccurate or impossible (e.g. running with C1 only).");
-        }
-
-        if (VERIFY_IR) {
-            // Add print flags for IR verification
-            cmds.addAll(Arrays.asList(printFlags));
-            addBoolOptionForClass(cmds, testClass, "PrintIdeal");
-            addBoolOptionForClass(cmds, testClass, "PrintOptoAssembly");
-            // Always trap for exception throwing to not confuse IR verification
-            cmds.add("-XX:-OmitStackTraceInFastThrow");
-            cmds.add("-DPrintValidIRRules=true");
-        } else {
-            cmds.add("-DPrintValidIRRules=false");
-        }
-    }
-
-    private void addBoolOptionForClass(ArrayList<String> cmds, Class<?> testClass, String option) {
-        cmds.add("-XX:CompileCommand=option," + testClass.getCanonicalName() + "::*,bool," + option + ",true");
-    }
-
-    private void throwTestException(OutputAnalyzer oa, int exitCode) {
-        String stdErr = oa.getStderr();
-        if (stdErr.contains("TestFormat.reportIfAnyFailures")) {
-            Pattern pattern = Pattern.compile("Violations \\(\\d+\\)[\\s\\S]*(?=/============/)");
-            Matcher matcher = pattern.matcher(stdErr);
-            TestFramework.check(matcher.find(), "Must find violation matches");
-            throw new TestFormatException("\n\n" + matcher.group());
-        } else {
-            throw new TestRunException("\nVM exited with " + exitCode + "\n\nError Output:\n" + stdErr);
-        }
     }
 
     private void parseTestClass() {

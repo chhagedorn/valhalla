@@ -49,7 +49,6 @@ import java.util.regex.Pattern;
 public class TestFramework {
     // TODO: Change back to false by default
     public static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "true"));
-    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
 
     private List<Class<?>> helperClasses = null;
     private List<Scenario> scenarios = null;
@@ -246,22 +245,18 @@ public class TestFramework {
             return;
         }
 
-        ArrayList<String> cmds = new ArrayList<>();
+        ArrayList<String> cmds = new ArrayList<>(Utils.getTestJavaOptsAsPropertyFlags());
         cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
         cmds.add("-cp");
         cmds.add(Utils.TEST_CLASS_PATH);
         cmds.add("-Xbootclasspath/a:.");
         cmds.add("-XX:+UnlockDiagnosticVMOptions");
         cmds.add("-XX:+WhiteBoxAPI");
-        if (!PREFER_COMMAND_LINE_FLAGS) {
-            cmds.addAll(Arrays.asList(InputArguments.getVmInputArgs()));
-        }
         if (scenario != null) {
             System.out.println("Running Scenario #" + scenario.getIndex());
-            cmds.addAll(scenario.getFlags());
-        }
-        if (PREFER_COMMAND_LINE_FLAGS) {
-            cmds.addAll(Arrays.asList(InputArguments.getVmInputArgs()));
+            // Propagate scenario flags to TestFramework runner VM but do not apply them yet.
+            // These should only be applied to the test VM.
+            cmds.add("-DScenarioFlags=" + String.join(" ", scenario.getFlags()));
         }
         cmds.add(TestFrameworkRunner.class.getCanonicalName());
         cmds.add(testClass.getCanonicalName());
@@ -271,9 +266,11 @@ public class TestFramework {
 
         OutputAnalyzer oa;
         try {
-            oa = ProcessTools.executeProcess(ProcessTools.createTestJvm(cmds));
+            // Propagate scenario test and VM flags to TestFramework runner VM but do not apply them yet.
+            // These should only be applied to the test VM.
+            oa = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(cmds));
         } catch (Exception e) {
-            throw new TestRunException("Failed to execute test VM", e);
+            throw new TestRunException("Failed to execute TestFramework runner VM", e);
         }
 
         lastVMOutput = oa.getOutput();
@@ -282,6 +279,7 @@ public class TestFramework {
         }
         final int exitCode = oa.getExitValue();
         if (VERBOSE && exitCode == 0) {
+            System.out.println("--- OUTPUT TestFramework runner VM ---");
             System.out.println(lastVMOutput);
         }
 

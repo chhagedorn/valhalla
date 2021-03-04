@@ -47,8 +47,7 @@ import java.util.regex.Pattern;
  * public class Test { ... }
  */
 public class TestFramework {
-    // TODO: Change back to false by default
-    public static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "true"));
+    public static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
 
     private List<Class<?>> helperClasses = null;
     private List<Scenario> scenarios = null;
@@ -212,6 +211,9 @@ public class TestFramework {
             scenarioIndecies.add(scenarioIndex);
             try {
                 start(scenario);
+            } catch (TestFormatException e) {
+                // Test format violation is wrong for all the scenarios. Only report once.
+                throw new TestFormatException(e.getMessage());
             } catch (Exception e) {
                 exceptionMap.put(String.valueOf(scenarioIndex), e);
             }
@@ -223,8 +225,8 @@ public class TestFramework {
                 String title = "Stacktrace for Scenario #" + entry.getKey();
                 builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
                 Exception e = entry.getValue();
-                if (e instanceof TestFormatException || e instanceof IRViolationException) {
-                    // For format or IR violations, only show the actual message and not the (uninteresting) stack trace.
+                if (e instanceof IRViolationException) {
+                    // For IR violations, only show the actual message and not the (uninteresting) stack trace.
                     builder.append(e.getMessage());
                 } else {
                     // Print stack trace if it was not a format violation or test run exception
@@ -253,7 +255,7 @@ public class TestFramework {
         cmds.add("-XX:+UnlockDiagnosticVMOptions");
         cmds.add("-XX:+WhiteBoxAPI");
         if (scenario != null) {
-            System.out.println("Running Scenario #" + scenario.getIndex());
+            System.out.println("Running Scenario #" + scenario.getIndex() + " - [" + String.join(",", scenario.getFlags()) + "]");
             // Propagate scenario flags to TestFramework runner VM but do not apply them yet.
             // These should only be applied to the test VM.
             cmds.add("-DScenarioFlags=" + String.join(" ", scenario.getFlags()));

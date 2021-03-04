@@ -55,8 +55,7 @@ public class TestFrameworkExecution {
 
     // User defined settings
     static final boolean XCOMP = Platform.isComp();
-    // TODO: Change back to false by default
-    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "true"));
+    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
     private static final boolean PRINT_TIMES = Boolean.parseBoolean(System.getProperty("PrintTimes", "false"));
 
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");

@@ -49,8 +49,7 @@ class TestFrameworkRunner {
 
     // User defined settings
     static final boolean XCOMP = Platform.isComp();
-    // TODO: Change back to false by default
-    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "true"));
+    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
 
     private static final boolean COMPILE_COMMANDS = Boolean.parseBoolean(System.getProperty("CompileCommands", "true")) && !XCOMP;
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");

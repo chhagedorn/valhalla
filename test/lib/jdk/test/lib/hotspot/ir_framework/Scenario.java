@@ -49,7 +49,7 @@ public class Scenario {
 
     public Scenario(int index, String... flags) {
         this.index = index;
-        if (enabledScenarios.isEmpty() || enabledScenarios.contains(index)) {
+        if (flags != null && (enabledScenarios.isEmpty() || enabledScenarios.contains(index))) {
             this.flags = new ArrayList<>(Arrays.asList(flags));
             this.flags.addAll(additionalScenarioFlags);
             this.enabled = true;

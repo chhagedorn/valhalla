@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,7 +21,9 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package compiler.valhalla.testframework;
+
+import jdk.test.lib.hotspot.ir_framework.*;
 
 final primitive class MyValue2Inline {
     final double d;
@@ -88,7 +90,7 @@ public final primitive class MyValue2 extends MyAbstract {
         MyValue2 v = createDefaultInline();
         v = setX(v, x);
         v = setY(v, (byte)x);
-        v = setV(v, MyValue2Inline.createWithFieldsInline(d, InlineTypeTest.rL));
+        v = setV(v, MyValue2Inline.createWithFieldsInline(d, MyConstants.rL));
         return v;
     }
 
@@ -97,7 +99,7 @@ public final primitive class MyValue2 extends MyAbstract {
         MyValue2 v = createDefaultInline();
         v = setX(v, x);
         v = setY(v, (byte)x);
-        v = setV(v, MyValue2Inline.createWithFieldsInline(d, InlineTypeTest.rL));
+        v = setV(v, MyValue2Inline.createWithFieldsInline(d, MyConstants.rL));
         return v;
     }
 

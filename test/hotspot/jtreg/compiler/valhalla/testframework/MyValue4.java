@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,7 +21,9 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package compiler.valhalla.testframework;
+
+import jdk.test.lib.hotspot.ir_framework.*;
 
 // Inline type definition with too many fields to return in registers
 final primitive class MyValue4 extends MyAbstract {

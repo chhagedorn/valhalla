@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,10 +21,12 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package compiler.valhalla.testframework;
 
-public final primitive class MyValueEmpty extends MyAbstract {
-    public long hash() { return 0; }
+import jdk.test.lib.Utils;
 
-    public MyValueEmpty copy(MyValueEmpty other) { return other; }
+public class MyConstants {
+    public static final int  rI = Utils.getRandomInstance().nextInt() % 1000;
+    public static final long rL = Utils.getRandomInstance().nextLong() % 1000;
+    public static final double rD = Utils.getRandomInstance().nextDouble() % 1000;
 }

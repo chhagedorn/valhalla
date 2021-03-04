@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,20 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package compiler.valhalla.testframework;
 
-public primitive class Rectangle {
-    Point p0 = new Point();
-    Point p1 = new Point();
+public class NamedRectangle {
+    Rectangle rect = new Rectangle();
+    String name = "";
+
+    static int getP1X(NamedRectangle nr) {
+        return nr.rect
+            .p1
+            .x;
+    }
+
+    static Point getP1(NamedRectangle nr) {
+        return nr.rect
+            .p1;
+    }
 }

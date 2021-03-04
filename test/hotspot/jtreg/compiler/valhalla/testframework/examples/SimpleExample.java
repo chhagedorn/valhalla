@@ -25,14 +25,14 @@
  * @test
  * @summary Example test to use the new test framework.
  * @library /test/lib
- * @run driver compiler.valhalla.testframework.TestSimpleExample
+ * @run driver compiler.valhalla.testframework.examples.TestSimpleExample
  */
  
-package compiler.valhalla.testframework;
+package compiler.valhalla.testframework.examples;
 
 import jdk.test.lib.hotspot.ir_framework.*;
 
-public class TestSimpleExample {
+public class SimpleExample {
 
     int iFld;
 

@@ -171,6 +171,7 @@ public class TestFrameworkExecution {
         if (helperClasses != null) {
             for (Class<?> helperClass : helperClasses) {
                 // Process the helper classes and apply the explicit compile commands
+                checkHelperClass(helperClass);
                 processExplicitCompileCommands(helperClass);
             }
         }
@@ -178,7 +179,25 @@ public class TestFrameworkExecution {
         runTests();
     }
 
+    private void checkHelperClass(Class<?> clazz) {
+        checkTestAnnotationInnerClass(clazz, "helper");
+        for (Class<?> c : clazz.getDeclaredClasses()) {
+            checkTestAnnotationInnerClass(c, "nested (and helper)");
+        }
+    }
+
+    private void checkTestAnnotationInnerClass(Class<?> c, String clazzType) {
+        Method[] methods = c.getDeclaredMethods();
+        for (Method m : methods) {
+            TestFormat.checkNoThrow(getAnnotation(m, Test.class) == null,
+                                    "Cannot use @Test annotation in " + clazzType + " class: " + m);
+        }
+    }
+
     private void parseTestClass() {
+        for (Class<?> clazz : testClass.getDeclaredClasses()) {
+            checkTestAnnotationInnerClass(clazz, "inner");
+        }
         addReplay();
         processExplicitCompileCommands(testClass);
         setupTests();
@@ -216,27 +235,32 @@ public class TestFrameworkExecution {
     private void processExplicitCompileCommands(Class<?> clazz) {
         if (!XCOMP) {
             // Don't control compilations if -Xcomp is enabled.
-            Method[] methods = clazz.getDeclaredMethods();
-            for (Method m : methods) {
-                try {
-                    applyIndependentCompilationCommands(m);
+            // Also apply compile commands to all inner classes of 'clazz'.
+            ArrayList<Class<?>> classes = new ArrayList<>(Arrays.asList(clazz.getDeclaredClasses()));
+            classes.add(clazz);
+            for (Class<?> c : classes) {
+                Method[] methods = c.getDeclaredMethods();
+                for (Method m : methods) {
+                    try {
+                        applyIndependentCompilationCommands(m);
 
-                    if (STRESS_CC) {
-                        if (getAnnotation(m, Test.class) != null) {
-                            excludeCompilationRandomly(m);
+                        if (STRESS_CC) {
+                            if (getAnnotation(m, Test.class) != null) {
+                                excludeCompilationRandomly(m);
+                            }
                         }
+                    } catch (TestFormatException e) {
+                        // Failure logged. Continue and report later.
                     }
-                } catch (TestFormatException e) {
-                    // Failure logged. Continue and report later.
                 }
-            }
 
-            // Only force compilation now because above annotations affect inlining
-            for (Method m : methods) {
-                try {
-                    applyForceCompileCommand(m);
-                } catch (TestFormatException e) {
-                    // Failure logged. Continue and report later.
+                // Only force compilation now because above annotations affect inlining
+                for (Method m : methods) {
+                    try {
+                        applyForceCompileCommand(m);
+                    } catch (TestFormatException e) {
+                        // Failure logged. Continue and report later.
+                    }
                 }
             }
         }

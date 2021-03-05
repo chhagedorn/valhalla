@@ -32,6 +32,7 @@ import jdk.test.lib.Asserts;
 public class TestWithHelperClasses {
 
     public static void main(String[] args) {
+        int exceptionsCaught = 0;
         TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class, Helper2.class);
         try {
             TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class);
@@ -42,15 +43,48 @@ public class TestWithHelperClasses {
             Asserts.assertTrue(e.getMessage().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
             Asserts.assertFalse(TestFramework.getLastVMOutput().contains("Should not be executed"));
             Asserts.assertFalse(e.getMessage().contains("Should not be executed"));
-            return;
+            exceptionsCaught++;
         }
-        throw new RuntimeException("Did not catch exception");
+        try {
+            TestFramework.runWithHelperClasses(BadHelperClasses.class, BadHelper.class);
+        } catch (Exception e) {
+            Asserts.assertTrue(e.getMessage().contains("Cannot use @Test annotation in helper class:"));
+            Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
+            exceptionsCaught++;
+        }
+        try {
+            TestFramework.runWithHelperClasses(BadHelperClasses.class, BadHelper.class);
+        } catch (Exception e) {
+            Asserts.assertTrue(e.getMessage().contains("Cannot use @Test annotation in helper class:"));
+            Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
+            exceptionsCaught++;
+        }
+        if (exceptionsCaught != 2) {
+            throw new RuntimeException("Did not catch " + exceptionsCaught + " exceptions!");
+        }
     }
 
     @Test
     public void test() throws NoSuchMethodException {
         TestFramework.assertCompiledByC2(Helper1.class.getMethod("foo"));
         TestFramework.assertCompiledByC2(Helper2.class.getMethod("foo"));
+        TestFramework.assertCompiledByC2(NestedHelper.class.getMethod("foo"));
+        TestFramework.assertCompiledByC2(StaticNestedHelper.class.getMethod("foo"));
+    }
+
+    class NestedHelper {
+        @ForceCompile(CompLevel.C2)
+        public void foo() {
+            throw new RuntimeException("Should not be executed");
+        }
+    }
+
+
+    static class StaticNestedHelper {
+        @ForceCompile(CompLevel.C2)
+        public void foo() {
+            throw new RuntimeException("Should not be executed");
+        }
     }
 }
 
@@ -68,4 +102,14 @@ class Helper2 {
     public static void foo() {
         throw new RuntimeException("Should not be executed");
     }
+}
+
+class BadHelperClasses {
+    @Test
+    public void test() {}
+}
+
+class BadHelper {
+    @Test
+    public void noTestInHelper() {}
 }

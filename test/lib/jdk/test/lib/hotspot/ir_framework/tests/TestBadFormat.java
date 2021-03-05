@@ -49,6 +49,7 @@ public class TestBadFormat {
         expectTestFormatException(BadRunTests.class);
         expectTestFormatException(BadCheckTest.class);
         expectTestFormatException(BadIRAnnotations.class);
+        expectTestFormatException(BadInnerClassTest.class);
     }
 
     private static void expectTestFormatException(Class<?> clazz) {
@@ -78,6 +79,14 @@ public class TestBadFormat {
 
     private static Violations getViolations(Class<?> clazz) {
         Violations violations = new Violations();
+        getViolationsOfClass(clazz, violations);
+        for (Class<?> c : clazz.getDeclaredClasses()) {
+            getViolationsOfClass(c, violations);
+        }
+        return violations;
+    }
+
+    private static void getViolationsOfClass(Class<?> clazz, Violations violations) {
         for (Method m : clazz.getDeclaredMethods()) {
             NoFail noFail = m.getDeclaredAnnotation(NoFail.class);
             if (noFail == null) {
@@ -92,7 +101,6 @@ public class TestBadFormat {
                 Asserts.assertEQ(m.getDeclaredAnnotation(FailCount.class), null);
             }
         }
-        return violations;
     }
 
 }
@@ -787,6 +795,20 @@ class BadIRAnnotations {
     @IR(failOn = IRNode.CALL, applyIf = {"ErrorFile", "48"}) // valid
     @IR(failOn = IRNode.CALL, applyIf = {"ErrorFile", "48.5"}) // valid
     public void anyValueForStringFlags() {}
+}
+
+class BadInnerClassTest {
+
+    class InnerClass {
+        @Test
+        public void noTestInInnerClass() {}
+    }
+
+
+    static class StaticInnerClass {
+        @Test
+        public void noTestInInnerClass() {}
+    }
 }
 
 class ClassNoDefaultConstructor {

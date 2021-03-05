@@ -24,10 +24,9 @@
 package jdk.test.lib.hotspot.ir_framework;
 
 import jdk.test.lib.Utils;
-import jdk.test.lib.util.ClassFileInstaller;
-import jdk.test.lib.management.InputArguments;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.util.ClassFileInstaller;
 import sun.hotspot.WhiteBox;
 
 import java.io.PrintWriter;
@@ -48,6 +47,12 @@ import java.util.regex.Pattern;
  */
 public class TestFramework {
     public static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
+
+    static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
+    static final String TEST_VM_FLAGS_DELIMITER = " ";
+    static final String TEST_VM_FLAGS_END = "----- END -----";
+    private static boolean VERIFY_IR = true; // Should we perform IR matching?
+    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
 
     private List<Class<?>> helperClasses = null;
     private List<Scenario> scenarios = null;
@@ -240,6 +245,11 @@ public class TestFramework {
         }
     }
 
+    /**
+     * Execute a separate "flag" VM with White Box access to determine all test VM flags. The flag VM emits an encoding
+     * of all required flags for the test VM to the standard output. Once the flag VM exits, this driver VM parses the
+     * test VM flags, which also determine if IR matching should be done, and then starts the test VM to execute all tests.
+     */
     private void start(Scenario scenario) {
         if (scenario != null && !scenario.isEnabled()) {
             System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag -DScenarios " +
@@ -247,42 +257,131 @@ public class TestFramework {
             return;
         }
 
-        ArrayList<String> cmds = new ArrayList<>(Utils.getTestJavaOptsAsPropertyFlags());
+        String flagVMOutput = runFlagVM();
+        List<String> testVMFlags = getTestVMFlags(flagVMOutput);
+        runTestVM(scenario, testVMFlags);
+    }
+
+    private String runFlagVM() {
+        ArrayList<String> cmds = prepareFlagVMFlags();
+        OutputAnalyzer oa;
+        try {
+            // Run "flag" VM with White Box access to determine the test VM flags and if IR verification should be done.
+            oa = ProcessTools.executeTestJvm(cmds);
+        } catch (Exception e) {
+            throw new TestRunException("Failed to execute TestFramework flag VM", e);
+        }
+        checkFlagVMExitCode(oa);
+        return oa.getOutput();
+    }
+
+    /**
+     * The "flag" VM needs White Box access to prepare all test VM flags. It emits these as encoding to the standard output.
+     * This driver VM then parses the flags and adds them to the test VM.
+     */
+    private ArrayList<String> prepareFlagVMFlags() {
+        ArrayList<String> cmds = new ArrayList<>();
         cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
         cmds.add("-cp");
         cmds.add(Utils.TEST_CLASS_PATH);
         cmds.add("-Xbootclasspath/a:.");
         cmds.add("-XX:+UnlockDiagnosticVMOptions");
         cmds.add("-XX:+WhiteBoxAPI");
+        cmds.add(TestFrameworkPrepareFlags.class.getCanonicalName());
+        cmds.add(testClass.getCanonicalName());
+        return cmds;
+    }
+
+    private void checkFlagVMExitCode(OutputAnalyzer oa) {
+        String flagVMOutput = oa.getOutput();
+        final int exitCode = oa.getExitValue();
+        if (VERBOSE && exitCode == 0) {
+            System.out.println("--- OUTPUT TestFramework flag VM ---");
+            System.out.println(flagVMOutput);
+        }
+
+        if (exitCode != 0) {
+            System.out.println("--- OUTPUT TestFramework flag VM ---");
+            System.err.println(flagVMOutput);
+            throw new RuntimeException("\nTestFramework flag VM exited with " + exitCode);
+        }
+    }
+
+    /**
+     * Parse the test VM flags as prepared by the flag VM. Additionally check the property flag DPrintValidIRRules to determine
+     * if IR matching should be done or not.
+     */
+    private List<String> getTestVMFlags(String flagVMOutput) {
+        String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)"
+                               + "(.*DPrintValidIRRules=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
+        Pattern pattern = Pattern.compile(patternString);
+        Matcher matcher = pattern.matcher(flagVMOutput);
+        if (!matcher.find()) {
+            throw new TestFrameworkException("Invalid flag encoding emitted by flag VM");
+        }
+        VERIFY_IR = Boolean.parseBoolean(matcher.group(2));
+        return new ArrayList<>(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
+    }
+
+    private void runTestVM(Scenario scenario, List<String> testVMflags) {
+        List<String> cmds = prepareTestVMFlags(scenario, testVMflags);
+        OutputAnalyzer oa;
+        try {
+            // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
+            // Use executeProcess instead of executeTestJvm as we have already added the JTreg VM and
+            // Java options in prepareTestVMFlags().
+            oa = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(cmds));
+        } catch (Exception e) {
+            throw new TestFrameworkException("Error while executing Test VM", e);
+        }
+
+        lastVMOutput = oa.getOutput();
+        checkTestVMExitCode(oa);
+        if (scenario != null) {
+            scenario.setVMOutput(lastVMOutput);
+        }
+        if (VERIFY_IR) {
+            IRMatcher irMatcher = new IRMatcher(lastVMOutput, testClass);
+            irMatcher.applyRules();
+        }
+    }
+
+    private List<String> prepareTestVMFlags(Scenario scenario, List<String> testVMflags) {
+        ArrayList<String> cmds = new ArrayList<>();
+
+        // Need White Box access in test VM.
+        cmds.add("-Xbootclasspath/a:.");
+        cmds.add("-XX:+UnlockDiagnosticVMOptions");
+        cmds.add("-XX:+WhiteBoxAPI");
+
+        String[] jtregVMFlags = Utils.getTestJavaOpts();
+        if (!PREFER_COMMAND_LINE_FLAGS) {
+            cmds.addAll(Arrays.asList(jtregVMFlags));
+        }
         if (scenario != null) {
             System.out.println("Running Scenario #" + scenario.getIndex() + " - [" + String.join(",", scenario.getFlags()) + "]");
-            // Propagate scenario flags to TestFramework runner VM but do not apply them yet.
-            // These should only be applied to the test VM.
-            cmds.add("-DScenarioFlags=" + String.join(" ", scenario.getFlags()));
+            cmds.addAll(scenario.getFlags());
         }
-        cmds.add(TestFrameworkRunner.class.getCanonicalName());
+        cmds.addAll(testVMflags);
+
+        if (PREFER_COMMAND_LINE_FLAGS) {
+            // Prefer flags set via the command line over the ones set by scenarios.
+            cmds.addAll(Arrays.asList(jtregVMFlags));
+        }
+
+        cmds.add(TestFrameworkExecution.class.getCanonicalName());
         cmds.add(testClass.getCanonicalName());
         if (helperClasses != null) {
             helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
         }
+        return cmds;
+    }
 
-        OutputAnalyzer oa;
-        try {
-            // Propagate scenario test and VM flags to TestFramework runner VM but do not apply them yet.
-            // These should only be applied to the test VM.
-            oa = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(cmds));
-        } catch (Exception e) {
-            throw new TestRunException("Failed to execute TestFramework runner VM", e);
-        }
-
-        lastVMOutput = oa.getOutput();
-        if (scenario != null) {
-            scenario.setVMOutput(lastVMOutput);
-        }
+    private static void checkTestVMExitCode(OutputAnalyzer oa) {
         final int exitCode = oa.getExitValue();
         if (VERBOSE && exitCode == 0) {
             System.out.println("--- OUTPUT TestFramework runner VM ---");
-            System.out.println(lastVMOutput);
+            System.out.println(oa.getOutput());
         }
 
         if (exitCode != 0) {

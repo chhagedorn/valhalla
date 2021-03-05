@@ -29,6 +29,7 @@ import sun.hotspot.WhiteBox;
 
 import java.lang.reflect.Method;
 
+// Run with -Xbatch
 public class TestControls {
     static int[] executed = new int[15];
     static boolean wasExecuted = false;

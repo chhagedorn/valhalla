@@ -707,7 +707,7 @@ class DeclaredTest {
     public void printFixedRandomArguments() {
         if (hasArguments()) {
             boolean hasRandomArgs = false;
-            StringBuilder builder = new StringBuilder("Random Arguments: ");
+            StringBuilder builder = new StringBuilder("Fixed random arguments for method ").append(testMethod).append(": ");
             for (int i = 0; i < arguments.length; i++) {
                 ArgumentValue argument = arguments[i];
                 if (argument.isFixedRandom()) {
@@ -720,6 +720,19 @@ class DeclaredTest {
                 builder.setLength(builder.length() - 2);
                 System.out.println(builder.toString());
             }
+        }
+    }
+
+    public String getArgumentsString() {
+        if (hasArguments()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < arguments.length; i++) {
+                builder.append("arg ").append(i).append(": ").append(arguments[i].getArgument()).append(", ");
+            }
+            builder.setLength(builder.length() - 2);
+            return builder.toString();
+        } else {
+            return "<void>";
         }
     }
 
@@ -818,7 +831,8 @@ class BaseTest {
                 return testMethod.invoke(invocationTarget);
             }
         } catch (Exception e) {
-            throw new TestRunException("There was an error while invoking @Test method " + testMethod, e);
+            throw new TestRunException("There was an error while invoking @Test method " + testMethod
+                                       + ". Used arguments: " + test.getArgumentsString(), e);
         }
     }
 
@@ -873,8 +887,10 @@ class BaseTest {
 
         do {
             if (!WHITE_BOX.isMethodQueuedForCompilation(testMethod)) {
-                if (elapsed > 0 && TestFrameworkExecution.VERBOSE) {
-                    System.out.println(testMethod + " is not in queue anymore due to compiling it simultaneously on a different level. Enqueue again.");
+                if (elapsed > 0) {
+                    if (TestFrameworkExecution.VERBOSE) {
+                        System.out.println(testMethod + " is not in queue anymore due to compiling it simultaneously on a different level. Enqueue again.");
+                    }
                     enqueueMethodForCompilation();
                 }
             }

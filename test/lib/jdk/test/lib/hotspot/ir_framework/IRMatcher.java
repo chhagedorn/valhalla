@@ -34,6 +34,9 @@ class IRMatcher {
     private final Map<String,String> compilations;
     private final Class<?> testClass;
     private final Map<Method, List<String>> fails;
+    private Method method; // Current method to which rules are applied
+    private IR irAnno; // Current IR annotation that is processed.
+    private int irRuleIndex; // Current IR rule index;
 
     public IRMatcher(String output, Class<?> testClass) {
         this.irRulesMap = new HashMap<>();
@@ -108,6 +111,7 @@ class IRMatcher {
     public void applyRules() {
         fails.clear();
         for (Method m : testClass.getDeclaredMethods()) {
+            method = m;
             IR[] irAnnos =  m.getAnnotationsByType(IR.class);
             if (irAnnos.length > 0) {
                 // Validation of legal @IR attributes and placement of the annotation was already done in Test VM.
@@ -117,7 +121,7 @@ class IRMatcher {
                 TestFramework.check(ids[ids.length - 1] < irAnnos.length, "Invalid IR rule index found in validIrRulesMap for " + m);
                 if (ids[0] != IREncodingPrinter.NO_RULE_APPLIED) {
                     // If -1, than there was no matching IR rule for the given conditions.
-                    applyRuleToMethod(m, irAnnos, ids);
+                    applyRuleToMethod(irAnnos, ids);
                 }
             }
         }
@@ -125,6 +129,7 @@ class IRMatcher {
     }
 
     private void reportFailuresIfAny() {
+        TestFormat.reportIfAnyFailures();
         if (!fails.isEmpty()) {
             StringBuilder builder = new StringBuilder();
             int failures = 0;
@@ -143,35 +148,40 @@ class IRMatcher {
         }
     }
 
-    private void applyRuleToMethod(Method m, IR[] irAnnos, Integer[] ids) {
-        String testOutput = compilations.get(m.getName());
+    private void applyRuleToMethod(IR[] irAnnos, Integer[] ids) {
+        String testOutput = compilations.get(method.getName());
         if (TestFramework.VERBOSE) {
             System.out.println(testOutput);
         }
         for (Integer id : ids) {
-            IR irAnno = irAnnos[id];
+            irAnno = irAnnos[id];
+            irRuleIndex = id;
             StringBuilder failMsg = new StringBuilder();
-            applyFailOn(testOutput, failMsg, irAnno);
-            applyCounts(m, testOutput, failMsg, irAnno);
+            applyFailOn(testOutput, failMsg);
+            try {
+                applyCounts(testOutput, failMsg);
+            } catch (TestFormatException e) {
+                // Logged. Continue to check other rules.
+            }
             if (!failMsg.isEmpty()) {
                 failMsg.insert(0, "@IR rule " + (id + 1) + ": \"" + irAnno + "\"\n");
-                fails.computeIfAbsent(m, k -> new ArrayList<>()).add(failMsg.toString());
+                fails.computeIfAbsent(method, k -> new ArrayList<>()).add(failMsg.toString());
             }
         }
     }
 
-    private void applyFailOn(String testOutput, StringBuilder failMsg, IR irAnno) {
+    private void applyFailOn(String testOutput, StringBuilder failMsg) {
         if (irAnno.failOn().length != 0) {
             String failOnRegex = String.join("|", IRNode.mergeNodes(irAnno.failOn()));
             Pattern pattern = Pattern.compile(failOnRegex);
             Matcher matcher = pattern.matcher(testOutput);
             if (matcher.find()) {
-                addFailOnFails(irAnno, failMsg, testOutput);
+                addFailOnFails(failMsg, testOutput);
             }
         }
     }
 
-    private void addFailOnFails(IR irAnno, StringBuilder failMsg, String testOutput) {
+    private void addFailOnFails(StringBuilder failMsg, String testOutput) {
         List<String> failOnNodes = IRNode.mergeNodes(irAnno.failOn());
         Pattern pattern;
         Matcher matcher;
@@ -191,14 +201,14 @@ class IRMatcher {
         }
     }
 
-    private void applyCounts(Method m, String testOutput, StringBuilder failMsg, IR irAnno) {
+    private void applyCounts(String testOutput, StringBuilder failMsg) {
         if (irAnno.counts().length != 0) {
             boolean hasFails = false;
             int countsId = 1;
             final List<String> nodesWithCount = IRNode.mergeNodes(irAnno.counts());
             for (int i = 0; i < nodesWithCount.size(); i += 2) {
                 String node = nodesWithCount.get(i);
-                TestFormat.check(i + 1 < nodesWithCount.size(), "Missing count for IR node \"" + node + "\" at " + m);
+                TestFormat.check(i + 1 < nodesWithCount.size(), "Missing count"  + getPostfixErrorMsg(node));
                 String countString = nodesWithCount.get(i + 1);
                 long expectedCount;
                 ParsedComparator<Long> parsedComparator;
@@ -206,13 +216,16 @@ class IRMatcher {
                     parsedComparator = ParsedComparator.parseComparator(countString);
                     expectedCount = Long.parseLong(parsedComparator.getStrippedString());
                 } catch (NumberFormatException e) {
-                    TestFormat.fail("Provided invalid count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
+                    TestFormat.fail("Provided invalid count \"" + countString + "\"" + getPostfixErrorMsg(node));
                     return;
-                } catch (Exception e) {
-                    TestFormat.fail("Invalid comparator in \"" + countString + "\" for count of node " + node + ": " + e.getCause());
+                } catch (CheckedTestFrameworkException e) {
+                    TestFormat.fail("Invalid comparator \"" + e.getMessage() + "\" in \"" + countString + "\" for count" + getPostfixErrorMsg(node));
+                    return;
+                } catch (IndexOutOfBoundsException e) {
+                    TestFormat.fail("Provided empty value" + getPostfixErrorMsg(node));
                     return;
                 }
-                TestFormat.check(expectedCount >= 0,"Provided invalid negative count \"" + countString + "\" for IR node \"" + node + "\" at " + m);
+                TestFormat.check(expectedCount >= 0,"Provided invalid negative count \"" + countString + "\"" + getPostfixErrorMsg(node));
 
                 Pattern pattern = Pattern.compile(node);
                 Matcher matcher = pattern.matcher(testOutput);
@@ -227,6 +240,10 @@ class IRMatcher {
                 countsId++;
             }
         }
+    }
+
+    private String getPostfixErrorMsg(String node) {
+        return " for IR rule " + irRuleIndex + ", node \"" + node + "\" at " + method;
     }
 
     private void addCountsFail(StringBuilder failMsg, String node, Matcher matcher, long expectedCount, long actualCount, int countsId) {

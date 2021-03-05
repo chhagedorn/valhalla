@@ -52,49 +52,45 @@ class ParsedComparator<T extends Comparable<T>> {
         BiPredicate<T, T> comparison;
         value = value.trim();
         String comparator = "";
-        try {
-            switch (value.charAt(0)) {
-                case '<':
-                    if (value.charAt(1) == '=') {
-                        comparator = "<=";
-                        comparison = (x, y) -> x.compareTo(y) <= 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        comparator = "<";
-                        comparison = (x, y) -> x.compareTo(y) < 0;
-                        value = value.substring(1).trim();
-                    }
-                    break;
-                case '>':
-                    if (value.charAt(1) == '=') {
-                        comparator = ">=";
-                        comparison = (x, y) -> x.compareTo(y) >= 0;
-                        value = value.substring(2).trim();
-                    } else {
-                        comparator = ">";
-                        comparison = (x, y) -> x.compareTo(y) > 0;
-                        value = value.substring(1).trim();
-                    }
-                    break;
-                case '!':
-                    if (value.charAt(1) != '=') {
-                        throw new CheckedTestFrameworkException();
-                    }
-                    comparator = "!=";
-                    comparison = (x, y) -> x.compareTo(y) != 0;
+        switch (value.charAt(0)) {
+            case '<':
+                if (value.charAt(1) == '=') {
+                    comparator = "<=";
+                    comparison = (x, y) -> x.compareTo(y) <= 0;
                     value = value.substring(2).trim();
-                    break;
-                case '=': // Allowed syntax, equivalent to not using any symbol.
-                    comparator = "=";
+                } else {
+                    comparator = "<";
+                    comparison = (x, y) -> x.compareTo(y) < 0;
                     value = value.substring(1).trim();
-                    // Fall through
-                default:
-                    comparison = (x, y) -> x.compareTo(y) == 0;
-                    value = value.trim();
-                    break;
-            }
-        } catch (IndexOutOfBoundsException e) {
-            throw new CheckedTestFrameworkException();
+                }
+                break;
+            case '>':
+                if (value.charAt(1) == '=') {
+                    comparator = ">=";
+                    comparison = (x, y) -> x.compareTo(y) >= 0;
+                    value = value.substring(2).trim();
+                } else {
+                    comparator = ">";
+                    comparison = (x, y) -> x.compareTo(y) > 0;
+                    value = value.substring(1).trim();
+                }
+                break;
+            case '!':
+                if (value.charAt(1) != '=') {
+                    throw new CheckedTestFrameworkException(value.substring(0, 1));
+                }
+                comparator = "!=";
+                comparison = (x, y) -> x.compareTo(y) != 0;
+                value = value.substring(2).trim();
+                break;
+            case '=': // Allowed syntax, equivalent to not using any symbol.
+                comparator = "=";
+                value = value.substring(1).trim();
+                // Fall through
+            default:
+                comparison = (x, y) -> x.compareTo(y) == 0;
+                value = value.trim();
+                break;
         }
         return new ParsedComparator<>(value, comparison, comparator);
     }

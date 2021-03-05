@@ -227,6 +227,9 @@ class IREncodingPrinter {
         } catch (CheckedTestFrameworkException e) {
             TestFormat.failNoThrow("Invalid comparator in \"" + value + "\" for integer based flag " + flag + failAt());
             return false;
+        }  catch (IndexOutOfBoundsException e) {
+            TestFormat.failNoThrow("Provided empty value for integer based flag " + flag + failAt());
+            return false;
         }
         try {
             longValue = Long.parseLong(parsedComparator.getStrippedString());
@@ -250,6 +253,9 @@ class IREncodingPrinter {
             parsedComparator = ParsedComparator.parseComparator(value);
         } catch (CheckedTestFrameworkException e) {
             TestFormat.failNoThrow("Invalid comparator in \"" + value + "\" for floating point based flag " + flag + failAt());
+            return false;
+        } catch (IndexOutOfBoundsException e) {
+            TestFormat.failNoThrow("Provided empty value for floating point based flag " + flag + failAt());
             return false;
         }
         try {

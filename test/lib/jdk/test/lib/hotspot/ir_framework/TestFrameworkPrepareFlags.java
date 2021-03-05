@@ -24,15 +24,12 @@
 package jdk.test.lib.hotspot.ir_framework;
 
 import jdk.test.lib.Platform;
-import jdk.test.lib.management.InputArguments;
-import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.process.ProcessTools;
 import sun.hotspot.WhiteBox;
 
 import java.util.*;
 
 
-class TestFrameworkRunner {
+class TestFrameworkPrepareFlags {
     private static final WhiteBox WHITE_BOX;
 
     static {
@@ -58,8 +55,6 @@ class TestFrameworkRunner {
     private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1 && COMPILE_COMMANDS
                                        && Platform.isDebugBuild() && !Platform.isInt();
     private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
-    private static final String SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
-    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
 
     private static String[] getDefaultFlags() {
         return new String[] {"-XX:-BackgroundCompilation"};
@@ -88,47 +83,20 @@ class TestFrameworkRunner {
         } catch (Exception e) {
             throw new TestRunException("Could not find test class " + testClassName, e);
         }
-        runTestVM(testClass, args);
+        emitTestVMFlags(prepareTestVmFlags(testClass));
     }
 
-    private static void runTestVM(Class<?> testClass, String[] args) {
-        ArrayList<String> cmds = prepareTestVmFlags(testClass, args);
-        OutputAnalyzer oa;
-        try {
-            // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
-            // It also prepends all -Dtest* properties as flags for the test VM.
-            oa = ProcessTools.executeTestJvm(cmds);
-        } catch (Exception e) {
-            throw new TestFrameworkException("Error while executing Test VM", e);
-        }
-        String output = oa.getOutput();
-        final int exitCode = oa.getExitValue();
-        if (VERBOSE && exitCode == 0) {
-            System.out.println(" ----- OUTPUT Test VM-----");
-            System.out.println(output);
-
-        }
-        if (exitCode != 0) {
-            System.err.println(" ----- OUTPUT Test VM -----");
-            System.err.println(output);
-            throw new RuntimeException("\nTestFramework runner VM exited with " + exitCode);
-        }
-
-        if (VERIFY_IR) {
-            IRMatcher irMatcher = new IRMatcher(output, testClass);
-            irMatcher.applyRules();
-        }
+    /**
+     * Emit test VM flags to standard output to parse them from the TestFramework "driver" VM again which adds them to the test VM.
+     */
+    private static void emitTestVMFlags(ArrayList<String> flags) {
+        String info = TestFramework.TEST_VM_FLAGS_START + "\n" + String.join(TestFramework.TEST_VM_FLAGS_DELIMITER, flags)
+                      + "\n" + TestFramework.TEST_VM_FLAGS_END;
+        System.out.println(info);
     }
 
-    private static ArrayList<String> prepareTestVmFlags(Class<?> testClass, String[] args) {
-        String[] vmInputArguments = InputArguments.getVmInputArgs();
+    private static ArrayList<String> prepareTestVmFlags(Class<?> testClass) {
         ArrayList<String> cmds = new ArrayList<>();
-        if (!PREFER_COMMAND_LINE_FLAGS) {
-            cmds.addAll(Arrays.asList(vmInputArguments));
-        }
-        if (!SCENARIO_FLAGS.isEmpty()) {
-            cmds.addAll(Arrays.asList(SCENARIO_FLAGS.split("\\s+")));
-        }
         setupIrVerificationFlags(testClass, cmds);
 
         if (VERIFY_VM) {
@@ -140,18 +108,12 @@ class TestFrameworkRunner {
             cmds.addAll(Arrays.asList(getCompileCommandFlags()));
         }
 
-        // TODO: Only for debugging
-        if (cmds.get(0).startsWith("-agentlib")) {
-            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
-        }
+//        // TODO: Only for debugging
+//        if (cmds.get(0).startsWith("-agentlib")) {
+//            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
+//        }
 
-        if (PREFER_COMMAND_LINE_FLAGS) {
-            // Prefer flags set via the command line over the ones set by scenarios.
-            cmds.addAll(Arrays.asList(vmInputArguments));
-        }
-
-        cmds.add(TestFrameworkExecution.class.getCanonicalName());
-        cmds.addAll(Arrays.asList(args)); // add test class and helpers last
+        
         return cmds;
     }
 

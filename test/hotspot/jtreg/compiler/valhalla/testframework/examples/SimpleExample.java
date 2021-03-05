@@ -25,7 +25,7 @@
  * @test
  * @summary Example test to use the new test framework.
  * @library /test/lib
- * @run driver compiler.valhalla.testframework.examples.TestSimpleExample
+ * @run driver compiler.valhalla.testframework.examples.SimpleExample
  */
  
 package compiler.valhalla.testframework.examples;

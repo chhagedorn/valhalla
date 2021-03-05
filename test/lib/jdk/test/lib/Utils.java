@@ -215,23 +215,6 @@ public final class Utils {
     }
 
     /**
-     * Returns the default JTReg arguments as property flags for a jvm running a test.
-     * This is the combination of JTReg arguments test.vm.opts with a "-Dtest.vm.opts="
-     * and test.java.opts with a "-Dtest.java.opts=" prefix.
-     * @return A list of prefixed options, or an empty list if no options.
-     */
-    public static List<String> getTestJavaOptsAsPropertyFlags() {
-        List<String> opts = new ArrayList<>();
-        if (!VM_OPTIONS.isEmpty()) {
-            opts.add("-Dtest.vm.opts=" + VM_OPTIONS);
-        }
-        if (!JAVA_OPTIONS.isEmpty()) {
-            opts.add("-Dtest.java.opts=" + JAVA_OPTIONS);
-        }
-        return opts;
-    }
-
-    /**
      * Combines given arguments with default JTReg arguments for a jvm running a test.
      * This is the combination of JTReg arguments test.vm.opts and test.java.opts
      * @return The combination of JTReg test java options and user args.

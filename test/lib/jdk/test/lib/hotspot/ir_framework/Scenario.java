@@ -59,8 +59,10 @@ public class Scenario {
         }
     }
 
-    public void addFlag(String flag) {
-        flags.add(flag);
+    public void addFlags(String... flags) {
+        if (flags != null) {
+            this.flags.addAll(Arrays.asList(flags));
+        }
     }
 
     public List<String> getFlags() {

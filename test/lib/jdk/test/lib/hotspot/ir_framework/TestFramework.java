@@ -257,9 +257,15 @@ public class TestFramework {
             return;
         }
 
+        if (scenario != null) {
+            System.out.println("Scenario #" + scenario.getIndex() + " - [" + String.join(",", scenario.getFlags()) + "]");
+        }
+        System.out.println("Run Flag VM:");
         String flagVMOutput = runFlagVM();
         List<String> testVMFlags = getTestVMFlags(flagVMOutput);
+        System.out.println("Run Test VM:");
         runTestVM(scenario, testVMFlags);
+        System.out.println();
     }
 
     private String runFlagVM() {
@@ -359,7 +365,6 @@ public class TestFramework {
             cmds.addAll(Arrays.asList(jtregVMFlags));
         }
         if (scenario != null) {
-            System.out.println("Running Scenario #" + scenario.getIndex() + " - [" + String.join(",", scenario.getFlags()) + "]");
             cmds.addAll(scenario.getFlags());
         }
         cmds.addAll(testVMflags);

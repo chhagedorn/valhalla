@@ -26,10 +26,10 @@
  * @key randomness
  * @summary Test the handling of fields of unloaded inline classes.
  * @library /test/lib
- * @compile MyConstants.java
- * @run driver compiler.valhalla.testframework.ExampleTestUnloadedInlineTypeField
+ * @compile InlineTypes.java
+ * @run driver compiler.valhalla.inlinetypes.ExampleTestUnloadedInlineTypeField
  */
-package compiler.valhalla.testframework;
+package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
@@ -57,7 +57,7 @@ public class ExampleTestUnloadedInlineTypeField {
         final int foo;
 
         MyValue1() {
-            foo = MyConstants.rI;
+            foo = InlineTypes.rI;
         }
     }
 
@@ -89,7 +89,7 @@ public class ExampleTestUnloadedInlineTypeField {
             test1(null);
         } else {
             MyValue1Holder holder = new MyValue1Holder();
-            Asserts.assertEQ(test1(holder), MyConstants.rI);
+            Asserts.assertEQ(test1(holder), InlineTypes.rI);
         }
     }
 }

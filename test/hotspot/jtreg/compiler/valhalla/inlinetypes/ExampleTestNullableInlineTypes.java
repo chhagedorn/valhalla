@@ -42,9 +42,9 @@ public class ExampleTestNullableInlineTypes {
 
     public static void main(String[] args) {
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
-        scenarios[3] = new Scenario(3, "-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
-        scenarios[4] = new Scenario(4, "-XX:-MonomorphicArrayCheck");
-        TestFramework testFramework = new TestFramework(TestNullableInlineTypes.class);
+        scenarios[3].addFlags("-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
+        scenarios[4].addFlags("-XX:-MonomorphicArrayCheck");
+        TestFramework testFramework = new TestFramework(ExampleTestNullableInlineTypes.class);
         testFramework.addScenarios(scenarios)
                      .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class)
                      .start();

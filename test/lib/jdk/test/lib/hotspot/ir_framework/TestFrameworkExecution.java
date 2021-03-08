@@ -482,36 +482,11 @@ public class TestFrameworkExecution {
     }
 
     private void addCheckedTest(Method m, Check checkAnno, Run runAnno) {
-        TestFormat.check(runAnno == null, m + " has invalid @Run annotation while @Check annotation is present.");
         Method testMethod = testMethodMap.get(checkAnno.test());
-        TestFormat.check(testMethod != null,"Did not find associated test method \"" + m.getDeclaringClass().getName()
-                                            + "." + checkAnno.test() + "\" for @Check at " + m);
-        boolean firstParameterTestInfo = m.getParameterCount() > 0 && m.getParameterTypes()[0].equals(TestInfo.class);
-        boolean secondParameterTestInfo = m.getParameterCount() > 1 && m.getParameterTypes()[1].equals(TestInfo.class);
-
-        CheckedTest.Parameter parameter = null;
-        Class<?> testReturnType = testMethod.getReturnType();
-        switch (m.getParameterCount()) {
-            case 0 -> parameter = CheckedTest.Parameter.NONE;
-            case 1 -> {
-                TestFormat.check(firstParameterTestInfo || m.getParameterTypes()[0] == testReturnType,
-                                 "Single-parameter version of @Check method " + m + " must match return type of @Test " + testMethod);
-                parameter = firstParameterTestInfo ? CheckedTest.Parameter.TEST_INFO_ONLY : CheckedTest.Parameter.RETURN_ONLY;
-            }
-            case 2 -> {
-                TestFormat.check(m.getParameterTypes()[0] == testReturnType && secondParameterTestInfo,
-                                 "Two-parameter version of @Check method " + m + " must provide as first parameter the same"
-                                 + " return type as @Test method " + testMethod + " and as second parameter an object of " + TestInfo.class);
-                parameter = CheckedTest.Parameter.BOTH;
-            }
-            default -> TestFormat.fail("@Check method " + m + " must provide either a none, single or two-parameter variant.");
-        }
-
         DeclaredTest test = declaredTests.get(testMethod);
-        TestFormat.check(test != null, "Missing @Test annotation for associated test method " + testMethod + " for @Check at " + m);
-        Method attachedMethod = test.getAttachedMethod();
-        TestFormat.check(attachedMethod == null,
-                         "Cannot use @Test " + testMethod + " for more than one @Run or one @Check method. Found: " + m + ", " + attachedMethod);
+        checkCheckedTest(m, checkAnno, runAnno, testMethod, test);
+        test.setAttachedMethod(m);
+        CheckedTest.Parameter parameter = getCheckedTestParameter(m, testMethod);
         dontCompileMethod(m);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
@@ -519,10 +494,44 @@ public class TestFrameworkExecution {
         allTests.put(testMethod, checkedTest);
     }
 
+    private void checkCheckedTest(Method m, Check checkAnno, Run runAnno, Method testMethod, DeclaredTest test) {
+        TestFormat.check(runAnno == null, m + " has invalid @Run annotation while @Check annotation is present.");
+        TestFormat.check(testMethod != null, "Did not find associated test method \"" + m.getDeclaringClass().getName()
+                                             + "." + checkAnno.test() + "\" for @Check at " + m);
+        TestFormat.check(test != null, "Missing @Test annotation for associated test method " + testMethod + " for @Check at " + m);
+        Method attachedMethod = test.getAttachedMethod();
+        TestFormat.check(attachedMethod == null,
+                         "Cannot use @Test " + testMethod + " for more than one @Run or one @Check method. Found: " + m + ", " + attachedMethod);
+    }
+
+    private CheckedTest.Parameter getCheckedTestParameter(Method m, Method testMethod) {
+        boolean firstParameterTestInfo = m.getParameterCount() > 0 && m.getParameterTypes()[0].equals(TestInfo.class);
+        boolean secondParameterTestInfo = m.getParameterCount() > 1 && m.getParameterTypes()[1].equals(TestInfo.class);
+        CheckedTest.Parameter parameter = null;
+        Class<?> testReturnType = testMethod.getReturnType();
+        switch (m.getParameterCount()) {
+            case 0 -> parameter = CheckedTest.Parameter.NONE;
+            case 1 -> {
+                TestFormat.checkNoThrow(firstParameterTestInfo || m.getParameterTypes()[0] == testReturnType,
+                                        "Single-parameter version of @Check method " + m + " must match return type of @Test " + testMethod);
+                parameter = firstParameterTestInfo ? CheckedTest.Parameter.TEST_INFO_ONLY : CheckedTest.Parameter.RETURN_ONLY;
+            }
+            case 2 -> {
+                TestFormat.checkNoThrow(m.getParameterTypes()[0] == testReturnType && secondParameterTestInfo,
+                                        "Two-parameter version of @Check method " + m + " must provide as first parameter the same"
+                                        + " return type as @Test method " + testMethod + " and as second parameter an object of " + TestInfo.class);
+                parameter = CheckedTest.Parameter.BOTH;
+            }
+            default -> TestFormat.failNoThrow("@Check method " + m + " must provide either a none, single or two-parameter variant.");
+        }
+        return parameter;
+    }
+
     private void addCustomRunTest(Method m, Run runAnno) {
         Method testMethod = testMethodMap.get(runAnno.test());
         DeclaredTest test = declaredTests.get(testMethod);
         checkCustomRunTest(m, runAnno, testMethod, test);
+        test.setAttachedMethod(m);
         dontCompileMethod(m);
         // Don't inline run methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
@@ -538,7 +547,7 @@ public class TestFrameworkExecution {
         TestFormat.check(attachedMethod == null,
                          "Cannot use @Test " + testMethod + " for more than one @Run/@Check method. Found: " + m + ", " + attachedMethod);
         TestFormat.check(!test.hasArguments(), "Cannot use @Arguments at test method " + testMethod + " in combination with @Run method " + m);
-        TestFormat.check(m.getParameterCount() == 0 || (m.getParameterCount() == 1 && m.getParameterTypes()[0].equals(TestInfo.class)),
+        TestFormat.checkNoThrow(m.getParameterCount() == 0 || (m.getParameterCount() == 1 && m.getParameterTypes()[0].equals(TestInfo.class)),
                          "@Run method " + m + " must specify either no parameter or exactly one of " + TestInfo.class);
         Warmup warmupAnno = getAnnotation(testMethod, Warmup.class);
         TestFormat.checkNoThrow(warmupAnno == null,
@@ -964,7 +973,6 @@ class CheckedTest extends BaseTest {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         checkMethod.setAccessible(true);
-        test.setAttachedMethod(checkMethod);
         this.checkMethod = checkMethod;
         this.checkAt = checkSpecification.when();
         this.parameter = parameter;
@@ -1003,7 +1011,6 @@ class CustomRunTest extends BaseTest {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         runMethod.setAccessible(true);
-        test.setAttachedMethod(runMethod);
         this.runMethod = runMethod;
         this.mode = runSpecification.mode();
         this.warmupIterations = warmUpAnno != null ? warmUpAnno.value() : test.getWarmupIterations();

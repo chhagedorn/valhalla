@@ -26,35 +26,28 @@
  * @key randomness
  * @summary Test correct handling of nullable inline types.
  * @library /test/lib
- * @run driver compiler.valhalla.testframework.TestNullableInlineTypes
+ * @compile InlineTypes.java
+ * @run driver compiler.valhalla.inlinetypes.ExampleTestNullableInlineTypes
  */
 
-package compiler.valhalla.testframework;
+package compiler.valhalla.inlinetypes;
 
+import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
 
-public abstract class TestNullableInlineTypes {
-    private static final MyValue1 testValue1 = MyValue1.createWithFieldsInline(2, 3);
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+
+public class ExampleTestNullableInlineTypes {
+    private static final MyValue1 testValue1 = MyValue1.createWithFieldsInline(InlineTypes.rI, InlineTypes.rL);
 
     public static void main(String[] args) {
-        Scenario[] scenarios = DefaultScenarios.SCENARIOS;
+        Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[3] = new Scenario(3, "-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
         scenarios[4] = new Scenario(4, "-XX:-MonomorphicArrayCheck");
         TestFramework testFramework = new TestFramework(TestNullableInlineTypes.class);
         testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class,
-                                       TestNullableInlineTypes.Test17Value.class, TestNullableInlineTypes.Test21Value.class)
+                     .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class)
                      .start();
-    }
-
-    // Test scalarization of default inline type with non-flattenable field
-    final primitive class Test17Value {
-        public final MyValue1.ref valueField;
-
-        @ForceInline
-        public Test17Value(MyValue1.ref valueField) {
-            this.valueField = valueField;
-        }
     }
 
     // Test writing null to a flattenable/non-flattenable inline type field in an inline type
@@ -70,14 +63,54 @@ public abstract class TestNullableInlineTypes {
         }
 
         @ForceInline
-        public TestNullableInlineTypes.Test21Value test1() {
-            return new TestNullableInlineTypes.Test21Value(alwaysNull, this.valueField2); // Should not throw NPE
+        public Test21Value test1() {
+            return new Test21Value(alwaysNull, this.valueField2); // Should not throw NPE
         }
 
         @ForceInline
-        public TestNullableInlineTypes.Test21Value test2() {
-            return new TestNullableInlineTypes.Test21Value(this.valueField1, (MyValue1) alwaysNull); // Should throw NPE
+        public Test21Value test2() {
+            return new Test21Value(this.valueField1, (MyValue1) alwaysNull); // Should throw NPE
         }
+    }
+
+    @Test
+    public Test21Value test21(Test21Value vt) {
+        vt = vt.test1();
+        try {
+            vt = vt.test2();
+            throw new RuntimeException("NullPointerException expected");
+        } catch (NullPointerException e) {
+            // Expected
+        }
+        return vt;
+    }
+
+    @Run(test = "test21")
+    public void test21_verifier() {
+        test21(Test21Value.default);
+    }
+
+
+    @DontInline
+    public void test25_callee(MyValue1 val) { }
+
+    // Test that when checkcasting from null-ok to null-free and back to null-ok we
+    // keep track of the information that the inline type can never be null.
+    @Test
+    @IR(failOn = {ALLOC, STORE})
+    public int test25(boolean b, MyValue1.ref vt1, MyValue1 vt2) {
+        vt1 = (MyValue1)vt1;
+        Object obj = b ? vt1 : vt2; // We should not allocate here
+        test25_callee((MyValue1) vt1);
+        return ((MyValue1)obj).x;
+    }
+
+    @Run(test = "test25")
+    public void test25_verifier() {
+        int res = test25(true, testValue1, testValue1);
+        Asserts.assertEquals(res, testValue1.x);
+        res = test25(false, testValue1, testValue1);
+        Asserts.assertEquals(res, testValue1.x);
     }
 }
 

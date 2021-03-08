@@ -25,10 +25,10 @@
  * @test
  * @summary Example test to use the new test framework.
  * @library /test/lib
- * @run driver compiler.valhalla.testframework.examples.TestExample
+ * @run driver jdk.test.lib.hotspot.ir_framework.examples.TestExample
  */
- 
-package compiler.valhalla.testframework.examples;
+
+package jdk.test.lib.hotspot.ir_framework.examples;
 
 import jdk.test.lib.hotspot.ir_framework.*;
 

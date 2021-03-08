@@ -51,10 +51,10 @@ public class TestUnloadedInlineTypeField extends InlineTypeTest {
     }
 
     static final String[][] scenarios = {
-        {},
-        {"-XX:InlineFieldMaxFlatSize=0"},
-        {"-XX:+PatchALot"},
-        {"-XX:InlineFieldMaxFlatSize=0", "-XX:+PatchALot"}
+            {},
+            {"-XX:InlineFieldMaxFlatSize=0"},
+            {"-XX:+PatchALot"},
+            {"-XX:InlineFieldMaxFlatSize=0", "-XX:+PatchALot"}
     };
 
     @Override

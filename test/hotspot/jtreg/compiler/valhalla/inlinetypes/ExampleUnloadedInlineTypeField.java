@@ -27,14 +27,14 @@
  * @summary Test the handling of fields of unloaded inline classes.
  * @library /test/lib
  * @compile MyConstants.java
- * @run driver compiler.valhalla.testframework.TestUnloadedInlineTypeField
+ * @run driver compiler.valhalla.testframework.ExampleTestUnloadedInlineTypeField
  */
 package compiler.valhalla.testframework;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
 
-public class TestUnloadedInlineTypeField {
+public class ExampleTestUnloadedInlineTypeField {
 
     public static void main(String[] args) {
         Scenario s0 = new Scenario(0);

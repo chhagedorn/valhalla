@@ -52,13 +52,7 @@ public class TestWithHelperClasses {
             Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
             exceptionsCaught++;
         }
-        try {
-            TestFramework.runWithHelperClasses(BadHelperClasses.class, BadHelper.class);
-        } catch (Exception e) {
-            Asserts.assertTrue(e.getMessage().contains("Cannot use @Test annotation in helper class:"));
-            Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
-            exceptionsCaught++;
-        }
+
         if (exceptionsCaught != 2) {
             throw new RuntimeException("Did not catch " + exceptionsCaught + " exceptions!");
         }

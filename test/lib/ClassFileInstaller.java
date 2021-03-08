@@ -23,6 +23,8 @@
 
 import jdk.test.lib.util.ClassFileInstaller.Manifest;
 
+import jdk.test.lib.util.ClassFileInstaller.Manifest;
+
 /**
  * Dump a class file for a class on the class path in the current directory, or
  * in the specified JAR file. This class is usually used when you build a class

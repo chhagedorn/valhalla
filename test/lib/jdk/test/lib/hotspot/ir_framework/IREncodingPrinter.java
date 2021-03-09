@@ -278,7 +278,7 @@ class IREncodingPrinter {
 
     public void emit() {
         output.append(END);
-        System.out.println(output.toString());
+        TestFrameworkSocket.write(output.toString(), "IR rule application encoding");
     }
 }
 

@@ -379,7 +379,7 @@ class BadWarmup {
     public void someTest3() {}
 
     @FailCount(2) // Negative warmup and invoke once
-    @Run(test = "someTest2", mode = RunMode.STANDALONE)
+    @Run(test = "someTest3", mode = RunMode.STANDALONE)
     @Warmup(-1)
     public void noWarmupAtInvokeOnce() {}
 }

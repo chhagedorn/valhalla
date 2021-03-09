@@ -26,12 +26,15 @@ package jdk.test.lib.hotspot.ir_framework.tests;
 import jdk.test.lib.hotspot.ir_framework.*;
 import jdk.test.lib.Asserts;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// Run with -DPrintIREncoding=true
 public class TestIRMatching {
 
     public static void main(String[] args) {
@@ -42,18 +45,6 @@ public class TestIRMatching {
         runWithArguments(CountComparisons.class, "-XX:SuspendRetryCount=50");
         runWithArguments(GoodCount.class, "-XX:SuspendRetryCount=50");
         runWithArguments(MultipleFailOnGood.class, "-XX:SuspendRetryCount=50");
-
-        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
-        findIrIds(TestFramework.getLastVMOutput(), "testMatchAllIf50", 0, 21);
-        findIrIds(TestFramework.getLastVMOutput(), "testMatchNoneIf50", -1, -1);
-
-        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
-        findIrIds(TestFramework.getLastVMOutput(), "testMatchAllIf50", 4, 6, 13, 18);
-        findIrIds(TestFramework.getLastVMOutput(), "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
-
-        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
-        findIrIds(TestFramework.getLastVMOutput(), "testMatchAllIf50", 7, 12, 19, 21);
-        findIrIds(TestFramework.getLastVMOutput(), "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
 
         String[] allocMatches = { "MyClass", "call,static  wrapper for: _new_instance_Java" };
         runCheck(BadFailOnConstraint.create(MultipleFailOnBad.class, "fail1()", 1, 1, "Store"),
@@ -181,6 +172,33 @@ public class TestIRMatching {
                  GoodFailOnConstraint.create(CheckCastArray.class, "array()", 3),
                  BadFailOnConstraint.create(CheckCastArray.class, "arrayCopy(java.lang.Object[],java.lang.Class)", 1, "checkcast_arraycopy")
         );
+
+        // Redirect stdout to stream and then check if we find required IR encoding read from socket.
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        PrintStream old = System.out;
+        System.setOut(ps);
+        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
+        System.out.flush();
+        String output = baos.toString();
+        baos.reset();
+        findIrIds(output, "testMatchAllIf50", 0, 21);
+        findIrIds(output, "testMatchNoneIf50", -1, -1);
+
+        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=49");
+        System.out.flush();
+        output = baos.toString();
+        baos.reset();
+        findIrIds(output, "testMatchAllIf50", 4, 6, 13, 18);
+        findIrIds(output, "testMatchNoneIf50", 0, 3, 8, 10, 17, 22);
+
+        runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=51");
+        System.out.flush();
+        output = baos.toString();
+        baos.reset();
+        findIrIds(output, "testMatchAllIf50", 7, 12, 19, 21);
+        findIrIds(output, "testMatchNoneIf50", 4, 7, 11, 16, 20, 22);
+        System.setOut(old);
     }
 
     private static void runWithArguments(Class<?> clazz, String... args) {
@@ -230,7 +248,6 @@ public class TestIRMatching {
             TestFramework.runWithScenarios(constraint.getKlass(), scenario); // All constraints have the same class.
             shouldNotReach();
         } catch (TestRunException e) {
-            System.out.println(e.getMessage());
             constraint.checkConstraint(e);
         }
     }

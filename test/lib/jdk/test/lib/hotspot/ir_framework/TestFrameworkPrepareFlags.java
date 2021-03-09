@@ -26,7 +26,8 @@ package jdk.test.lib.hotspot.ir_framework;
 import jdk.test.lib.Platform;
 import sun.hotspot.WhiteBox;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 
 class TestFrameworkPrepareFlags {
@@ -76,7 +77,9 @@ class TestFrameworkPrepareFlags {
 
     public static void main(String[] args) {
         String testClassName = args[0];
-        System.out.println("Framework main(), about to run tests in class " + testClassName);
+        if (VERBOSE) {
+            System.out.println("TestFrameworkPrepareFlags main() called. Prepare test VM flags to run class " + testClassName);
+        }
         Class<?> testClass;
         try {
             testClass = Class.forName(testClassName);
@@ -90,9 +93,9 @@ class TestFrameworkPrepareFlags {
      * Emit test VM flags to standard output to parse them from the TestFramework "driver" VM again which adds them to the test VM.
      */
     private static void emitTestVMFlags(ArrayList<String> flags) {
-        String info = TestFramework.TEST_VM_FLAGS_START + "\n" + String.join(TestFramework.TEST_VM_FLAGS_DELIMITER, flags)
+        String encoding = TestFramework.TEST_VM_FLAGS_START + "\n" + String.join(TestFramework.TEST_VM_FLAGS_DELIMITER, flags)
                       + "\n" + TestFramework.TEST_VM_FLAGS_END;
-        System.out.println(info);
+        TestFrameworkSocket.write(encoding, "flag encoding");
     }
 
     private static ArrayList<String> prepareTestVmFlags(Class<?> testClass) {

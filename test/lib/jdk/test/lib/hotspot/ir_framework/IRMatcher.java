@@ -29,45 +29,48 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class IRMatcher {
-    private static final boolean PRINT_GRAPH = true;
+    private static final boolean PRINT_IR_ENCODING = Boolean.parseBoolean(System.getProperty("PrintIREncoding", "false"));
     private final Map<String, Integer[]> irRulesMap;
-    private final Map<String,String> compilations;
+    private final Map<String, String> compilations;
     private final Class<?> testClass;
     private final Map<Method, List<String>> fails;
     private Method method; // Current method to which rules are applied
     private IR irAnno; // Current IR annotation that is processed.
     private int irRuleIndex; // Current IR rule index;
 
-    public IRMatcher(String output, Class<?> testClass) {
+    public IRMatcher(String output, String irEncoding, Class<?> testClass) {
         this.irRulesMap = new HashMap<>();
         this.compilations =  new LinkedHashMap<>();
         this.fails = new HashMap<>();
         this.testClass = testClass;
-        parseIREncoding(output);
+        parseIREncoding(irEncoding);
+        if (TestFramework.VERBOSE || PRINT_IR_ENCODING) {
+            System.out.println("Read IR encoding from test VM:");
+            System.out.println(irEncoding);
+        }
         splitCompilations(output, testClass);
     }
 
-    private void parseIREncoding(String output) {
+    private void parseIREncoding(String irEncoding) {
         String patternString = "(?<=" + IREncodingPrinter.START + "\\R)[\\s\\S]*(?=" + IREncodingPrinter.END + ")";
         Pattern pattern = Pattern.compile(patternString);
-        Matcher matcher = pattern.matcher(output);
+        Matcher matcher = pattern.matcher(irEncoding);
 
-        while (matcher.find()) {
-            String[] lines = matcher.group(0).split("\\R");
-            // Skip first line containing information about the format only
-            for (int i = 1; i < lines.length; i++) {
-                String line = lines[i].trim();
-                String[] splitComma = line.split(",");
-                if (splitComma.length < 2) {
-                    throw new TestFrameworkException("Invalid IR match rule encoding");
-                }
-                String testName = splitComma[0];
-                Integer[] irRulesIdx = new Integer[splitComma.length - 1];
-                for (int j = 1; j < splitComma.length; j++) {
-                    irRulesIdx[j - 1] = Integer.valueOf(splitComma[j]);
-                }
-                irRulesMap.put(testName, irRulesIdx);
+        TestFramework.check(matcher.find(), "Did not find IR encoding");
+        String[] lines = matcher.group(0).split("\\R");
+        // Skip first line containing information about the format only
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i].trim();
+            String[] splitComma = line.split(",");
+            if (splitComma.length < 2) {
+                throw new TestFrameworkException("Invalid IR match rule encoding");
             }
+            String testName = splitComma[0];
+            Integer[] irRulesIdx = new Integer[splitComma.length - 1];
+            for (int j = 1; j < splitComma.length; j++) {
+                irRulesIdx[j - 1] = Integer.valueOf(splitComma[j]);
+            }
+            irRulesMap.put(testName, irRulesIdx);
         }
     }
 
@@ -99,7 +102,7 @@ class IRMatcher {
                 String shortMethodName = methodName.split("::")[1];
                 if (irRulesMap.containsKey(methodName.split("::")[1])) {
                     String testOutput = output.substring(prev);
-                    if (PRINT_GRAPH) {
+                    if (TestFramework.VERBOSE) {
                         System.out.println("\nGraph for " + methodName + "\n" + testOutput);
                     }
                     compilations.put(shortMethodName, testOutput);
@@ -135,6 +138,8 @@ class IRMatcher {
             int failures = 0;
             for (Map.Entry<Method, List<String>> entry : fails.entrySet()) {
                 Method method = entry.getKey();
+                System.out.println("\n>>> Compilation of " + method + ":");
+                System.out.println(compilations.get(method.getName()));
                 List<String> list = entry.getValue();
                 builder.append("- Method \"").append(method).append("\":\n");
                 failures += list.size();

@@ -32,6 +32,8 @@ public class TestSanity {
     public static void main(String[] args) {
         TestFramework.run();
         TestFramework.run(TestSanity.class);
+        TestFramework.runWithFlags("-XX:+TieredCompilation");
+        TestFramework.runWithFlags(TestSanity.class, "-XX:SuspendRetryCount=51", "-XX:+UseTLAB");
         TestFramework.runWithHelperClasses(TestSanity.class, HelperA.class);
         TestFramework.runWithHelperClasses(TestSanity.class, HelperA.class, HelperB.class);
         Scenario sDefault = new Scenario(0);
@@ -46,16 +48,20 @@ public class TestSanity {
         TestFramework.runWithScenarios(TestSanity.class, sDefault, s1, s2);
         TestFramework testFramework = new TestFramework(TestSanity.class);
         testFramework.start();
-        testFramework.addHelperClasses(HelperA.class, HelperB.class).start();
-        testFramework.clearHelperClasses();
-        testFramework.addHelperClasses(HelperA.class, HelperB.class).addHelperClasses(HelperC.class).start();
-        testFramework.clearHelperClasses();
-        testFramework.addScenarios(sDefault).addScenarios(s1, s2).start();
-        testFramework.clearScenarios();
-        testFramework.addHelperClasses(HelperA.class).addScenarios(sDefault).start();
+        testFramework.addFlags("-XX:SuspendRetryCount=54").start();
         testFramework.clear();
-        testFramework.addHelperClasses(HelperA.class).addScenarios(sDefault).addHelperClasses(HelperB.class, HelperC.class)
-                     .addScenarios(s1, s2).start();
+        testFramework.addFlags("-XX:SuspendRetryCount=55").addFlags("-XX:+UseTLAB").start();
+        testFramework.clear();
+        testFramework.addHelperClasses(HelperA.class, HelperB.class).start();
+        testFramework.clear();
+        testFramework.addHelperClasses(HelperA.class, HelperB.class).addHelperClasses(HelperC.class).start();
+        testFramework.clear();
+        testFramework.addScenarios(sDefault).addScenarios(s1, s2).start();
+        testFramework.clear();
+        testFramework.addHelperClasses(HelperA.class).addScenarios(sDefault).addFlags("-XX:+UseSuperWord").start();
+        testFramework.clear();
+        testFramework.addHelperClasses(HelperA.class).addFlags("-XX:+UseSuperWord", "-XX:+UseCompiler").addScenarios(sDefault)
+                     .addHelperClasses(HelperB.class, HelperC.class).addScenarios(s1, s2).addFlags("-XX:+TieredCompilation").start();
     }
 
     @Test

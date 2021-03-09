@@ -29,10 +29,12 @@ import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.util.ClassFileInstaller;
 import sun.hotspot.WhiteBox;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.lang.reflect.Method;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,8 +58,10 @@ public class TestFramework {
 
     private List<Class<?>> helperClasses = null;
     private List<Scenario> scenarios = null;
+    private List<String> flags = new ArrayList<>();
     private final Class<?> testClass;
     private static String lastVMOutput;
+    private TestFrameworkSocket socket;
 
     public TestFramework(Class<?> testClass) {
         TestRun.check(testClass != null, "Test class cannot be null");
@@ -78,6 +82,17 @@ public class TestFramework {
         framework.start();
     }
 
+    public static void runWithFlags(String... flags) {
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        runWithFlags(walker.getCallerClass(), flags);
+    }
+
+    public static void runWithFlags(Class<?> testClass, String... flags) {
+        TestFramework framework = new TestFramework(testClass);
+        framework.addFlags(flags);
+        framework.start();
+    }
+
     public static void runWithHelperClasses(Class<?> testClass, Class<?>... helperClasses) {
         TestFramework framework = new TestFramework(testClass);
         framework.addHelperClasses(helperClasses);
@@ -93,6 +108,12 @@ public class TestFramework {
         TestFramework framework = new TestFramework(testClass);
         framework.addScenarios(scenarios);
         framework.start();
+    }
+
+    public TestFramework addFlags(String... flags) {
+        TestRun.check(flags != null && Arrays.stream(flags).noneMatch(Objects::isNull), "A flag cannot be null");
+        this.flags.addAll(Arrays.asList(flags));
+        return this;
     }
 
     public TestFramework addHelperClasses(Class<?>... helperClasses) {
@@ -119,24 +140,22 @@ public class TestFramework {
     }
 
     public void clear() {
-        clearHelperClasses();
-        clearScenarios();
-    }
-
-    public void clearHelperClasses() {
-        this.helperClasses = null;
-    }
-
-    public void clearScenarios() {
-        this.scenarios = null;
+        flags.clear();
+        helperClasses = null;
+        scenarios = null;
     }
 
     public void start() {
         installWhiteBox();
-        if (scenarios == null) {
-            start(null);
-        } else {
-            startWithScenarios();
+        socket = new TestFrameworkSocket();
+        try {
+            if (scenarios == null) {
+                start(null);
+            } else {
+                startWithScenarios();
+            }
+        } finally {
+            socket.close();
         }
     }
 
@@ -226,7 +245,7 @@ public class TestFramework {
         if (!exceptionMap.isEmpty()) {
             StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
             builder.append(String.join(", #", exceptionMap.keySet())).append("\n\n");
-            for (Map.Entry<String, Exception> entry: exceptionMap.entrySet()) {
+            for (Map.Entry<String, Exception> entry : exceptionMap.entrySet()) {
                 String title = "Stacktrace for Scenario #" + entry.getKey();
                 builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
                 Exception e = entry.getValue();
@@ -246,30 +265,39 @@ public class TestFramework {
     }
 
     /**
-     * Execute a separate "flag" VM with White Box access to determine all test VM flags. The flag VM emits an encoding
-     * of all required flags for the test VM to the standard output. Once the flag VM exits, this driver VM parses the
+     * Execute a separate "flag" VM with White Box access to determine all test VM flags. The flag VM sends an encoding of
+     * all required flags for the test VM to the driver VM over a socket. Once the flag VM exits, this driver VM parses the
      * test VM flags, which also determine if IR matching should be done, and then starts the test VM to execute all tests.
      */
     private void start(Scenario scenario) {
         if (scenario != null && !scenario.isEnabled()) {
-            System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag -DScenarios " +
-                               "and is therefore not executed.");
+            System.out.println("Disabled scenario #" + scenario.getIndex() + "! This scenario is not present in set flag " +
+                               "-DScenarios and is therefore not executed.");
             return;
         }
 
+        // Use TestFramework flags and scenario flags for new VMs.
+        List<String> additionalFlags = new ArrayList<>(flags);
         if (scenario != null) {
-            System.out.println("Scenario #" + scenario.getIndex() + " - [" + String.join(",", scenario.getFlags()) + "]");
+            List<String> scenarioFlags = scenario.getFlags();
+            String scenarioFlagsString = scenarioFlags.isEmpty() ? "" : " - [" + String.join(", ", scenarioFlags) + "]";
+            System.out.println("Scenario #" + scenario.getIndex() + scenarioFlagsString + ":");
+            additionalFlags.addAll(scenarioFlags);
         }
         System.out.println("Run Flag VM:");
-        String flagVMOutput = runFlagVM();
-        List<String> testVMFlags = getTestVMFlags(flagVMOutput);
-        System.out.println("Run Test VM:");
-        runTestVM(scenario, testVMFlags);
+        runFlagVM(additionalFlags);
+        String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
+        System.out.println("Run Test VM" + flagsString + ":");
+        runTestVM(additionalFlags);
+        if (scenario != null) {
+            scenario.setVMOutput(lastVMOutput);
+        }
         System.out.println();
     }
 
-    private String runFlagVM() {
-        ArrayList<String> cmds = prepareFlagVMFlags();
+    private void runFlagVM(List<String> additionalFlags) {
+        ArrayList<String> cmds = prepareFlagVMFlags(additionalFlags);
+        socket.start();
         OutputAnalyzer oa;
         try {
             // Run "flag" VM with White Box access to determine the test VM flags and if IR verification should be done.
@@ -278,14 +306,13 @@ public class TestFramework {
             throw new TestRunException("Failed to execute TestFramework flag VM", e);
         }
         checkFlagVMExitCode(oa);
-        return oa.getOutput();
     }
 
     /**
-     * The "flag" VM needs White Box access to prepare all test VM flags. It emits these as encoding to the standard output.
-     * This driver VM then parses the flags and adds them to the test VM.
+     * The "flag" VM needs White Box access to prepare all test VM flags. It sends these as encoding over a socket to the
+     * driver VM which afterwards parses the flags and adds them to the test VM.
      */
-    private ArrayList<String> prepareFlagVMFlags() {
+    private ArrayList<String> prepareFlagVMFlags(List<String> additionalFlags) {
         ArrayList<String> cmds = new ArrayList<>();
         cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
         cmds.add("-cp");
@@ -293,6 +320,8 @@ public class TestFramework {
         cmds.add("-Xbootclasspath/a:.");
         cmds.add("-XX:+UnlockDiagnosticVMOptions");
         cmds.add("-XX:+WhiteBoxAPI");
+        // TestFramework and scenario flags might have an influence on the later used test VM flags. Add them as well.
+        cmds.addAll(additionalFlags);
         cmds.add(TestFrameworkPrepareFlags.class.getCanonicalName());
         cmds.add(testClass.getCanonicalName());
         return cmds;
@@ -307,30 +336,18 @@ public class TestFramework {
         }
 
         if (exitCode != 0) {
-            System.out.println("--- OUTPUT TestFramework flag VM ---");
+            System.err.println("--- OUTPUT TestFramework flag VM ---");
             System.err.println(flagVMOutput);
             throw new RuntimeException("\nTestFramework flag VM exited with " + exitCode);
         }
     }
 
-    /**
-     * Parse the test VM flags as prepared by the flag VM. Additionally check the property flag DPrintValidIRRules to determine
-     * if IR matching should be done or not.
-     */
-    private List<String> getTestVMFlags(String flagVMOutput) {
-        String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)"
-                               + "(.*DPrintValidIRRules=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
-        Pattern pattern = Pattern.compile(patternString);
-        Matcher matcher = pattern.matcher(flagVMOutput);
-        if (!matcher.find()) {
-            throw new TestFrameworkException("Invalid flag encoding emitted by flag VM");
+    private void runTestVM(List<String> additionalFlags) {
+        List<String> cmds = prepareTestVMFlags(additionalFlags);
+        if (VERIFY_IR) {
+            // We only need the socket if we are doing IR verification.
+            socket.start();
         }
-        VERIFY_IR = Boolean.parseBoolean(matcher.group(2));
-        return new ArrayList<>(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
-    }
-
-    private void runTestVM(Scenario scenario, List<String> testVMflags) {
-        List<String> cmds = prepareTestVMFlags(scenario, testVMflags);
         OutputAnalyzer oa;
         try {
             // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
@@ -338,21 +355,19 @@ public class TestFramework {
             // Java options in prepareTestVMFlags().
             oa = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(cmds));
         } catch (Exception e) {
-            throw new TestFrameworkException("Error while executing Test VM", e);
+            fail("Error while executing Test VM", e);
+            return;
         }
 
         lastVMOutput = oa.getOutput();
         checkTestVMExitCode(oa);
-        if (scenario != null) {
-            scenario.setVMOutput(lastVMOutput);
-        }
         if (VERIFY_IR) {
-            IRMatcher irMatcher = new IRMatcher(lastVMOutput, testClass);
+            IRMatcher irMatcher = new IRMatcher(lastVMOutput, socket.getOutput(), testClass);
             irMatcher.applyRules();
         }
     }
 
-    private List<String> prepareTestVMFlags(Scenario scenario, List<String> testVMflags) {
+    private List<String> prepareTestVMFlags(List<String> additionalFlags) {
         ArrayList<String> cmds = new ArrayList<>();
 
         // Need White Box access in test VM.
@@ -364,10 +379,8 @@ public class TestFramework {
         if (!PREFER_COMMAND_LINE_FLAGS) {
             cmds.addAll(Arrays.asList(jtregVMFlags));
         }
-        if (scenario != null) {
-            cmds.addAll(scenario.getFlags());
-        }
-        cmds.addAll(testVMflags);
+        cmds.addAll(additionalFlags);
+        cmds.addAll(getTestVMFlags());
 
         if (PREFER_COMMAND_LINE_FLAGS) {
             // Prefer flags set via the command line over the ones set by scenarios.
@@ -380,6 +393,24 @@ public class TestFramework {
             helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
         }
         return cmds;
+    }
+
+    /**
+     * Parse the test VM flags as prepared by the flag VM. Additionally check the property flag DPrintValidIRRules to determine
+     * if IR matching should be done or not.
+     */
+    private List<String> getTestVMFlags() {
+        String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DPrintValidIRRules=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
+        Pattern pattern = Pattern.compile(patternString);
+        String flags = socket.getOutput();
+        if (VERBOSE) {
+            System.out.println("Read sent data from flag VM from socket:");
+            System.out.println(flags);
+        }
+        Matcher matcher = pattern.matcher(flags);
+        check(matcher.find(), "Invalid flag encoding emitted by flag VM");
+        VERIFY_IR = Boolean.parseBoolean(matcher.group(2));
+        return new ArrayList<>(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
     }
 
     private static void checkTestVMExitCode(OutputAnalyzer oa) {
@@ -402,13 +433,110 @@ public class TestFramework {
             TestFramework.check(matcher.find(), "Must find violation matches");
             throw new TestFormatException("\n\n" + matcher.group());
         } else {
-            throw new TestRunException("\nTestFramework runner VM exited with " + exitCode + "\n\nError Output:\n" + stdErr);
+            System.err.println("--- Standard Output TestFramework test VM ---");
+            System.err.println(oa.getStdout());
+            throw new TestRunException("\nTestFramework test VM exited with " + exitCode + "\n\nError Output:\n" + stdErr);
         }
     }
 
     static void check(boolean test, String failureMessage) {
         if (!test) {
-            throw new TestFrameworkException("Internal TestFrameworkExecution exception - please file a bug:\n" + failureMessage);
+            fail(failureMessage);
+        }
+    }
+
+    static void fail(String failureMessage) {
+        throw new TestFrameworkException("Internal Test Framework exception - please file a bug:\n" + failureMessage);
+    }
+
+    static void fail(String failureMessage, Exception e) {
+        throw new TestFrameworkException("Internal Test Framework exception - please file a bug:\n" + failureMessage, e);
+    }
+}
+
+/**
+ * Dedicated socket to send data from flag and test VM back to the driver VM.
+ */
+class TestFrameworkSocket {
+    private static final int SOCKET_PORT = 6672;
+    private static final String HOSTNAME = "localhost";
+
+    private FutureTask<String> socketTask;
+    private Thread socketThread;
+    private ServerSocket serverSocket;
+
+    TestFrameworkSocket() {
+        try {
+            serverSocket = new ServerSocket(SOCKET_PORT);
+        } catch (IOException e) {
+            TestFramework.fail("Server socket error", e);
+        }
+    }
+
+    public void start() {
+        socketTask = initSocketTask();
+        socketThread = new Thread(socketTask);
+        socketThread.start();
+    }
+
+    private FutureTask<String> initSocketTask() {
+        return new FutureTask<>(() -> {
+            try (Socket clientSocket = serverSocket.accept();
+                 BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))
+            ) {
+                StringBuilder builder = new StringBuilder();
+                String next;
+                while ((next = in.readLine()) != null) {
+                    builder.append(next).append("\n");
+                }
+                return builder.toString();
+            } catch (IOException e) {
+                TestFramework.fail("Server socket error", e);
+                return null;
+            }
+        });
+    }
+
+    public void close() {
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            TestFramework.fail("Could not close socket", e);
+        }
+    }
+
+    public void checkTerminated() {
+        try {
+            socketThread.join(5000);
+            if (socketThread.isAlive()) {
+                serverSocket.close();
+                TestFramework.fail("Socket thread was not terminated");
+            }
+        } catch (InterruptedException | IOException e) {
+            TestFramework.fail("Socket thread was not closed", e);
+        }
+    }
+
+    public static void write(String msg, String type) {
+        try (Socket socket = new Socket(HOSTNAME, SOCKET_PORT);
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
+        ) {
+            out.print(msg);
+        } catch (Exception e) {
+            TestFramework.fail("Failed to write to socket", e);
+        }
+        if (TestFramework.VERBOSE) {
+            System.out.println("Written " + type + " to socket:");
+            System.out.println(msg);
+        }
+    }
+
+    public String getOutput() {
+        try {
+            return socketTask.get();
+        } catch (Exception e) {
+            TestFramework.fail("Could not read from socket task", e);
+            return null;
         }
     }
 }

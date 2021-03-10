@@ -54,6 +54,7 @@ public class TestSanity {
         testFramework.clear();
         testFramework.addHelperClasses(HelperA.class, HelperB.class).start();
         testFramework.clear();
+        testFramework = new TestFramework();
         testFramework.addHelperClasses(HelperA.class, HelperB.class).addHelperClasses(HelperC.class).start();
         testFramework.clear();
         testFramework.addScenarios(sDefault).addScenarios(s1, s2).start();

@@ -235,7 +235,7 @@ public class TestIRMatching {
                 constraint.checkConstraint(e);
             }
         } catch (Exception e1) {
-            System.out.println(TestFramework.getLastVMOutput());
+            System.out.println(TestFramework.getLastTestVMOutput());
             System.out.println(message);
             throw e1;
         }

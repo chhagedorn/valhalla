@@ -38,10 +38,10 @@ public class TestWithHelperClasses {
             TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class);
         } catch (Exception e) {
             Asserts.assertFalse(e.getMessage().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper1.foo() should have been C2 compiled"));
-            Asserts.assertFalse(TestFramework.getLastVMOutput().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper1.foo() should have been C2 compiled"));
-            Asserts.assertTrue(TestFramework.getLastVMOutput().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
+            Asserts.assertFalse(TestFramework.getLastTestVMOutput().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper1.foo() should have been C2 compiled"));
+            Asserts.assertTrue(TestFramework.getLastTestVMOutput().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
             Asserts.assertTrue(e.getMessage().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
-            Asserts.assertFalse(TestFramework.getLastVMOutput().contains("Should not be executed"));
+            Asserts.assertFalse(TestFramework.getLastTestVMOutput().contains("Should not be executed"));
             Asserts.assertFalse(e.getMessage().contains("Should not be executed"));
             exceptionsCaught++;
         }

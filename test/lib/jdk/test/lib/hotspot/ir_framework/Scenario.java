@@ -35,7 +35,7 @@ public class Scenario {
     private final List<String> flags;
     private final int index;
     boolean enabled;
-    private String vmOutput;
+    private String testVMOutput;
 
     static {
         if (!SCENARIOS.isEmpty()) {
@@ -77,11 +77,11 @@ public class Scenario {
         return enabled;
     }
 
-    public void setVMOutput(String vmOutput) {
-        this.vmOutput = vmOutput;
+    public void setTestVMOutput(String testVMOutput) {
+        this.testVMOutput = testVMOutput;
     }
 
-    public String getVMOutput() {
-        return vmOutput;
+    public String getTestVMOutput() {
+        return testVMOutput;
     }
 }

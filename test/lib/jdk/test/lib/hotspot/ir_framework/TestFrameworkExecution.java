@@ -925,7 +925,9 @@ class BaseTest {
         final Method testMethod = test.getTestMethod();
         long started = System.currentTimeMillis();
         long elapsed = 0;
-        Asserts.assertTrue(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false));
+        TestRun.check(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false),
+                      "Method" + testMethod + " not compilable at level " + test.getCompLevel()
+                      + ". Did you use compileonly without including all @Test methods?");
         enqueueMethodForCompilation();
 
         do {

@@ -48,7 +48,7 @@ public class TestCompLevels {
         TestFramework.runWithScenarios(TestNoTiered.class, s);
         s = new Scenario(2, "-XX:TieredStopAtLevel=1");
         TestFramework.runWithScenarios(TestStopAtLevel1.class, s);
-        Asserts.assertTrue(s.getVMOutput().contains("TestStopAtLevel1=34"));
+        Asserts.assertTrue(s.getTestVMOutput().contains("TestStopAtLevel1=34"));
     }
 
     @Test(compLevel = CompLevel.C1)

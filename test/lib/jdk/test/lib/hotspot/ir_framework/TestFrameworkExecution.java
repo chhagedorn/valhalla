@@ -788,7 +788,7 @@ class BaseTest {
     protected final DeclaredTest test;
     protected final Method testMethod;
     protected final TestInfo testInfo;
-    protected final Object invocationTarget;
+    private final Object invocationTarget;
     private final boolean shouldCompile;
     protected int warmupIterations;
 
@@ -797,19 +797,7 @@ class BaseTest {
         this.testMethod = test.getTestMethod();
         this.testInfo = new TestInfo(testMethod);
         this.warmupIterations = test.getWarmupIterations();
-        Class<?> clazz = testMethod.getDeclaringClass();
-        if (Modifier.isStatic(testMethod.getModifiers())) {
-            this.invocationTarget = null;
-        } else {
-            try {
-                Constructor<?> constructor = clazz.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                this.invocationTarget = constructor.newInstance();
-            } catch (Exception e) {
-                throw new TestRunException("Could not create instance of " + clazz
-                                                   + ". Make sure there is a constructor without arguments.", e);
-            }
-        }
+        this.invocationTarget = getInvocationTarget(testMethod);
         if (!TestFrameworkExecution.USE_COMPILER) {
             this.shouldCompile = false;
         } else if (TestFrameworkExecution.STRESS_CC) {
@@ -817,6 +805,24 @@ class BaseTest {
         } else {
             this.shouldCompile = true;
         }
+    }
+
+    protected Object getInvocationTarget(Method method) {
+        Class<?> clazz = method.getDeclaringClass();
+        Object invocationTarget;
+        if (Modifier.isStatic(method.getModifiers())) {
+            invocationTarget = null;
+        } else {
+            try {
+                Constructor<?> constructor = clazz.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                invocationTarget = constructor.newInstance();
+            } catch (Exception e) {
+                throw new TestRunException("Could not create instance of " + clazz
+                                           + ". Make sure there is a constructor without arguments.", e);
+            }
+        }
+        return invocationTarget;
     }
 
     public String getTestName() {
@@ -967,6 +973,7 @@ class CheckedTest extends BaseTest {
     private final Method checkMethod;
     private final CheckAt checkAt;
     private final Parameter parameter;
+    private final Object checkInvocationTarget;
 
     enum Parameter {
         NONE, RETURN_ONLY, TEST_INFO_ONLY, BOTH
@@ -979,6 +986,7 @@ class CheckedTest extends BaseTest {
         this.checkMethod = checkMethod;
         this.checkAt = checkSpecification.when();
         this.parameter = parameter;
+        this.checkInvocationTarget = getInvocationTarget(checkMethod);
     }
 
     @Override
@@ -994,10 +1002,10 @@ class CheckedTest extends BaseTest {
         if (shouldVerify) {
             try {
                 switch (parameter) {
-                    case NONE -> checkMethod.invoke(invocationTarget);
-                    case RETURN_ONLY -> checkMethod.invoke(invocationTarget, result);
-                    case TEST_INFO_ONLY -> checkMethod.invoke(invocationTarget, testInfo);
-                    case BOTH -> checkMethod.invoke(invocationTarget, result, testInfo);
+                    case NONE -> checkMethod.invoke(checkInvocationTarget);
+                    case RETURN_ONLY -> checkMethod.invoke(checkInvocationTarget, result);
+                    case TEST_INFO_ONLY -> checkMethod.invoke(checkInvocationTarget, testInfo);
+                    case BOTH -> checkMethod.invoke(checkInvocationTarget, result, testInfo);
                 }
             } catch (Exception e) {
                 throw new TestRunException("There was an error while invoking @Check method " + checkMethod, e);
@@ -1009,12 +1017,14 @@ class CheckedTest extends BaseTest {
 class CustomRunTest extends BaseTest {
     private final Method runMethod;
     private final RunMode mode;
+    private final Object runInvocationTarget;
 
     public CustomRunTest(DeclaredTest test, Method runMethod, Warmup warmUpAnno, Run runSpecification) {
         super(test);
         // Make sure we can also call non-public or public methods in package private classes
         runMethod.setAccessible(true);
         this.runMethod = runMethod;
+        this.runInvocationTarget = getInvocationTarget(runMethod);
         this.mode = runSpecification.mode();
         this.warmupIterations = warmUpAnno != null ? warmUpAnno.value() : test.getWarmupIterations();
         TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + runMethod);
@@ -1038,9 +1048,9 @@ class CustomRunTest extends BaseTest {
     protected void runMethod() {
         try {
             if (runMethod.getParameterCount() == 1) {
-                runMethod.invoke(invocationTarget, testInfo);
+                runMethod.invoke(runInvocationTarget, testInfo);
             } else {
-                runMethod.invoke(invocationTarget);
+                runMethod.invoke(runInvocationTarget);
             }
         } catch (Exception e) {
             throw new TestRunException("There was an error while invoking @Run method " + runMethod, e);

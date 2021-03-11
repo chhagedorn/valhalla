@@ -67,7 +67,7 @@ public class TestFrameworkExecution {
     private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
     // Use separate flag as VERIFY_IR could have been set by user but due to other flags it was disabled by flag VM.
-    private static final boolean PRINT_VALID_IR_RULES = Boolean.parseBoolean(System.getProperty("PrintValidIRRules", "false"));
+    private static final boolean PRINT_VALID_IR_RULES = Integer.getInteger(TestFrameworkSocket.SERVER_PORT_PROPERTY, -1) != -1;
     protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
     protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
     private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
@@ -160,21 +160,12 @@ public class TestFrameworkExecution {
 
     // Only called by internal tests testing the framework itself. Accessed by reflection. Not exposed to normal users.
     private static void runTestsOnSameVM(Class<?> testClass) {
-        TestFrameworkSocket dummy = new TestFrameworkSocket();
-        try {
-            if (PRINT_VALID_IR_RULES) {
-                // Need dummy socket to write to as we are not calling this method from TestFramework.
-                dummy.start();
-            }
-            if (testClass == null) {
-                StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-                testClass = walker.getCallerClass();
-            }
-            TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
-            framework.start();
-        } finally {
-            dummy.close();
+        if (testClass == null) {
+            StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+            testClass = walker.getCallerClass();
         }
+        TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
+        framework.start();
     }
 
     private void start() {

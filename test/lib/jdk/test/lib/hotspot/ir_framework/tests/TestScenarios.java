@@ -37,13 +37,13 @@ public class TestScenarios {
             TestFramework.runWithScenarios(sDefault, s1, s2, s3);
             Asserts.fail("Should not reach");
         } catch (TestRunException e) {
-            Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #0, #1, #3"));
+            Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #0, #1, #3"), e.getMessage());
         }
         try {
             TestFramework.runWithScenarios(s1, s2, s3);
             Asserts.fail("Should not reach");
         } catch (TestRunException e) {
-            Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #1, #3"));
+            Asserts.assertTrue(e.getMessage().contains("The following scenarios have failed: #1, #3"), e.getMessage());
         }
 
         TestFramework.runWithScenarios(ScenarioTest.class, s1, s2, s3);
@@ -51,7 +51,7 @@ public class TestScenarios {
             TestFramework.runWithScenarios(s1, s3dup, s2, s3);
             Asserts.fail("Should not reach");
         } catch (RuntimeException e) {
-            Asserts.assertTrue(e.getMessage().contains("Cannot define two scenarios with the same index 3"));
+            Asserts.assertTrue(e.getMessage().contains("Cannot define two scenarios with the same index 3"), e.getMessage());
         }
     }
 

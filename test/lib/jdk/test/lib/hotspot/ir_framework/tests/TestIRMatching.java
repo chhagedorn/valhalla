@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// Run with -DPrintIREncoding=true
 public class TestIRMatching {
 
     public static void main(String[] args) {

@@ -37,6 +37,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Use this framework by using the following JTreg setup in your "some.package.Test"
@@ -53,7 +54,7 @@ public class TestFramework {
 
     private List<Class<?>> helperClasses = null;
     private List<Scenario> scenarios = null;
-    private List<String> flags = new ArrayList<>();
+    private final List<String> flags = new ArrayList<>();
     private final Class<?> testClass;
     private static String lastTestVMOutput;
     private TestFrameworkSocket socket;
@@ -377,42 +378,49 @@ public class TestFramework {
     }
 
     private void startWithScenarios() {
-        Map<String, Exception> exceptionMap = new HashMap<>();
-        Set<Integer> scenarioIndecies = new HashSet<>();
+        Map<Scenario, Exception> exceptionMap = new TreeMap<>(Comparator.comparingInt(Scenario::getIndex));
+        Set<Integer> scenarioIndices = new HashSet<>();
         for (Scenario scenario : scenarios) {
             int scenarioIndex = scenario.getIndex();
-            TestFormat.check(!scenarioIndecies.contains(scenarioIndex),
+            TestFormat.check(!scenarioIndices.contains(scenarioIndex),
                              "Cannot define two scenarios with the same index " + scenarioIndex);
-            scenarioIndecies.add(scenarioIndex);
+            scenarioIndices.add(scenarioIndex);
             try {
                 start(scenario);
             } catch (TestFormatException e) {
                 // Test format violation is wrong for all the scenarios. Only report once.
                 throw new TestFormatException(e.getMessage());
             } catch (Exception e) {
-                exceptionMap.put(String.valueOf(scenarioIndex), e);
+                exceptionMap.put(scenario, e);
             }
         }
         if (!exceptionMap.isEmpty()) {
-            StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
-            builder.append(String.join(", #", exceptionMap.keySet())).append("\n\n");
-            for (Map.Entry<String, Exception> entry : exceptionMap.entrySet()) {
-                String title = "Stacktrace for Scenario #" + entry.getKey();
-                builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
-                Exception e = entry.getValue();
-                if (e instanceof IRViolationException) {
-                    // For IR violations, only show the actual message and not the (uninteresting) stack trace.
-                    builder.append(e.getMessage());
-                } else {
-                    // Print stack trace if it was not a format violation or test run exception
-                    StringWriter errors = new StringWriter();
-                    entry.getValue().printStackTrace(new PrintWriter(errors));
-                    builder.append(errors.toString());
-                }
-                builder.append("\n");
-            }
-            TestRun.fail(builder.toString());
+            reportScenarioFailures(exceptionMap);
         }
+    }
+
+    private void reportScenarioFailures(Map<Scenario, Exception> exceptionMap) {
+        StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
+        builder.append(exceptionMap.keySet().stream().map(s -> String.valueOf(s.getIndex())).
+                collect(Collectors.joining(", #"))).append("\n\n");
+        for (Map.Entry<Scenario, Exception> entry : exceptionMap.entrySet()) {
+            Scenario scenario = entry.getKey();
+            String title = "Stacktrace for Scenario #" + scenario.getIndex();
+            builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
+            builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n\n");
+            Exception e = entry.getValue();
+            if (e instanceof IRViolationException) {
+                // For IR violations, only show the actual message and not the (uninteresting) stack trace.
+                builder.append(e.getMessage());
+            } else {
+                // Print stack trace if it was not a format violation or test run exception
+                StringWriter errors = new StringWriter();
+                entry.getValue().printStackTrace(new PrintWriter(errors));
+                builder.append(errors.toString());
+            }
+            builder.append("\n");
+        }
+        TestRun.fail(builder.toString());
     }
 
     /**
@@ -471,6 +479,7 @@ public class TestFramework {
         cmds.add("-Xbootclasspath/a:.");
         cmds.add("-XX:+UnlockDiagnosticVMOptions");
         cmds.add("-XX:+WhiteBoxAPI");
+        cmds.add(socket.getPortPropertyFlag());
         // TestFramework and scenario flags might have an influence on the later used test VM flags. Add them as well.
         cmds.addAll(additionalFlags);
         cmds.add(TestFrameworkPrepareFlags.class.getCanonicalName());
@@ -499,6 +508,7 @@ public class TestFramework {
             // We only need the socket if we are doing IR verification.
             socket.start();
         }
+
         OutputAnalyzer oa;
         try {
             // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
@@ -525,7 +535,6 @@ public class TestFramework {
         cmds.add("-Xbootclasspath/a:.");
         cmds.add("-XX:+UnlockDiagnosticVMOptions");
         cmds.add("-XX:+WhiteBoxAPI");
-
         String[] jtregVMFlags = Utils.getTestJavaOpts();
         if (!PREFER_COMMAND_LINE_FLAGS) {
             cmds.addAll(Arrays.asList(jtregVMFlags));
@@ -538,6 +547,11 @@ public class TestFramework {
             cmds.addAll(Arrays.asList(jtregVMFlags));
         }
 
+        if (VERIFY_IR) {
+            // Add server property flag that enables test VM to print encoding for IR verification last.
+            cmds.add(socket.getPortPropertyFlag());
+        }
+
         cmds.add(TestFrameworkExecution.class.getCanonicalName());
         cmds.add(testClass.getCanonicalName());
         if (helperClasses != null) {
@@ -547,11 +561,11 @@ public class TestFramework {
     }
 
     /**
-     * Parse the test VM flags as prepared by the flag VM. Additionally check the property flag DPrintValidIRRules to determine
-     * if IR matching should be done or not.
+     * Parse the test VM flags as prepared by the flag VM. Additionally check the property flag DShouldDoIRVerification
+     * to determine if IR matching should be done or not.
      */
     private List<String> getTestVMFlags() {
-        String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DPrintValidIRRules=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
+        String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DShouldDoIRVerification=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
         Pattern pattern = Pattern.compile(patternString);
         String flags = socket.getOutput();
         if (VERBOSE) {
@@ -609,19 +623,32 @@ public class TestFramework {
  * Dedicated socket to send data from flag and test VM back to the driver VM.
  */
 class TestFrameworkSocket {
-    private static final int SOCKET_PORT = 6672;
-    private static final String HOSTNAME = "localhost";
+    static final String SERVER_PORT_PROPERTY = "ir.framework.server.port";
 
+    // Static fields used by flag and test VM only.
+    private static final int SERVER_PORT = Integer.getInteger(SERVER_PORT_PROPERTY, -1);
+    private static final String HOSTNAME = null;
+
+    private final String serverPortPropertyFlag;
     private FutureTask<String> socketTask;
     private Thread socketThread;
     private ServerSocket serverSocket;
 
     TestFrameworkSocket() {
         try {
-            serverSocket = new ServerSocket(SOCKET_PORT);
+            serverSocket = new ServerSocket(0);
         } catch (IOException e) {
-            TestFramework.fail("Server socket error", e);
+            TestFramework.fail("Failed to create TestFramework server socket", e);
         }
+        int port = serverSocket.getLocalPort();
+        if (TestFramework.VERBOSE) {
+            System.out.println("TestFramework server socket uses port " + port);
+        }
+        serverPortPropertyFlag = "-D" + SERVER_PORT_PROPERTY + "=" + port;
+    }
+
+    public String getPortPropertyFlag() {
+        return serverPortPropertyFlag;
     }
 
     public void start() {
@@ -668,8 +695,13 @@ class TestFrameworkSocket {
         }
     }
 
+    /**
+     * Only called by flag and test VM to write to server socket.
+     */
     public static void write(String msg, String type) {
-        try (Socket socket = new Socket(HOSTNAME, SOCKET_PORT);
+        TestFramework.check(SERVER_PORT != -1, "Server port was not set correctly for flag and/or test VM "
+                                              + "or method not called from flag or test VM");
+        try (Socket socket = new Socket(HOSTNAME, SERVER_PORT);
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
         ) {
             out.print(msg);

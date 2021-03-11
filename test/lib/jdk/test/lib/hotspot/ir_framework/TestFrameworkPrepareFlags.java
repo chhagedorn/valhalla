@@ -100,7 +100,6 @@ class TestFrameworkPrepareFlags {
 
     private static ArrayList<String> prepareTestVmFlags(Class<?> testClass) {
         ArrayList<String> cmds = new ArrayList<>();
-        setupIrVerificationFlags(testClass, cmds);
 
         if (VERIFY_VM) {
             cmds.addAll(Arrays.asList(getVerifyFlags()));
@@ -110,6 +109,7 @@ class TestFrameworkPrepareFlags {
         if (COMPILE_COMMANDS) {
             cmds.addAll(Arrays.asList(getCompileCommandFlags()));
         }
+        setupIrVerificationFlags(testClass, cmds);
 
 //        // TODO: Only for debugging
 //        if (cmds.get(0).startsWith("-agentlib")) {
@@ -139,9 +139,9 @@ class TestFrameworkPrepareFlags {
             addBoolOptionForClass(cmds, testClass, "PrintOptoAssembly");
             // Always trap for exception throwing to not confuse IR verification
             cmds.add("-XX:-OmitStackTraceInFastThrow");
-            cmds.add("-DPrintValidIRRules=true");
+            cmds.add("-DShouldDoIRVerification=true");
         } else {
-            cmds.add("-DPrintValidIRRules=false");
+            cmds.add("-DShouldDoIRVerification=false");
         }
     }
 

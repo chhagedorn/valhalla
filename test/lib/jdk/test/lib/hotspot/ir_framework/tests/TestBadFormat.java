@@ -34,13 +34,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// Must run with -DPrintValidIRRules=true
 public class TestBadFormat {
 
-    private static Method runTestsOnSameVM;
-    public static void main(String[] args) throws NoSuchMethodException {
-        runTestsOnSameVM = TestFrameworkExecution.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
-        runTestsOnSameVM.setAccessible(true);
+    public static void main(String[] args) {
         expectTestFormatException(BadArgumentsAnnotation.class);
         expectTestFormatException(BadOverloadedMethod.class);
         expectTestFormatException(BadCompilerControl.class);
@@ -54,24 +50,20 @@ public class TestBadFormat {
 
     private static void expectTestFormatException(Class<?> clazz) {
         try {
-            runTestsOnSameVM.invoke(null, clazz);
+            TestFramework.run(clazz);
         } catch (Exception e) {
-            Throwable cause = e.getCause();
-            if (cause != null) {
-                System.out.println(cause.getMessage());
-            }
-            if (!(cause instanceof TestFormatException)) {
+            if (!(e instanceof TestFormatException)) {
                 e.printStackTrace();
-                Asserts.fail("Unexpected exception: " + cause);
+                Asserts.fail("Unexpected exception", e);
             }
-            String msg = cause.getMessage();
+            String msg = e.getMessage();
             Violations violations = getViolations(clazz);
-            violations.getFailedMethods().forEach(f -> Asserts.assertTrue(msg.contains(f), "Could not find " + f + " in violations"));
+            violations.getFailedMethods().forEach(f -> Asserts.assertTrue(msg.contains(f), "Could not find " + f + " in violations\n" + msg));
             Pattern pattern = Pattern.compile("Violations \\((\\d+)\\)");
             Matcher matcher = pattern.matcher(msg);
-            Asserts.assertTrue(matcher.find(), "Could not find violations");
+            Asserts.assertTrue(matcher.find(), "Could not find violations in\n" + msg);
             int violationCount = Integer.parseInt(matcher.group(1));
-            Asserts.assertEQ(violationCount, violations.getViolationCount());
+            Asserts.assertEQ(violationCount, violations.getViolationCount(), msg);
             return;
         }
         throw new RuntimeException("Should catch an exception");

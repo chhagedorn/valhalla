@@ -26,6 +26,13 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Compilation levels used by the framework. The compilation levels map to the used levels in HotSpot (apart from the
+ * framework specific value {@link CompLevel#SKIP} that cannot be found in HotSpot).
+ *
+ * <p>
+ * The compilation levels can be specified in the {@link Test}, {@link ForceCompile} and {@link DontCompile} annotation.
+ */
 public enum CompLevel {
     /**
      * Skip a {@link Test @Test} when set as {@link Test#compLevel()}.

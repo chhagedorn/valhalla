@@ -25,8 +25,11 @@ package jdk.test.lib.hotspot.ir_framework;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-@Retention(RetentionPolicy.RUNTIME)
 
+/**
+ * Annotation to allow to specify multiple {@link IR} annotations at a {@link Test} method.
+ */
+@Retention(RetentionPolicy.RUNTIME)
 public @interface IRs {
     IR[] value();
 }

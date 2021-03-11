@@ -40,12 +40,11 @@ import java.util.regex.Pattern;
 
 /**
  * Use this framework by using the following JTreg setup in your "some.package.Test"
- * @library /test/lib
- * @run driver some.package.Test
+ * {@literal @}library /test/lib
+ * {@literal @}run driver some.package.Test
  */
 public class TestFramework {
-    public static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
-
+    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
     static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
     static final String TEST_VM_FLAGS_DELIMITER = " ";
     static final String TEST_VM_FLAGS_END = "----- END -----";
@@ -306,7 +305,7 @@ public class TestFramework {
     }
 
     /**
-     * Get the VM output of the test VM. Use {@link -DVerbose=true} to enable more debug information. If scenarios
+     * Get the VM output of the test VM. Use {@code -DVerbose=true} to enable more debug information. If scenarios
      * were run, use {@link Scenario#getTestVMOutput()}.
      *
      * @return the last test VM output

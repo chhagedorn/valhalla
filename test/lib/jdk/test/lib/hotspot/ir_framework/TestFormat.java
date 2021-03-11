@@ -26,7 +26,7 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TestFormat {
+class TestFormat {
     private static final List<String> FAILURES = new ArrayList<>();
 
     public static void check(boolean test, String failureMessage) {

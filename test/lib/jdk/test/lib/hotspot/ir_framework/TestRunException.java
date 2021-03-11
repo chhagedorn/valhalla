@@ -23,6 +23,10 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+/**
+ * Exception that is thrown if the JTreg test throws an exception during the execution of individual tests of the
+ * test class.
+ */
 public class TestRunException extends RuntimeException {
     public TestRunException(String message) {
         super(message);

@@ -23,6 +23,20 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+/**
+ * Enum used at in the {@link Check} annotation of a checked test. It specifies when the framework will invoke the
+ * check method after invoking the associated {@link Test} method.
+ * @see Check
+ * @see Test
+ */
 public enum CheckAt {
-    EACH_INVOCATION, COMPILED
+    /**
+     * Invoke the {@link Check} method each time after invoking the associated {@link Test} method.
+     */
+    EACH_INVOCATION,
+    /**
+     * Invoke the {@link Check} method only once after the warmup of the associated {@link Test} method completed has
+     * completed and test framework has compiled the test method.
+     */
+    COMPILED
 }

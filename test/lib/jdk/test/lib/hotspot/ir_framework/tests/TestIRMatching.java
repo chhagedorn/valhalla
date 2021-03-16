@@ -86,6 +86,15 @@ public class TestIRMatching {
                  BadFailOnConstraint.create(AllocArray.class, "allocArray()", 5,  allocArrayMatches)
         );
 
+        runCheck(GoodRuleConstraint.create(RunTests.class, "good1()", 1),
+                 GoodRuleConstraint.create(RunTests.class, "good1()", 2),
+                 GoodRuleConstraint.create(RunTests.class, "good2()", 1),
+                 GoodRuleConstraint.create(RunTests.class, "good2()", 2),
+                 GoodRuleConstraint.create(RunTests.class, "good3(int)", 1),
+                 BadCountsConstraint.create(RunTests.class, "bad1(int)", 1, 0),
+                 BadFailOnConstraint.create(RunTests.class, "bad1(int)", 2, "Load")
+        );
+
         runCheck(new String[] {"-XX:-UseCompressedClassPointers"},
                  BadFailOnConstraint.create(Loads.class, "load()", 1, 1, "Load"),
                  BadFailOnConstraint.create(Loads.class, "load()", 1, 3, "LoadI"),
@@ -702,6 +711,52 @@ class BadCount {
     @IR(counts = {IRNode.STORE, " <= 0"})
     public void bad3() {
         result = iFld;
+    }
+}
+
+
+class RunTests {
+    public int iFld;
+
+    @Test
+    @IR(counts = {IRNode.STORE, "1"})
+    @IR(failOn = IRNode.LOAD)
+    public void good1() {
+        iFld = 42;
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD, "1"})
+    @IR(failOn = IRNode.STORE)
+    public int good2() {
+        return iFld;
+    }
+
+    @Run(test = {"good1", "good2"})
+    public void runGood1() {
+        good1();
+        good2();
+    }
+
+
+    @Test
+    @IR(counts = {IRNode.STORE, "1"})
+    @IR(failOn = IRNode.LOAD)
+    public void good3(int x) {
+        iFld = x;
+    }
+
+    @Test
+    @IR(counts = {IRNode.STORE, "1"})
+    @IR(failOn = IRNode.LOAD)
+    public int bad1(int x) {
+        return iFld + x;
+    }
+
+    @Run(test = {"bad1", "good3"})
+    public void run() {
+        bad1(2);
+        good3(4);
     }
 }
 

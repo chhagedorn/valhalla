@@ -43,12 +43,15 @@ public class TestExample {
     /*
      * If there is no warm up specified the Test Framework will do the following:
      * - Invoke @Test method TestFrameworkExecution.WARMUP_ITERATIONS many times.
-     * - Then do compilation of @Test method.
+     * - Then do compilation of @Test method. (**)
      * - Invoke @Test method once again
      */
 
     /*
      * Configurable things for simple tests (no @Run or @Check) at @Test method:
+     * - compLevel: Specify at which compilation level the test should be compiled by the framework at step (**).
+     *              If WAIT_FOR_COMPILATION is specified, the framework will continue to invoke the method until
+     *              HotSpot compiles it. If it is not compiled after 10s, an exception is thrown.
      * - @Warmup: Change warm-up iterations of test (defined by default by TestFrameworkExecution.WARMUP_ITERATIONS)
      * - @Arguments: If a @Test method specifies arguments, you need to provide arguments by using @Arguments such
      *               that the framework knows how to call the method. If you need more complex values, use @Run.

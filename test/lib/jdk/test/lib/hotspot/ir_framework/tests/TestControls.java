@@ -149,7 +149,7 @@ public class TestControls {
 
     @Run(test = "testCompileAtLevel1")
     @Warmup(5000)
-    public void runTestDontCompile2(TestInfo info) throws NoSuchMethodException {
+    public void runTestDontCompile2(RunInfo info) throws NoSuchMethodException {
         dontCompile2();
         testCompileAtLevel1();
         if (!info.isWarmUp()) {
@@ -174,7 +174,7 @@ public class TestControls {
 
     @Run(test = "noWarmup2")
     @Warmup(0)
-    public void runNoWarmup2(TestInfo info) {
+    public void runNoWarmup2(RunInfo info) {
         noWarmup2();
         noWarmup2();
         Asserts.assertTrue(!info.isWarmUp());
@@ -253,7 +253,7 @@ public class TestControls {
 
     @Run(test = "testCompilation")
     @Warmup(0)
-    public void runTestCompilation(TestInfo info) {
+    public void runTestCompilation(RunInfo info) {
         for (int i = 0; i < 10000; i++) {
             dontCompileAny();
             dontCompileC1();

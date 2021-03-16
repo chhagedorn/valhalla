@@ -313,6 +313,12 @@ class BadCompilerControl {
     @DontCompile(CompLevel.SKIP)
     public void invalidSkip2() {}
 
+    @ForceCompile(CompLevel.WAIT_FOR_COMPILATION)
+    public void invalidWaitForCompilation() {}
+
+    @DontCompile(CompLevel.WAIT_FOR_COMPILATION)
+    public void invalidWaitForCompilation2() {}
+
     @ForceCompile(CompLevel.C1)
     @DontCompile(CompLevel.C1)
     public void overlappingCompile1() {}
@@ -373,7 +379,21 @@ class BadWarmup {
     @FailCount(2) // Negative warmup and invoke once
     @Run(test = "someTest3", mode = RunMode.STANDALONE)
     @Warmup(-1)
-    public void noWarmupAtInvokeOnce() {}
+    public void noWarmupAtStandalone() {}
+
+    @Test(compLevel = CompLevel.C1)
+    public void testNoCompLevelStandalone() {}
+
+    @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
+    public void testNoCompLevelStandalone2() {}
+
+    @NoFail
+    @Test
+    public void someTest4() {}
+
+    @FailCount(0) // Negative warmup and invoke once
+    @Run(test = {"someTest4", "testNoCompLevelStandalone", "testNoCompLevelStandalone2"}, mode = RunMode.STANDALONE)
+    public void runNoCompLevelStandalone() {}
 }
 
 class BadBaseTests {
@@ -426,7 +446,7 @@ class BadRunTests {
     public void test2() {}
 
     @Run(test = "test2")
-    public void wrongParameters(TestInfo info, int x) {}
+    public void wrongParameters(RunInfo info, int x) {}
 
     @Test
     public void invalidShare() {}
@@ -456,7 +476,47 @@ class BadRunTests {
 
     @Arguments(Argument.DEFAULT)
     @Run(test = "testInvalidRunWithArgAnnotation")
-    public void invalidRunWithArgAnnotation(TestInfo info) {}
+    public void invalidRunWithArgAnnotation(RunInfo info) {}
+
+    @NoFail
+    @Test
+    public void testRunWithTestInfo() {}
+
+    @Run(test = "testRunWithTestInfo")
+    public void invalidRunWithTestInfo(TestInfo info) {}
+
+    @Run(test = {})
+    public void invalidRunWithNoTest() {}
+
+    @Run(test = "")
+    public void invalidRunWithEmptyTestName() {}
+
+    @NoFail
+    @Test
+    public void someExistingTest() {}
+
+    @FailCount(2)
+    @Run(test = {"unknown1", "someExistingTest", "unknown2"})
+    public void invalidRunWithInvalidTests() {}
+
+    @NoFail
+    @Test
+    public void testInvalidReuse() {}
+
+    @Test
+    public void testInvalidReuse2() {}
+
+    @NoFail
+    @Test
+    public void testInvalidReuse3() {}
+
+    @FailCount(0)
+    @Run(test = {"testInvalidReuse", "testInvalidReuse2"})
+    public void runInvalidReuse1() {}
+
+    @FailCount(0)
+    @Run(test = {"testInvalidReuse2", "testInvalidReuse3"})
+    public void runInvalidReuse2() {}
 }
 
 class BadCheckTest {

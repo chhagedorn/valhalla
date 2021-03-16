@@ -85,7 +85,7 @@ class IRMatcher {
                 if (methodName.startsWith(keyMatchPrefix)) {
                     String shortMethodName = methodName.split("::")[1];
                     if (irRulesMap.containsKey(methodName.split("::")[1])) {
-                        compilations.put(shortMethodName, output.substring(prev, m.start() + 1));
+                        compilations.put(shortMethodName, output.substring(prev, m.start() + 1).trim());
                     }
                 }
 
@@ -105,7 +105,7 @@ class IRMatcher {
                     if (TestFramework.VERBOSE) {
                         System.out.println("\nGraph for " + methodName + "\n" + testOutput);
                     }
-                    compilations.put(shortMethodName, testOutput);
+                    compilations.put(shortMethodName, testOutput.trim());
                 }
             }
         }
@@ -155,6 +155,13 @@ class IRMatcher {
 
     private void applyRuleToMethod(IR[] irAnnos, Integer[] ids) {
         String testOutput = compilations.get(method.getName());
+        if (testOutput == null || testOutput.isEmpty()) {
+            String msg = "Method was not compiled as part of a @Run method in STANDALONE mode. " +
+                         "Make sure to always trigger a C2 compilation by invoking the test enough times.";
+            fails.computeIfAbsent(method, k -> new ArrayList<>()).add(msg);
+            return;
+        }
+
         if (TestFramework.VERBOSE) {
             System.out.println(testOutput);
         }

@@ -35,7 +35,14 @@ import java.util.Map;
  */
 public enum CompLevel {
     /**
-     * Skip a {@link Test @Test} when set as {@link Test#compLevel()}.
+     * Can only be used at {@link Test#compLevel()}. After the warm-up, the framework keeps invoking the test over a span
+     * of 10s (configurable by setting the property flag {@code -DWaitForCompilationTimeout}) until HotSpot compiles the
+     * {@link Test} method. If the method was not compiled after 10s, an exception is thrown. The framework does not wait
+     * for the compilation if the test VM is run with {@code -Xcomp}, {@code -XX:-UseCompiler} or {@code -DStressCC=true}.
+     */
+    WAIT_FOR_COMPILATION(-4),
+    /**
+     * Can only be used at {@link Test#compLevel()}. Skip a {@link Test @Test} completely.
      */
     SKIP(-3),
     /**

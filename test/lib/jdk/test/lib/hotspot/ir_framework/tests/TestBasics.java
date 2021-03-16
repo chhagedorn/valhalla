@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 public class TestBasics {
     private static boolean wasExecuted = false;
     private boolean lastToggleBoolean = true;
-    private final static int[] executed = new int[96];
+    private final static int[] executed = new int[100];
     private final static int[] executedOnce = new int[5];
     private long[] nonFloatingRandomNumbers = new long[10];
     private double[] floatingRandomNumbers = new double[10];
@@ -961,7 +961,7 @@ public class TestBasics {
 
     // Allowed to overload test method if not test method itself
     @Run(test = "sameName2")
-    public void sameName2(TestInfo info) {
+    public void sameName2(RunInfo info) {
         executed[93]++;
         sameName2();
     }
@@ -974,7 +974,7 @@ public class TestBasics {
     // Custom run test. This method is invoked each time instead of @Test method. This method responsible for calling
     // the @Test method. @Test method is compiled after warm up. This is similar to the verifiers in the old Valhalla framework.
     @Run(test = "testRun")
-    public void runTestRun(TestInfo info) {
+    public void runTestRun(RunInfo info) {
         testRun();
     }
 
@@ -1006,7 +1006,7 @@ public class TestBasics {
     // Custom run test that is only invoked once. There is no warm up and no compilation. This method is responsible
     // for triggering compilation.
     @Run(test = "testRunOnce", mode = RunMode.STANDALONE)
-    public void runTestRunOnce(TestInfo info) {
+    public void runTestRunOnce(RunInfo info) {
         testRunOnce();
     }
 
@@ -1016,9 +1016,54 @@ public class TestBasics {
     }
 
     @Run(test = "testRunOnce2", mode = RunMode.STANDALONE)
-    public void runTestRunOnce2(TestInfo info) {
+    public void runTestRunOnce2(RunInfo info) {
         for (int i = 0; i < TestFrameworkExecution.WARMUP_ITERATIONS + 1; i++) {
             testRunOnce2();
+        }
+    }
+
+    @Test
+    public void testRunMultiple() {
+        executed[96]++;
+    }
+
+    @Test
+    public void testRunMultiple2() {
+        executed[97]++;
+    }
+
+    @Test
+    public void testRunMultipleNotExecuted() {
+        wasExecuted = true;
+    }
+
+    @Run(test = {"testRunMultiple", "testRunMultiple2", "testRunMultipleNotExecuted"})
+    public void runTestRunMultiple() {
+        testRunMultiple();
+        testRunMultiple2();
+    }
+
+
+    @Test
+    public void testRunMultiple3() {
+        executed[98]++;
+    }
+
+    @Test
+    public void testRunMultiple4() {
+        executed[99]++;
+    }
+
+    @Test
+    public void testRunMultipleNotExecuted2() {
+        wasExecuted = true;
+    }
+
+    @Run(test = {"testRunMultiple3", "testRunMultiple4", "testRunMultipleNotExecuted2"}, mode = RunMode.STANDALONE)
+    public void runTestRunMultipl2(RunInfo info) {
+        for (int i = 0; i < TestFrameworkExecution.WARMUP_ITERATIONS + 1; i++) {
+            testRunMultiple3();
+            testRunMultiple4();
         }
     }
 }

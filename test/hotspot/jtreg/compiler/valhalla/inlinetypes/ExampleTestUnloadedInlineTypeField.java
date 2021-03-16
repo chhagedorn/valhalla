@@ -84,7 +84,7 @@ public class ExampleTestUnloadedInlineTypeField {
     }
 
     @Run(test = "test1")
-    public void test1_verifier(TestInfo info) {
+    public void test1_verifier(RunInfo info) {
         if (info.isWarmUp() && info.isC1Test()) {
             test1(null);
         } else {

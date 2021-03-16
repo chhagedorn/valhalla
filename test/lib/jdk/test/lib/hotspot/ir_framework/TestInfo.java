@@ -24,73 +24,25 @@
 package jdk.test.lib.hotspot.ir_framework;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Random;
-import java.util.stream.Collectors;
 
-public class TestInfo {
-    private static final Random random = new Random();
+public class TestInfo extends AbstractInfo {
 
     private final Method testMethod;
-    private boolean toggleBool = false;
-    private boolean onWarmUp = true;
 
     TestInfo(Method testMethod) {
+        super(testMethod.getDeclaringClass());
         this.testMethod = testMethod;
-    }
-
-    public boolean toggleBoolean() {
-        toggleBool = !toggleBool;
-        return toggleBool;
-    }
-
-    public static int getRandomInt() {
-        return random.nextInt() % 1000;
-    }
-
-    public static long getRandomLong() {
-        return random.nextLong() % 1000;
-    }
-
-    public static double getRandomDouble() {
-        return random.nextDouble() % 1000;
-    }
-
-    public boolean isWarmUp() {
-        return onWarmUp;
-    }
-
-    void setWarmUpFinished() {
-        onWarmUp = false;
     }
 
     public Method getTest() {
         return testMethod;
     }
 
-    public Method getMethod(Class<?> c, String name, Class<?>... args) {
-        try {
-            return c.getMethod(name, args);
-        } catch (NoSuchMethodException e) {
-            String parameters = args == null || args.length == 0 ? "" :
-                    " with arguments [" + Arrays.stream(args).map(Class::getName).collect(Collectors.joining(",")) + "]";
-            throw new TestRunException("Could not find method " + name + " in " + c + parameters);
-        }
-    }
-
-    public Method getTestClassMethod(String name, Class<?>... args) {
-        return getMethod(testMethod.getDeclaringClass(), name, args);
-    }
-
-    public boolean isC1Test() {
-        return TestFrameworkExecution.TEST_C1;
-    }
-
-    public boolean isC1Compiled(Method m) {
+    public boolean isC1Compiled() {
         return TestFrameworkExecution.isC1Compiled(testMethod);
     }
 
-    public boolean isC2Compiled(Method m) {
+    public boolean isC2Compiled() {
         return TestFrameworkExecution.isC2Compiled(testMethod);
     }
 

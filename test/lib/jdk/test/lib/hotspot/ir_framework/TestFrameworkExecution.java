@@ -615,6 +615,10 @@ public class TestFrameworkExecution {
         enqueueMethodForCompilation(m, compLevel);
     }
 
+    static void deoptimize(Method m) {
+        WHITE_BOX.deoptimizeMethod(m);
+    }
+
     static boolean isC1Compiled(Method m) {
         return compiledByC1(m) == TriState.Yes;
     }

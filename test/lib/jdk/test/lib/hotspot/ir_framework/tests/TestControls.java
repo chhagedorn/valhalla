@@ -28,6 +28,8 @@ import jdk.test.lib.Asserts;
 import sun.hotspot.WhiteBox;
 
 import java.lang.reflect.Method;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Run with -Xbatch
 public class TestControls {
@@ -66,6 +68,16 @@ public class TestControls {
         }
         TestFramework.assertCompiledAtLevel(TestControls.class.getDeclaredMethod("overload", double.class), CompLevel.C1_LIMITED_PROFILE);
         TestFramework.assertCompiledByC2(TestControls.class.getDeclaredMethod("overload", int.class));
+
+        TestFramework framework = new TestFramework(ClassInitializerTest.class);
+        framework.addFlags("-XX:+PrintCompilation").addHelperClasses(ClassInitializerHelper.class).start();
+        String output = TestFramework.getLastTestVMOutput();
+        Pattern p = Pattern.compile("4.*ClassInitializerTest::<clinit>");
+        Matcher m = p.matcher(output);
+        Asserts.assertTrue(m.find());
+        p = Pattern.compile("2.*ClassInitializerHelper::<clinit>");
+        m = p.matcher(output);
+        Asserts.assertTrue(m.find());
     }
 
     @Test
@@ -274,5 +286,26 @@ public class TestControls {
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceC1DontC2"), CompLevel.C1);
         TestFramework.assertCompiledAtLevel(info.getTestClassMethod("forceC2DontC1"), CompLevel.C2);
         executed[13]++;
+    }
+}
+
+@ForceCompileClassInitializer
+class ClassInitializerTest {
+
+    static int i;
+    static Object o;
+    static {
+        i = 3;
+        o = new Object();
+    }
+    @Test
+    public void test() {}
+}
+
+@ForceCompileClassInitializer(CompLevel.C1_LIMITED_PROFILE)
+class ClassInitializerHelper {
+    static int i;
+    static {
+        i = 3;
     }
 }

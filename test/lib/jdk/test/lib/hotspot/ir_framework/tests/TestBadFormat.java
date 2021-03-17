@@ -30,6 +30,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,6 +38,7 @@ import java.util.regex.Pattern;
 public class TestBadFormat {
 
     public static void main(String[] args) {
+        expectTestFormatException(BadNoTests.class);
         expectTestFormatException(BadArgumentsAnnotation.class);
         expectTestFormatException(BadOverloadedMethod.class);
         expectTestFormatException(BadCompilerControl.class);
@@ -46,18 +48,24 @@ public class TestBadFormat {
         expectTestFormatException(BadCheckTest.class);
         expectTestFormatException(BadIRAnnotations.class);
         expectTestFormatException(BadInnerClassTest.class);
+        expectTestFormatException(BadCompileClassInitializer.class, BadCompileClassInitializerHelper1.class,
+                                  BadCompileClassInitializerHelper2.class);
     }
 
-    private static void expectTestFormatException(Class<?> clazz) {
+    private static void expectTestFormatException(Class<?> clazz, Class<?>... helpers) {
         try {
-            TestFramework.run(clazz);
+            if (helpers == null) {
+                TestFramework.run(clazz);
+            } else {
+                TestFramework.runWithHelperClasses(clazz, helpers);
+            }
         } catch (Exception e) {
             if (!(e instanceof TestFormatException)) {
                 e.printStackTrace();
                 Asserts.fail("Unexpected exception", e);
             }
             String msg = e.getMessage();
-            Violations violations = getViolations(clazz);
+            Violations violations = getViolations(clazz, helpers);
             violations.getFailedMethods().forEach(f -> Asserts.assertTrue(msg.contains(f), "Could not find " + f + " in violations\n" + msg));
             Pattern pattern = Pattern.compile("Violations \\((\\d+)\\)");
             Matcher matcher = pattern.matcher(msg);
@@ -69,16 +77,27 @@ public class TestBadFormat {
         throw new RuntimeException("Should catch an exception");
     }
 
-    private static Violations getViolations(Class<?> clazz) {
+    private static Violations getViolations(Class<?> clazz, Class<?>... helpers) {
         Violations violations = new Violations();
-        getViolationsOfClass(clazz, violations);
-        for (Class<?> c : clazz.getDeclaredClasses()) {
-            getViolationsOfClass(c, violations);
+        collectViolations(clazz, violations);
+        if (helpers != null) {
+            Arrays.stream(helpers).forEach(c -> collectViolations(c, violations));
         }
         return violations;
     }
 
+    private static void collectViolations(Class<?> clazz, Violations violations) {
+        getViolationsOfClass(clazz, violations);
+        for (Class<?> c : clazz.getDeclaredClasses()) {
+            getViolationsOfClass(c, violations);
+        }
+    }
+
     private static void getViolationsOfClass(Class<?> clazz, Violations violations) {
+        ClassFail classFail = clazz.getDeclaredAnnotation(ClassFail.class);
+        if (classFail != null) {
+            violations.addFail(clazz);
+        }
         for (Method m : clazz.getDeclaredMethods()) {
             NoFail noFail = m.getDeclaredAnnotation(NoFail.class);
             if (noFail == null) {
@@ -94,6 +113,12 @@ public class TestBadFormat {
             }
         }
     }
+
+}
+
+// Specify at least one @Test
+@ClassFail
+class BadNoTests {
 
 }
 
@@ -849,6 +874,7 @@ class BadIRAnnotations {
     public void anyValueForStringFlags() {}
 }
 
+@ClassFail
 class BadInnerClassTest {
 
     class InnerClass {
@@ -861,6 +887,28 @@ class BadInnerClassTest {
         @Test
         public void noTestInInnerClass() {}
     }
+}
+
+@ForceCompileClassInitializer
+class BadCompileClassInitializer {
+    @Test
+    @ForceCompileClassInitializer
+    public void test() {}
+
+    @ForceCompileClassInitializer
+    public void helper() {}
+}
+
+@ClassFail
+@ForceCompileClassInitializer(CompLevel.SKIP)
+class BadCompileClassInitializerHelper1 {
+
+}
+
+@ClassFail
+@ForceCompileClassInitializer(CompLevel.WAIT_FOR_COMPILATION)
+class BadCompileClassInitializerHelper2 {
+
 }
 
 class ClassNoDefaultConstructor {
@@ -880,6 +928,11 @@ class ClassNoDefaultConstructor {
     int value();
 }
 
+// Class specific annotation:
+// All classes with such an annotation have exactly one violation with the clas name in it.
+@Retention(RetentionPolicy.RUNTIME)
+@interface ClassFail {}
+
 class Violations {
     private final List<String> failedMethods = new ArrayList<>();
     private int violations;
@@ -895,5 +948,10 @@ class Violations {
     public void addFail(Method m, int count) {
         failedMethods.add(m.getName());
         violations += count;
+    }
+
+    public void addFail(Class<?> c) {
+        failedMethods.add(c.getName());
+        violations += 1;
     }
 }

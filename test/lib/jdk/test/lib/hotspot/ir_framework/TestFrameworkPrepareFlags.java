@@ -49,20 +49,15 @@ class TestFrameworkPrepareFlags {
     static final boolean XCOMP = Platform.isComp();
     static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
 
-    private static final boolean COMPILE_COMMANDS = Boolean.parseBoolean(System.getProperty("CompileCommands", "true")) && !XCOMP;
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
     static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
     private static final boolean REQUESTED_VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
-    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1 && COMPILE_COMMANDS
+    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1
                                        && Platform.isDebugBuild() && !Platform.isInt();
     private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
 
     private static String[] getDefaultFlags() {
-        return new String[] {"-XX:-BackgroundCompilation"};
-    }
-
-    private static String[] getCompileCommandFlags() {
-        return new String[] {"-XX:CompileCommand=quiet"};
+        return new String[] {"-XX:-BackgroundCompilation", "-XX:CompileCommand=quiet"};
     }
 
     private static String[] getPrintFlags() {
@@ -106,9 +101,6 @@ class TestFrameworkPrepareFlags {
         }
 
         cmds.addAll(Arrays.asList(getDefaultFlags()));
-        if (COMPILE_COMMANDS) {
-            cmds.addAll(Arrays.asList(getCompileCommandFlags()));
-        }
         setupIrVerificationFlags(testClass, cmds);
 
 //        // TODO: Only for debugging
@@ -116,7 +108,7 @@ class TestFrameworkPrepareFlags {
 //            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
 //        }
 
-        
+
         return cmds;
     }
 

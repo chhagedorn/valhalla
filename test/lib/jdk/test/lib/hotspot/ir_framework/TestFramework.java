@@ -414,12 +414,12 @@ public class TestFramework {
             builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n\n");
             Exception e = entry.getValue();
             if (e instanceof IRViolationException) {
-                // For IR violations, only show the actual message and not the (uninteresting) stack trace.
+                // For IR violations, only show the actual violations and not the (uninteresting) stack trace.
                 builder.append(e.getMessage());
             } else {
                 // Print stack trace if it was not a format violation or test run exception
                 StringWriter errors = new StringWriter();
-                entry.getValue().printStackTrace(new PrintWriter(errors));
+                e.printStackTrace(new PrintWriter(errors));
                 builder.append(errors.toString());
             }
             builder.append("\n");

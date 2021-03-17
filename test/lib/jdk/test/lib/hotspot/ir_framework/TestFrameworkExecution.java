@@ -28,9 +28,7 @@ import jdk.test.lib.Utils;
 import sun.hotspot.WhiteBox;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -83,6 +81,7 @@ public class TestFrameworkExecution {
     private List<Class<?>> helperClasses = null;
     private final IREncodingPrinter irMatchRulePrinter;
     private final Class<?> testClass;
+    private final Map<Executable, CompLevel> forceCompileMap = new HashMap<>();
 
     private TestFrameworkExecution(Class<?> testClass) {
         TestRun.check(testClass != null, "Test class cannot be null");
@@ -97,7 +96,7 @@ public class TestFrameworkExecution {
         }
     }
 
-    private List<String> createTestFilterList(String list, Class<?> testClass) {
+    private static List<String> createTestFilterList(String list, Class<?> testClass) {
         List<String> filterList = null;
         if (!list.isEmpty()) {
             String classPrefix = testClass.getSimpleName() + ".";
@@ -176,10 +175,11 @@ public class TestFrameworkExecution {
             for (Class<?> helperClass : helperClasses) {
                 // Process the helper classes and apply the explicit compile commands
                 checkHelperClass(helperClass);
-                processExplicitCompileCommands(helperClass);
+                processControlAnnotations(helperClass);
             }
         }
         parseTestClass();
+        checkForcedCompilationsCompleted();
         runTests();
     }
 
@@ -203,7 +203,7 @@ public class TestFrameworkExecution {
             checkTestAnnotationInnerClass(clazz, "inner");
         }
         addReplay();
-        processExplicitCompileCommands(testClass);
+        processControlAnnotations(testClass);
         setupTests();
         setupCheckAndRunMethods();
 
@@ -236,21 +236,24 @@ public class TestFrameworkExecution {
         }
     }
 
-    private void processExplicitCompileCommands(Class<?> clazz) {
+    private void processControlAnnotations(Class<?> clazz) {
         if (!XCOMP) {
             // Don't control compilations if -Xcomp is enabled.
             // Also apply compile commands to all inner classes of 'clazz'.
             ArrayList<Class<?>> classes = new ArrayList<>(Arrays.asList(clazz.getDeclaredClasses()));
             classes.add(clazz);
             for (Class<?> c : classes) {
-                Method[] methods = c.getDeclaredMethods();
-                for (Method m : methods) {
+                applyClassAnnotations(c);
+                List<Executable> executables = new ArrayList<>(Arrays.asList(c.getDeclaredMethods()));
+                Collections.addAll(executables, c.getDeclaredConstructors());
+                for (Executable ex : executables) {
+                    checkClassAnnotations(ex);
                     try {
-                        applyIndependentCompilationCommands(m);
+                        applyIndependentCompilationCommands(ex);
 
                         if (STRESS_CC) {
-                            if (getAnnotation(m, Test.class) != null) {
-                                excludeCompilationRandomly(m);
+                            if (getAnnotation(ex, Test.class) != null) {
+                                excludeCompilationRandomly(ex);
                             }
                         }
                     } catch (TestFormatException e) {
@@ -259,9 +262,9 @@ public class TestFrameworkExecution {
                 }
 
                 // Only force compilation now because above annotations affect inlining
-                for (Method m : methods) {
+                for (Executable ex : executables) {
                     try {
-                        applyForceCompileCommand(m);
+                        applyForceCompileCommand(ex);
                     } catch (TestFormatException e) {
                         // Failure logged. Continue and report later.
                     }
@@ -270,61 +273,83 @@ public class TestFrameworkExecution {
         }
     }
 
-    static boolean excludeCompilationRandomly(Method m) {
+    private void applyClassAnnotations(Class<?> c) {
+        ForceCompileClassInitializer anno = getAnnotation(c, ForceCompileClassInitializer.class);
+        if (anno != null) {
+            // Compile class initializer
+            CompLevel level = anno.value();
+            if (level == CompLevel.SKIP || level == CompLevel.WAIT_FOR_COMPILATION) {
+                TestFormat.failNoThrow("Cannot define compilation level SKIP or WAIT_FOR_COMPILATION in " +
+                                       "@ForceCompileClassInitializer at " + c);
+                return;
+            }
+            level = restrictCompLevel(anno.value());
+            if (level != CompLevel.SKIP) {
+                WHITE_BOX.enqueueInitializerForCompilation(c, level.getValue());
+            }
+        }
+    }
+
+    private void checkClassAnnotations(Executable ex) {
+        TestFormat.checkNoThrow(getAnnotation(ex, ForceCompileClassInitializer.class) == null,
+                                "@ForceCompileClassInitializer only allowed at classes but not at method " + ex);
+    }
+
+    static boolean excludeCompilationRandomly(Executable ex) {
         // Exclude some methods from compilation with C2 to stress test the calling convention
         boolean exclude = Utils.getRandomInstance().nextBoolean();
         if (exclude) {
-            System.out.println("Excluding from C2 compilation: " + m);
-            WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2.getValue(), false);
-            WHITE_BOX.makeMethodNotCompilable(m, CompLevel.C2.getValue(), true);
+            System.out.println("Excluding from C2 compilation: " + ex);
+            WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C2.getValue(), false);
+            WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C2.getValue(), true);
         }
         return exclude;
     }
 
-    private void applyIndependentCompilationCommands(Method m) {
-        ForceInline forceInlineAnno = getAnnotation(m, ForceInline.class);
-        DontInline dontInlineAnno = getAnnotation(m, DontInline.class);
-        ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
-        DontCompile dontCompileAnno = getAnnotation(m, DontCompile.class);
-        checkCompilationCommandAnnotations(m, forceInlineAnno, dontInlineAnno, forceCompileAnno, dontCompileAnno);
+    private void applyIndependentCompilationCommands(Executable ex) {
+        ForceInline forceInlineAnno = getAnnotation(ex, ForceInline.class);
+        DontInline dontInlineAnno = getAnnotation(ex, DontInline.class);
+        ForceCompile forceCompileAnno = getAnnotation(ex, ForceCompile.class);
+        DontCompile dontCompileAnno = getAnnotation(ex, DontCompile.class);
+        checkCompilationCommandAnnotations(ex, forceInlineAnno, dontInlineAnno, forceCompileAnno, dontCompileAnno);
         // First handle inline annotations
         if (dontInlineAnno != null) {
-            WHITE_BOX.testSetDontInlineMethod(m, true);
+            WHITE_BOX.testSetDontInlineMethod(ex, true);
         } else if (forceInlineAnno != null) {
-            WHITE_BOX.testSetForceInlineMethod(m, true);
+            WHITE_BOX.testSetForceInlineMethod(ex, true);
         }
         if (dontCompileAnno != null) {
             CompLevel compLevel = dontCompileAnno.value();
             TestFormat.check(compLevel == CompLevel.C1 || compLevel == CompLevel.C2 || compLevel == CompLevel.ANY,
                              "Can only specify compilation level C1 (no individual C1 levels), " +
-                             "C2 or ANY (no compilation, same as specifying anything) in @DontCompile at " + m);
-            dontCompileMethodAtLevel(m, compLevel);
+                             "C2 or ANY (no compilation, same as specifying anything) in @DontCompile at " + ex);
+            dontCompileAtLevel(ex, compLevel);
         }
     }
 
-    private void checkCompilationCommandAnnotations(Method m, ForceInline forceInlineAnno, DontInline dontInlineAnno, ForceCompile forceCompileAnno, DontCompile dontCompileAnno) {
-        Test testAnno = getAnnotation(m, Test.class);
-        Run runAnno = getAnnotation(m, Run.class);
-        Check checkAnno = getAnnotation(m, Check.class);
+    private void checkCompilationCommandAnnotations(Executable ex, ForceInline forceInlineAnno, DontInline dontInlineAnno, ForceCompile forceCompileAnno, DontCompile dontCompileAnno) {
+        Test testAnno = getAnnotation(ex, Test.class);
+        Run runAnno = getAnnotation(ex, Run.class);
+        Check checkAnno = getAnnotation(ex, Check.class);
         TestFormat.check((testAnno == null && runAnno == null && checkAnno == null) || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
                          "Cannot use explicit compile command annotations (@ForceInline, @DontInline," +
-                         "@ForceCompile or @DontCompile) together with @Test, @Check or @Run: " + m + ". Use compLevel in @Test for fine tuning.");
+                         "@ForceCompile or @DontCompile) together with @Test, @Check or @Run: " + ex + ". Use compLevel in @Test for fine tuning.");
         if (Stream.of(forceInlineAnno, dontCompileAnno, dontInlineAnno).filter(Objects::nonNull).count() > 1) {
             // Failure
             TestFormat.check(dontCompileAnno == null || dontInlineAnno == null,
-                             "@DontInline is implicitely done with @DontCompile annotation at " + m);
-            TestFormat.fail("Cannot mix @ForceInline, @DontInline and @DontCompile at the same time at " + m);
+                             "@DontInline is implicitely done with @DontCompile annotation at " + ex);
+            TestFormat.fail("Cannot mix @ForceInline, @DontInline and @DontCompile at the same time at " + ex);
         }
-        TestFormat.check(forceInlineAnno == null || dontInlineAnno == null, "Cannot have @ForceInline and @DontInline at the same time at " + m);
+        TestFormat.check(forceInlineAnno == null || dontInlineAnno == null, "Cannot have @ForceInline and @DontInline at the same time at " + ex);
         if (forceCompileAnno != null && dontCompileAnno != null) {
             CompLevel forceCompile = forceCompileAnno.value();
             CompLevel dontCompile = dontCompileAnno.value();
             TestFormat.check(dontCompile != CompLevel.ANY,
-                             "Cannot have @DontCompile(CompLevel.ANY) and @ForceCompile at the same time at " + m);
+                             "Cannot have @DontCompile(CompLevel.ANY) and @ForceCompile at the same time at " + ex);
             TestFormat.check(forceCompile != CompLevel.ANY,
-                             "Cannot have @ForceCompile(CompLevel.ANY) and @DontCompile at the same time at " + m);
+                             "Cannot have @ForceCompile(CompLevel.ANY) and @DontCompile at the same time at " + ex);
             TestFormat.check(!CompLevel.overlapping(dontCompile, forceCompile),
-                             "Overlapping compilation levels with @ForceCompile and @DontCompile at " + m);
+                             "Overlapping compilation levels with @ForceCompile and @DontCompile at " + ex);
         }
     }
 
@@ -334,33 +359,49 @@ public class TestFrameworkExecution {
         WHITE_BOX.testSetDontInlineMethod(m, true);
     }
 
-    private void dontCompileMethodAtLevel(Method m, CompLevel compLevel) {
+    private void dontCompileAtLevel(Executable ex, CompLevel compLevel) {
         if (VERBOSE) {
-            System.out.println("dontCompileMethodAtLevel " + m + " , level = " + compLevel.name());
+            System.out.println("dontCompileAtLevel " + ex + " , level = " + compLevel.name());
         }
-        WHITE_BOX.makeMethodNotCompilable(m, compLevel.getValue(), true);
-        WHITE_BOX.makeMethodNotCompilable(m, compLevel.getValue(), false);
+        WHITE_BOX.makeMethodNotCompilable(ex, compLevel.getValue(), true);
+        WHITE_BOX.makeMethodNotCompilable(ex, compLevel.getValue(), false);
         if (compLevel == CompLevel.ANY) {
-            WHITE_BOX.testSetDontInlineMethod(m, true);
+            WHITE_BOX.testSetDontInlineMethod(ex, true);
         }
     }
 
-    private void applyForceCompileCommand(Method m) {
-        ForceCompile forceCompileAnno = getAnnotation(m, ForceCompile.class);
+    private void applyForceCompileCommand(Executable ex) {
+        ForceCompile forceCompileAnno = getAnnotation(ex, ForceCompile.class);
         if (forceCompileAnno != null) {
             CompLevel level = forceCompileAnno.value();
             TestFormat.check(level != CompLevel.SKIP && level != CompLevel.WAIT_FOR_COMPILATION,
-                             "Cannot define compilation level SKIP or WAIT_FOR_COMPILATION in @ForceCompile at " + m);
-            enqueueMethodForCompilation(m, forceCompileAnno.value());
+                             "Cannot define compilation level SKIP or WAIT_FOR_COMPILATION in @ForceCompile at " + ex);
+            if (shouldCompile(ex)) {
+                level = restrictCompLevel(forceCompileAnno.value());
+                if (level != CompLevel.SKIP) {
+                    enqueueForCompilation(ex, level);
+                    forceCompileMap.put(ex, level);
+                }
+            }
         }
     }
 
-    static void enqueueMethodForCompilation(Method m, CompLevel compLevel) {
+    static void enqueueForCompilation(Executable ex, CompLevel compLevel) {
         if (TestFrameworkExecution.VERBOSE) {
-            System.out.println("enqueueMethodForCompilation " + m + ", level = " + compLevel);
+            System.out.println("enqueueForCompilation " + ex + ", level = " + compLevel);
         }
         compLevel = restrictCompLevel(compLevel);
-        WHITE_BOX.enqueueMethodForCompilation(m, compLevel.getValue());
+        WHITE_BOX.enqueueMethodForCompilation(ex, compLevel.getValue());
+    }
+
+    static boolean shouldCompile(Executable ex) {
+        if (!TestFrameworkExecution.USE_COMPILER) {
+            return false;
+        } else if (TestFrameworkExecution.STRESS_CC) {
+            return !TestFrameworkExecution.excludeCompilationRandomly(ex);
+        } else {
+            return true;
+        }
     }
 
     private void setupTests() {
@@ -390,6 +431,7 @@ public class TestFrameworkExecution {
                 // Failure logged. Continue and report later.
             }
         }
+        TestFormat.checkNoThrow(!declaredTests.isEmpty(), "Did not specify any @Test methods in " + testClass);
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter.emit();
         }
@@ -573,7 +615,8 @@ public class TestFrameworkExecution {
         TestFormat.checkNoThrow(warmupAnno == null,
                          "Cannot set @Warmup at @Test method " + testMethod + " when used with its @Run method "
                          + m + ". Use @Warmup at @Run method instead.");
-        TestFormat.checkNoThrow(runMode != RunMode.STANDALONE || test.getCompLevel() == CompLevel.C2,
+        Test testAnno = getAnnotation(testMethod, Test.class);
+        TestFormat.checkNoThrow(runMode != RunMode.STANDALONE || testAnno.compLevel() == CompLevel.ANY,
                                 "Setting explicit compilation level for @Test method " + testMethod + " has no effect "
                                 + "when used with STANDALONE @Run method " + m);
     }
@@ -587,10 +630,31 @@ public class TestFrameworkExecution {
                                 "Cannot set @Warmup at @Run method " + m + " when used with RunMode.STANDALONE. The @Run method is only invoked once.");
     }
 
-    private static <T extends Annotation> T getAnnotation(Method m, Class<T> c) {
-        T[] annos =  m.getAnnotationsByType(c);
-        TestFormat.check(annos.length < 2, m + " has duplicated annotations");
+    private static <T extends Annotation> T getAnnotation(AnnotatedElement element, Class<T> c) {
+        T[] annos =  element.getAnnotationsByType(c);
+        TestFormat.check(annos.length < 2, element + " has duplicated annotations");
         return Arrays.stream(annos).findFirst().orElse(null);
+    }
+
+    private void checkForcedCompilationsCompleted() {
+        if (forceCompileMap.isEmpty()) {
+            return;
+        }
+        final long started = System.currentTimeMillis();
+        long elapsed;
+        do {
+            forceCompileMap.entrySet().removeIf(entry -> WHITE_BOX.getMethodCompilationLevel(entry.getKey()) == entry.getValue().getValue());
+            if (forceCompileMap.isEmpty()) {
+                // All @ForceCompile methods are compiled at the requested level.
+                return;
+            }
+            // Retry again if not yet compiled.
+            forceCompileMap.forEach(TestFrameworkExecution::enqueueForCompilation);
+            elapsed = System.currentTimeMillis() - started;
+        } while (elapsed < 5000);
+        StringBuilder builder = new StringBuilder();
+        forceCompileMap.forEach((key, value) -> builder.append("- ").append(key).append(" at CompLevel.").append(value).append("\n"));
+        TestRun.fail("Could not force compile the following @ForceCompile methods:\n" + builder.toString());
     }
 
     private void runTests() {
@@ -638,7 +702,7 @@ public class TestFrameworkExecution {
     static void compile(Method m, CompLevel compLevel) {
         TestRun.check(getAnnotation(m, Test.class) == null,
                       "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
-        enqueueMethodForCompilation(m, compLevel);
+        enqueueForCompilation(m, compLevel);
     }
 
     static void deoptimize(Method m) {
@@ -771,7 +835,12 @@ class DeclaredTest {
                 ArgumentValue argument = arguments[i];
                 if (argument.isFixedRandom()) {
                     hasRandomArgs = true;
-                    builder.append("arg ").append(i).append(": ").append(argument.getArgument()).append(", ");
+                    Object argumentVal = argument.getArgument();
+                    String argumentValString = argumentVal.toString();
+                    if (argumentVal instanceof Character) {
+                        argumentValString += " (" + (int)(Character)argumentVal + ")";
+                    }
+                    builder.append("arg ").append(i).append(": ").append(argumentValString).append(", ");
                 }
             }
             if (hasRandomArgs) {
@@ -819,21 +888,11 @@ abstract class AbstractTest {
 
     abstract String getName();
 
-    final protected boolean shouldCompile(Method testMethod) {
-        if (!TestFrameworkExecution.USE_COMPILER) {
-            return false;
-        } else if (TestFrameworkExecution.STRESS_CC) {
-            return !TestFrameworkExecution.excludeCompilationRandomly(testMethod);
-        } else {
-            return true;
-        }
-    }
-
-    final protected boolean isWaitForCompilation(DeclaredTest test) {
+    protected static boolean isWaitForCompilation(DeclaredTest test) {
         return test.getCompLevel() == CompLevel.WAIT_FOR_COMPILATION;
     }
 
-    final protected Object getInvocationTarget(Method method) {
+    protected static Object getInvocationTarget(Method method) {
         Class<?> clazz = method.getDeclaringClass();
         Object invocationTarget;
         if (Modifier.isStatic(method.getModifiers())) {
@@ -877,7 +936,7 @@ abstract class AbstractTest {
 
     abstract void compileTest();
 
-    final protected void compileMethod(DeclaredTest test) {
+    protected void compileMethod(DeclaredTest test) {
         final Method testMethod = test.getTestMethod();
         TestRun.check(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false),
                       "Method" + testMethod + " not compilable at level " + test.getCompLevel()
@@ -922,7 +981,7 @@ abstract class AbstractTest {
     }
 
     private void enqueueMethodForCompilation(DeclaredTest test) {
-        TestFrameworkExecution.enqueueMethodForCompilation(test.getTestMethod(), test.getCompLevel());
+        TestFrameworkExecution.enqueueForCompilation(test.getTestMethod(), test.getCompLevel());
     }
 
     protected void checkCompilationLevel(DeclaredTest test) {
@@ -990,7 +1049,7 @@ class BaseTest extends AbstractTest {
         this.testMethod = test.getTestMethod();
         this.testInfo = new TestInfo(testMethod);
         this.invocationTarget = getInvocationTarget(testMethod);
-        this.shouldCompile = shouldCompile(testMethod);
+        this.shouldCompile = TestFrameworkExecution.shouldCompile(testMethod);
         this.waitForCompilation = isWaitForCompilation(test);
     }
 
@@ -1174,7 +1233,7 @@ class CustomRunTest extends AbstractTest {
 
     private void compileSingleTest() {
         DeclaredTest test = tests.get(0);
-        if (shouldCompile(test.getTestMethod())) {
+        if (TestFrameworkExecution.shouldCompile(test.getTestMethod())) {
             if (isWaitForCompilation(test)) {
                 waitForCompilation(test);
             } else {
@@ -1188,7 +1247,7 @@ class CustomRunTest extends AbstractTest {
         boolean anyCompileMethod = false;
         ExecutorService executor = Executors.newFixedThreadPool(tests.size());
         for (DeclaredTest test : tests) {
-            if (shouldCompile(test.getTestMethod())) {
+            if (TestFrameworkExecution.shouldCompile(test.getTestMethod())) {
                 if (isWaitForCompilation(test)) {
                     anyWaitForCompilation = true;
                     executor.execute(() -> waitForCompilation(test));

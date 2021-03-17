@@ -2,10 +2,7 @@ package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.Utils;
-import jdk.test.lib.hotspot.ir_framework.DontCompile;
-import jdk.test.lib.hotspot.ir_framework.DontInline;
-import jdk.test.lib.hotspot.ir_framework.ForceInline;
-import jdk.test.lib.hotspot.ir_framework.Scenario;
+import jdk.test.lib.hotspot.ir_framework.*;
 
 public class InlineTypes {
     public static final int  rI = Utils.getRandomInstance().nextInt() % 1000;
@@ -170,6 +167,7 @@ primitive class SimpleInlineType {
     }
 }
 
+@ForceCompileClassInitializer
 final primitive class MyValue1 implements MyInterface {
     static int s;
     static final long sf = InlineTypes.rL;
@@ -302,6 +300,7 @@ final primitive class MyValue1 implements MyInterface {
     }
 }
 
+@ForceCompileClassInitializer
 final primitive class MyValue2Inline {
     final double d;
     final long l;
@@ -336,6 +335,7 @@ final primitive class MyValue2Inline {
     }
 }
 
+@ForceCompileClassInitializer
 final primitive class MyValue2 implements MyInterface {
     final int x;
     final byte y;
@@ -411,6 +411,7 @@ final primitive class MyValue2 implements MyInterface {
     }
 }
 
+@ForceCompileClassInitializer
 final primitive class MyValue3Inline {
     final float f7;
     final double f8;
@@ -447,6 +448,7 @@ final primitive class MyValue3Inline {
 
 // Inline type definition to stress test return of an inline type in registers
 // (uses all registers of calling convention on x86_64)
+@ForceCompileClassInitializer
 final primitive class MyValue3 extends MyAbstract {
     final char c;
     final byte bb;
@@ -633,6 +635,7 @@ final primitive class MyValue3 extends MyAbstract {
 }
 
 // Inline type definition with too many fields to return in registers
+@ForceCompileClassInitializer
 final primitive class MyValue4 implements MyInterface {
     final MyValue3 v1;
     final MyValue3 v2;

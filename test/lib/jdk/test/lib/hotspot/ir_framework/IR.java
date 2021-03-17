@@ -36,6 +36,7 @@ public @interface IR {
 
     // Regular expressions used to match and count IR nodes.
     String[] counts() default {};
+
     String[] applyIf() default {};
     String[] applyIfNot() default {};
     String[] applyIfAnd() default {};

@@ -26,13 +26,24 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+/**
+ * Annotation for a checked test.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Check {
     /**
-     * The associated {@link Test} method for this {@code Check} annotated check method. The framework will directly
-     * invoke the check method after each invoking or only after the compilation of the associated {@code Test} method
-     * by the framework (depends on the value set with {@link Check#when()}).
+     * The associated {@link Test} method for this {@code @Check} annotated check method. The framework will directly
+     * invoke the {@code C@heck} method after each invocation or only after the compilation of the associated {@code @Test}
+     * method (depending on the value set with {@link Check#when()}).
+     *
+     * @see Test
      */
     String test();
+    /**
+     * When should the {@code @Check} method be invoked? By default, the check is done after each invocation which is
+     * encouraged if performance is not critical.
+     *
+     * @see CheckAt
+     */
     CheckAt when() default CheckAt.EACH_INVOCATION;
 }

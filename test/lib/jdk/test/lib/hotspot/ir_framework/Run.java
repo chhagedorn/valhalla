@@ -26,6 +26,9 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+/**
+ * Annotation for a custom run test.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Run {
     /**

@@ -100,10 +100,10 @@ public class TestBasicFunctionality {
     // Return incoming inline type without accessing fields
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            counts = {ALLOC, "= 1", STORE, "= 14"},
-            failOn = {LOAD, TRAP})
+        counts = {ALLOC, "= 1", STORE, "= 14"},
+        failOn = {LOAD, TRAP})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            failOn = {ALLOC, LOAD, STORE, TRAP})
+        failOn = {ALLOC, LOAD, STORE, TRAP})
     public MyValue1 test3(MyValue1 v) {
         return v;
     }
@@ -159,10 +159,10 @@ public class TestBasicFunctionality {
     // the interpreter via a call.
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            failOn = {LOAD, TRAP, ALLOC})
+        failOn = {LOAD, TRAP, ALLOC})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            counts = {ALLOC, "= 1"},
-            failOn = {LOAD, TRAP})
+        counts = {ALLOC, "= 1"},
+        failOn = {LOAD, TRAP})
     public long test6() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         // Pass to interpreter
@@ -179,7 +179,7 @@ public class TestBasicFunctionality {
     // the interpreter by returning.
     @Test
     @IR(counts = {ALLOC, "= 1"},
-            failOn = {LOAD, TRAP})
+        failOn = {LOAD, TRAP})
     public MyValue1 test7(int x, long y) {
         return MyValue1.createWithFieldsInline(x, y);
     }
@@ -213,11 +213,11 @@ public class TestBasicFunctionality {
     // Merge inline types created from two branches
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            counts = {LOAD, "= 14"},
-            failOn = {TRAP, ALLOC, STORE})
+        counts = {LOAD, "= 14"},
+        failOn = {TRAP, ALLOC, STORE})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            counts = {ALLOC, "= 1", STORE, "= 13"},
-            failOn = {LOAD, TRAP})
+        counts = {ALLOC, "= 1", STORE, "= 13"},
+        failOn = {LOAD, TRAP})
     public MyValue1 test9(boolean b, int localrI, long localrL) {
         MyValue1 v;
         if (b) {
@@ -289,7 +289,7 @@ public class TestBasicFunctionality {
     // Test loop with uncommon trap referencing an inline type
     @Test
     @IR(counts = {SCOBJ, ">= 1"}, // at least 1
-            failOn = {LOAD})
+        failOn = {LOAD})
     public long test12(boolean b) {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1[] va = new MyValue1[Math.abs(rI) % 10];
@@ -354,10 +354,10 @@ public class TestBasicFunctionality {
     // non-inlined method on that inline type.
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            failOn = {ALLOC, STORE, TRAP},
-            counts = {LOAD, "= 14"})
+        failOn = {ALLOC, STORE, TRAP},
+        counts = {LOAD, "= 14"})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            failOn = {ALLOC, LOAD, STORE, TRAP})
+        failOn = {ALLOC, LOAD, STORE, TRAP})
     public long test14() {
         MyValue1 v = MyValue1.createWithFieldsDontInline(rI, rL);
         return v.hashInterpreted();
@@ -373,10 +373,10 @@ public class TestBasicFunctionality {
     // non-inlined method on that inline type.
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            failOn = {LOAD, TRAP, ALLOC})
+        failOn = {LOAD, TRAP, ALLOC})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            failOn = {LOAD, TRAP},
-            counts = {ALLOC, "= 1"})
+        failOn = {LOAD, TRAP},
+        counts = {ALLOC, "= 1"})
     public long test15() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         return v.hashInterpreted();
@@ -423,10 +423,10 @@ public class TestBasicFunctionality {
     // debug info should include a reference to all its fields.
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            failOn = {ALLOC, LOAD, TRAP})
+        failOn = {ALLOC, LOAD, TRAP})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            counts = {ALLOC, "= 1"},
-            failOn = {LOAD, TRAP})
+        counts = {ALLOC, "= 1"},
+        failOn = {LOAD, TRAP})
     public long test18() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         v.hashInterpreted();
@@ -444,10 +444,10 @@ public class TestBasicFunctionality {
     // should only be allocated once.
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            failOn = {ALLOC, LOAD, TRAP})
+        failOn = {ALLOC, LOAD, TRAP})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            counts = {ALLOC, "= 1"},
-            failOn = {LOAD, TRAP})
+        counts = {ALLOC, "= 1"},
+        failOn = {LOAD, TRAP})
     public long test19() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         return sumValue(v, v);
@@ -471,10 +471,10 @@ public class TestBasicFunctionality {
     // correctly allocated.
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "true"},
-            failOn = {LOAD, ALLOC, STORE})
+        failOn = {LOAD, ALLOC, STORE})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            counts = {ALLOC, "= 1"},
-            failOn = {LOAD})
+        counts = {ALLOC, "= 1"},
+        failOn = {LOAD})
     public long test20(boolean deopt) {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue2[] va = new MyValue2[3];
@@ -511,7 +511,7 @@ public class TestBasicFunctionality {
     // Test inline type fields in objects
     @Test
     @IR(counts = {ALLOC, "= 1"},
-            failOn = {TRAP})
+        failOn = {TRAP})
     public long test21(int x, long y) {
         // Compute hash of inline type fields
         long result = val1.hash() + val2.hash() + val3.hash() + val4.hash() + val5.hash();
@@ -722,7 +722,7 @@ public class TestBasicFunctionality {
     // Verify that C2 recognizes inline type loads and re-uses the oop to avoid allocations
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            failOn = {ALLOC, ALLOCA, STORE})
+        failOn = {ALLOC, ALLOCA, STORE})
     public MyValue3 test31(MyValue3[] va) {
         // C2 can re-use the oop returned by createDontInline()
         // because the corresponding inline type is equal to 'copy'.
@@ -744,7 +744,7 @@ public class TestBasicFunctionality {
     // Verify that C2 recognizes inline type loads and re-uses the oop to avoid allocations
     @Test
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
-            failOn = {ALLOC, ALLOCA, STORE})
+        failOn = {ALLOC, ALLOCA, STORE})
     public MyValue3 test32(MyValue3 vt, MyValue3[] va) {
         // C2 can re-use the oop of vt because vt is equal to 'copy'.
         MyValue3 copy = MyValue3.copy(vt);

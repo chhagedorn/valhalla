@@ -71,6 +71,11 @@ public class InlineTypes {
             )
     };
 
+    public static TestFramework getFramework() {
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        return new TestFramework(walker.getCallerClass()).setDefaultWarmup(251);
+    }
+
     static class IRNode {
         // Regular expressions used to match nodes in the PrintIdeal output
         protected static final String START = "(\\d+ (.*";

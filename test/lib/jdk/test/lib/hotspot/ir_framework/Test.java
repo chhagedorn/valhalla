@@ -30,19 +30,20 @@ import java.lang.annotation.RetentionPolicy;
  * Annotate all methods in your test class which the framework should test with {@code @Test}.
  * <p>
  * Let {@code m} be a test method specifying the {@code @Test} annotation. If {@code m} is neither part of a
- * <i>checked test</i>(an additiona method specifying {@link Check} with (@code @Run(test = "m") nor part of a
- * <i>custom run</i> test (an additional method specifying {@link Run} with (@code @Run(test = "m"))),
- * then {@code m} is a so-called <i>base test</i> and the the framework invokes {@code m} in the following way:
+ * <b>checked test</b> (an additiona method specifying {@link Check} with (@code @Run(test = "m") nor part of a
+ * <b>custom run</b> test (an additional method specifying {@link Run} with (@code @Run(test = "m"))),
+ * then {@code m} is a so-called <b>base test</b> and the the framework invokes {@code m} in the following way:
  * <ol>
- *     <li><p>The framework warms {@code m} up for a predefined number of iterations (default is 2000) or any number
- *     specified by an additional {@link Warmup} iteration (could also be 0 which skips the warm-up completely which is
- *     similar to simulating {@code -Xcomp}). More information about the warm-up can be found in {@link Warmup}</li>
+ *     <li><p>The framework warms {@code m} up by invoking it for a predefined number of iterations (default: 2000)
+ *     or any number specified by an additional {@link Warmup} annotation at {@code m} or by using
+ *     {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is similar
+ *     to simulating {@code -Xcomp}). More information about the warm-up in general can be found in {@link Warmup}</li>
  *     <li><p>After the warm-up, the framework compiles {@code m} at the specified compilation level set by
  *     {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
  *     {@link CompLevel#C2}).</li>
  *     <li><p>The framework invokes {@code m} one more time to check the compilation.</li>
- *     <li><p>The framework checks any specified {@link IR} constraints. More information about IR matching can be
- *     found in {@link IR}.</li>
+ *     <li><p>The framework checks any specified {@link IR} constraints at {@code m}. More information about IR matching
+ *     can be found in {@link IR}.</li>
  * </ol>
  *
  * <p>
@@ -52,6 +53,7 @@ import java.lang.annotation.RetentionPolicy;
  *     <li><p>If {@code m} specifies parameters, the framework needs to know how to call {@code m}. Use {@link Arguments}
  *     with {@link Argument} properties for each parameter to use some well-defined parameters. If the method requires
  *     a more specific argument value, use a custom run test (see {@link Run}).</li>
+ *     li><p>{@code m} cannot specify {@link AbstractInfo} or any of its subclasses as parameter or return type.</li>
  *     <li><p>{@code m} is not inlined by the framework.</li>
  *     <li><p>Verification of the return value of {@code m} can only be done in a checked test (see {@link Check}) or
  *     custom run test (see {@link Run}).</li>

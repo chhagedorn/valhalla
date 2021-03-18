@@ -474,11 +474,13 @@ public class TestFrameworkExecution {
         TestFormat.check(checkAnno == null && runAnno == null,
                          m + " has invalid @Check or @Run annotation while @Test annotation is present.");
 
-        TestFormat.checkNoThrow(!Arrays.asList(m.getParameterTypes()).contains(TestInfo.class),
-                         "Cannot use of " + TestInfo.class + " as parameter type at @Test method " + m);
+        TestFormat.checkNoThrow(Arrays.stream(m.getParameterTypes()).noneMatch(AbstractInfo.class::isAssignableFrom),
+                                "Cannot " + AbstractInfo.class + " or any of its subclasses as parameter type at " +
+                                "@Test method " + m);
 
-        TestFormat.checkNoThrow(!m.getReturnType().equals(TestInfo.class),
-                         "Cannot use of " + TestInfo.class + " as return type at @Test method " + m);
+        TestFormat.checkNoThrow(!AbstractInfo.class.isAssignableFrom(m.getReturnType()),
+                                "Cannot " + AbstractInfo.class + " or any of its subclasses as return type at " +
+                                "@Test method " + m);
     }
 
 
@@ -892,7 +894,7 @@ abstract class AbstractTest {
         return test.getCompLevel() == CompLevel.WAIT_FOR_COMPILATION;
     }
 
-    protected static Object getInvocationTarget(Method method) {
+    protected static Object createInvocationTarget(Method method) {
         Class<?> clazz = method.getDeclaringClass();
         Object invocationTarget;
         if (Modifier.isStatic(method.getModifiers())) {
@@ -1039,7 +1041,7 @@ class BaseTest extends AbstractTest {
     private final DeclaredTest test;
     protected final Method testMethod;
     protected final TestInfo testInfo;
-    private final Object invocationTarget;
+    protected final Object invocationTarget;
     private final boolean shouldCompile;
     private final boolean waitForCompilation;
 
@@ -1048,7 +1050,7 @@ class BaseTest extends AbstractTest {
         this.test = test;
         this.testMethod = test.getTestMethod();
         this.testInfo = new TestInfo(testMethod);
-        this.invocationTarget = getInvocationTarget(testMethod);
+        this.invocationTarget = createInvocationTarget(testMethod);
         this.shouldCompile = TestFrameworkExecution.shouldCompile(testMethod);
         this.waitForCompilation = isWaitForCompilation(test);
     }
@@ -1129,7 +1131,13 @@ class CheckedTest extends BaseTest {
         this.checkMethod = checkMethod;
         this.checkAt = checkSpecification.when();
         this.parameter = parameter;
-        this.checkInvocationTarget = getInvocationTarget(checkMethod);
+        // Use the same invocation target
+        if (Modifier.isStatic(checkMethod.getModifiers())) {
+            this.checkInvocationTarget = null;
+        } else {
+            // Use the same invocation target as the test method if check method is non-static.
+            this.checkInvocationTarget = this.invocationTarget != null ? this.invocationTarget : createInvocationTarget(checkMethod);
+        }
     }
 
     @Override
@@ -1173,7 +1181,7 @@ class CustomRunTest extends AbstractTest {
         TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + runMethod);
         runMethod.setAccessible(true);
         this.runMethod = runMethod;
-        this.runInvocationTarget = getInvocationTarget(runMethod);
+        this.runInvocationTarget = createInvocationTarget(runMethod);
         this.mode = runSpecification.mode();
         this.tests = tests;
         if (tests.size() == 1) {

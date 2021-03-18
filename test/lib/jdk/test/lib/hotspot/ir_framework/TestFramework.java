@@ -49,6 +49,7 @@ public class TestFramework {
     static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
     static final String TEST_VM_FLAGS_DELIMITER = " ";
     static final String TEST_VM_FLAGS_END = "----- END -----";
+    private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
     private static boolean VERIFY_IR = true; // Should we perform IR matching?
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
 
@@ -58,6 +59,7 @@ public class TestFramework {
     private final Class<?> testClass;
     private static String lastTestVMOutput;
     private TestFrameworkSocket socket;
+    private int defaultWarmup = -1;
 
     /*
      * Public interface methods
@@ -278,16 +280,6 @@ public class TestFramework {
     }
 
     /**
-     * Clear all settings set by {@link TestFramework#addFlags(String...)}, {@link TestFramework#addHelperClasses(Class[])}
-     * and/or {@link TestFramework#runWithScenarios(Scenario...)}.
-     */
-    public void clear() {
-        flags.clear();
-        helperClasses = null;
-        scenarios = null;
-    }
-
-    /**
      * Start the testing of the implicitely set test class by {@link TestFramework#TestFramework()}
      * or explicitly set by {@link TestFramework#TestFramework(Class)}.
      */
@@ -303,6 +295,19 @@ public class TestFramework {
         } finally {
             socket.close();
         }
+    }
+
+    /**
+     * Set a new default warm-up (overriding the framework default of 2000) to be applied for all tests that do
+     * not specify an explicit warm-up with {@link Warmup}.
+     *
+     * @param defaultWarmup a non-negative default warm-up
+     * @return the same framework instance.
+     */
+    public TestFramework setDefaultWarmup(int defaultWarmup) {
+        TestFormat.check(defaultWarmup >= 0, "Cannot specify a negative default warm-up");
+        this.defaultWarmup = defaultWarmup;
+        return this;
     }
 
     /**
@@ -551,7 +556,13 @@ public class TestFramework {
             cmds.addAll(Arrays.asList(jtregVMFlags));
         }
 
-        if (VERIFY_IR) {
+        if (WARMUP_ITERATIONS < 0 && defaultWarmup != -1) {
+            // Only use the set warmup for the framework if not overridden by a valid -DWarmup property set by a test.
+            cmds.add("-DWarmup=" + defaultWarmup);
+        }
+
+
+            if (VERIFY_IR) {
             // Add server property flag that enables test VM to print encoding for IR verification last.
             cmds.add(socket.getPortPropertyFlag());
         }

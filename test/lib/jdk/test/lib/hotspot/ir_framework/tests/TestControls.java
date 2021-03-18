@@ -78,6 +78,8 @@ public class TestControls {
         p = Pattern.compile("2.*ClassInitializerHelper::<clinit>");
         m = p.matcher(output);
         Asserts.assertTrue(m.find());
+
+        new TestFramework(TestWarmup.class).setDefaultWarmup(500).start();
     }
 
     @Test
@@ -307,5 +309,49 @@ class ClassInitializerHelper {
     static int i;
     static {
         i = 3;
+    }
+}
+
+class TestWarmup {
+    int iFld;
+    int iFld2;
+    int iFldCheck;
+    int iFldCheck2;
+
+    @Test
+    @Warmup(200)
+    public void test() {
+        iFld++;
+    }
+
+    @Test
+    public void test2() {
+        iFld2++;
+    }
+
+    @Check(test = "test")
+    public void checkTest(TestInfo info) {
+        iFldCheck++;
+        if (iFldCheck != iFld) {
+            throw new RuntimeException(iFld + " must be equal " + iFldCheck);
+        }
+        if (!info.isWarmUp()) {
+            if (iFld != 201) {
+                throw new RuntimeException("Must be 201 but was " + iFld);
+            }
+        }
+    }
+
+    @Check(test = "test2")
+    public void checkTest2(TestInfo info) {
+        iFldCheck2++;
+        if (iFldCheck2 != iFld2) {
+            throw new RuntimeException(iFld2 + " must be equal " + iFldCheck2);
+        }
+        if (!info.isWarmUp()) {
+            if (iFld2 != 501) {
+                throw new RuntimeException("Must be 501 but was " + iFld2);
+            }
+        }
     }
 }

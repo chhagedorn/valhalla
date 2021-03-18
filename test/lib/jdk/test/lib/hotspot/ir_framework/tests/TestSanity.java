@@ -46,23 +46,26 @@ public class TestSanity {
         TestFramework.runWithScenarios(sDefault, s1, s2);
         TestFramework.runWithScenarios(TestSanity.class, sDefault, s1);
         TestFramework.runWithScenarios(TestSanity.class, sDefault, s1, s2);
-        TestFramework testFramework = new TestFramework(TestSanity.class);
+        TestFramework testFramework = new TestFramework();
         testFramework.start();
         testFramework.addFlags("-XX:SuspendRetryCount=54").start();
-        testFramework.clear();
+        testFramework = new TestFramework();
         testFramework.addFlags("-XX:SuspendRetryCount=55").addFlags("-XX:+UseTLAB").start();
-        testFramework.clear();
+        testFramework = new TestFramework();
         testFramework.addHelperClasses(HelperA.class, HelperB.class).start();
-        testFramework.clear();
         testFramework = new TestFramework();
         testFramework.addHelperClasses(HelperA.class, HelperB.class).addHelperClasses(HelperC.class).start();
-        testFramework.clear();
+        testFramework = new TestFramework();
         testFramework.addScenarios(sDefault).addScenarios(s1, s2).start();
-        testFramework.clear();
+        testFramework = new TestFramework();
         testFramework.addHelperClasses(HelperA.class).addScenarios(sDefault).addFlags("-XX:+UseSuperWord").start();
-        testFramework.clear();
+        testFramework = new TestFramework();
         testFramework.addHelperClasses(HelperA.class).addFlags("-XX:+UseSuperWord", "-XX:+UseCompiler").addScenarios(sDefault)
                      .addHelperClasses(HelperB.class, HelperC.class).addScenarios(s1, s2).addFlags("-XX:+TieredCompilation").start();
+        testFramework = new TestFramework();
+        testFramework.addHelperClasses(HelperA.class).addFlags("-XX:+UseSuperWord", "-XX:+UseCompiler").addScenarios(sDefault)
+                     .addHelperClasses(HelperB.class, HelperC.class).addScenarios(s1, s2).setDefaultWarmup(200)
+                     .addFlags("-XX:+TieredCompilation").start();
     }
 
     @Test

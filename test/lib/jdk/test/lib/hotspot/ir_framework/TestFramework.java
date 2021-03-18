@@ -61,6 +61,8 @@ public class TestFramework {
     private TestFrameworkSocket socket;
     private int defaultWarmup = -1;
 
+    private final HashMap<String, Method> testMethods = new HashMap<>();
+
     /*
      * Public interface methods
      */
@@ -75,6 +77,7 @@ public class TestFramework {
     public TestFramework() {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
         this.testClass = walker.getCallerClass();
+        initTestsMap();
         System.out.println(testClass);
     }
 
@@ -91,6 +94,29 @@ public class TestFramework {
     public TestFramework(Class<?> testClass) {
         TestRun.check(testClass != null, "Test class cannot be null");
         this.testClass = testClass;
+        initTestsMap();
+    }
+
+    /**
+     * Returns a Method object that matches the specified test method name.
+     *
+     * @param mName the name of the test method
+     * @return the Method object matching the specified name
+     */
+    public Method getTestMethod(String mName) {
+        return testMethods.get(mName);
+    }
+
+    /*
+     * Helper method that gathers all test methods and put them in Hashtable
+     */
+    synchronized private void initTestsMap() {
+        for (Method m : testClass.getDeclaredMethods()) {
+            Test[] testAnnos = m.getAnnotationsByType(Test.class);
+            if (testAnnos.length != 0) {
+                testMethods.put(m.getName(), m);
+            }
+        }
     }
 
     /**
@@ -332,6 +358,10 @@ public class TestFramework {
 
     public static void deoptimize(Method m) {
         TestFrameworkExecution.deoptimize(m);
+    }
+
+    public void deoptimize(String mName) {
+        deoptimize(getTestMethod(mName));
     }
 
     public static boolean isC1Compiled(Method m) {

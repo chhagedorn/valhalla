@@ -474,11 +474,13 @@ public class TestFrameworkExecution {
         TestFormat.check(checkAnno == null && runAnno == null,
                          m + " has invalid @Check or @Run annotation while @Test annotation is present.");
 
-        TestFormat.checkNoThrow(!Arrays.asList(m.getParameterTypes()).contains(TestInfo.class),
-                         "Cannot use of " + TestInfo.class + " as parameter type at @Test method " + m);
+        TestFormat.checkNoThrow(Arrays.stream(m.getParameterTypes()).noneMatch(AbstractInfo.class::isAssignableFrom),
+                                "Cannot " + AbstractInfo.class + " or any of its subclasses as parameter type at " +
+                                "@Test method " + m);
 
-        TestFormat.checkNoThrow(!m.getReturnType().equals(TestInfo.class),
-                         "Cannot use of " + TestInfo.class + " as return type at @Test method " + m);
+        TestFormat.checkNoThrow(!AbstractInfo.class.isAssignableFrom(m.getReturnType()),
+                                "Cannot " + AbstractInfo.class + " or any of its subclasses as return type at " +
+                                "@Test method " + m);
     }
 
 

@@ -428,6 +428,20 @@ class BadBaseTests {
     public TestInfo cannotUseTestInfoAsParameterOrReturn(TestInfo info) {
         return null;
     }
+
+    @Test
+    @Arguments(Argument.DEFAULT)
+    @FailCount(3) // No default constructor + parameter + return
+    public RunInfo cannotUseRunInfoAsParameterOrReturn(RunInfo info) {
+        return null;
+    }
+
+    @Test
+    @Arguments(Argument.DEFAULT)
+    @FailCount(3) // No default constructor + parameter + return
+    public AbstractInfo cannotUseAbstractInfoAsParameterOrReturn(AbstractInfo info) {
+        return null;
+    }
 }
 
 class BadRunTests {

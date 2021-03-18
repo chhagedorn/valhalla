@@ -45,12 +45,13 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 
 public class TestBasicFunctionality {
 
+    static final TestFramework testFramework = InlineTypes.getFramework();
+
     public static void main(String[] args) {
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[2].addFlags("-DVerifyIR=false");
         scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
 
-        TestFramework testFramework = new TestFramework(TestBasicFunctionality.class);
         testFramework.addScenarios(scenarios)
                 .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class,
                         MyValue3.class, MyValue3Inline.class)
@@ -464,7 +465,6 @@ public class TestBasicFunctionality {
         Asserts.assertEQ(result, hash());
     }
 
-
     // Create an inline type (array) in compiled code and pass it to the
     // interpreter via a call. The inline type is live at the uncommon
     // trap: verify that deoptimization causes the inline type to be
@@ -480,13 +480,7 @@ public class TestBasicFunctionality {
         MyValue2[] va = new MyValue2[3];
         if (deopt) {
             // uncommon trap
-            try {
-                Method m = getClass().getDeclaredMethod("test20", boolean.class);
-                TestFramework.deoptimize(m);
-            } catch (NoSuchMethodException ex) {
-                System.out.println("ERROR: Failed to getDeclaredMethod test20");
-                throw new TestRunException("Failed to getDeclaredMethod test20");
-            }
+            testFramework.deoptimize("test20");
         }
 
         return v.hashInterpreted() + va[0].hashInterpreted() +
@@ -626,13 +620,7 @@ public class TestBasicFunctionality {
         unused.v = v;
         if (deopt) {
             // uncommon trap
-            try {
-                Method m = getClass().getDeclaredMethod("test27", boolean.class);
-                TestFramework.deoptimize(m);
-            } catch (NoSuchMethodException ex) {
-                System.out.println("ERROR: Failed to getDeclaredMethod test27");
-                throw new TestRunException("Failed to getDeclaredMethod test27");
-            }
+            testFramework.deoptimize("test27");
         }
     }
 
@@ -1000,4 +988,5 @@ public class TestBasicFunctionality {
         long result = test40(info.isWarmUp());
         Asserts.assertEQ(result, info.isWarmUp() ? 0 : hash());
     }
+
 }

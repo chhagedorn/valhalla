@@ -386,12 +386,16 @@ public class TestFrameworkExecution {
         }
     }
 
-    static void enqueueForCompilation(Executable ex, CompLevel compLevel) {
+    static void enqueueForCompilation(Executable ex, CompLevel requestedCompLevel) {
         if (TestFrameworkExecution.VERBOSE) {
-            System.out.println("enqueueForCompilation " + ex + ", level = " + compLevel);
+            System.out.println("enqueueForCompilation " + ex + ", level = " + requestedCompLevel);
         }
-        compLevel = restrictCompLevel(compLevel);
-        WHITE_BOX.enqueueMethodForCompilation(ex, compLevel.getValue());
+        CompLevel compLevel = restrictCompLevel(requestedCompLevel);
+        if (compLevel != CompLevel.SKIP) {
+            WHITE_BOX.enqueueMethodForCompilation(ex, compLevel.getValue());
+        } else {
+            System.out.println("Skipped compilation on level " + requestedCompLevel + " due to VM flags not allowing it.");
+        }
     }
 
     static boolean shouldCompile(Executable ex) {
@@ -704,11 +708,17 @@ public class TestFrameworkExecution {
     static void compile(Method m, CompLevel compLevel) {
         TestRun.check(getAnnotation(m, Test.class) == null,
                       "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
+        TestRun.check(compLevel != CompLevel.SKIP && compLevel != CompLevel.WAIT_FOR_COMPILATION,
+                         "Invalid compilation request with level " + compLevel);
         enqueueForCompilation(m, compLevel);
     }
 
     static void deoptimize(Method m) {
         WHITE_BOX.deoptimizeMethod(m);
+    }
+
+    static boolean isCompiled(Method m) {
+        return compiledAtLevel(m, CompLevel.ANY) == TriState.Yes;
     }
 
     static boolean isC1Compiled(Method m) {
@@ -771,13 +781,24 @@ public class TestFrameworkExecution {
     }
 
     private static TriState compiledAtLevel(Method m, CompLevel level) {
-        if (!TestFrameworkExecution.USE_COMPILER || TestFrameworkExecution.XCOMP || TestFrameworkExecution.TEST_C1 ||
-            (TestFrameworkExecution.STRESS_CC && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
+        if (!USE_COMPILER || XCOMP || TEST_C1 ||
+            (STRESS_CC && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
             return TriState.Maybe;
         }
-        if (WHITE_BOX.isMethodCompiled(m, false)
-            && WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue()) {
-            return TriState.Yes;
+        if (WHITE_BOX.isMethodCompiled(m, false)) {
+            switch (level) {
+                case C1, C1_LIMITED_PROFILE, C1_FULL_PROFILE, C2 -> {
+                    if (WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue()) {
+                        return TriState.Yes;
+                    } else {
+                        return TriState.No;
+                    }
+                }
+                case ANY -> {
+                    return TriState.Yes;
+                }
+                default -> TestRun.fail("compiledAtLevel() should not be called with " + level);
+            }
         }
         return TriState.No;
     }

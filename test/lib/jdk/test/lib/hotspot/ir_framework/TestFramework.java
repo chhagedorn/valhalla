@@ -364,6 +364,10 @@ public class TestFramework {
         deoptimize(getTestMethod(mName));
     }
 
+    public static boolean isCompiled(Method m) {
+        return TestFrameworkExecution.isCompiled(m);
+    }
+
     public static boolean isC1Compiled(Method m) {
         return TestFrameworkExecution.isC1Compiled(m);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,30 +28,24 @@ import jdk.test.lib.Asserts;
 import java.lang.invoke.*;
 import java.lang.reflect.Method;
 
+import jdk.test.lib.hotspot.ir_framework.*;
+import static compiler.valhalla.inlinetypes.InlineTypes.rI;
+import static compiler.valhalla.inlinetypes.InlineTypes.rL;
+import static compiler.valhalla.inlinetypes.InlineTypes.rD;
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+
 /*
  * @test
  * @key randomness
  * @summary Test inline type calling convention optimizations
- * @library /testlibrary /test/lib /compiler/whitebox /
+ * @library /test/lib
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile TestCallingConvention.java
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox jdk.test.lib.Platform
- * @run main/othervm/timeout=300 -Xbootclasspath/a:. -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions
- *                               -XX:+UnlockExperimentalVMOptions -XX:+WhiteBoxAPI
- *                               compiler.valhalla.inlinetypes.InlineTypeTest
- *                               compiler.valhalla.inlinetypes.TestCallingConvention
+ * @compile InlineTypes.java
+ * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConvention
  */
-public class TestCallingConvention extends InlineTypeTest {
-    // Extra VM parameters for some test scenarios. See InlineTypeTest.getVMParameters()
-    @Override
-    public String[] getExtraVMParameters(int scenario) {
-        switch (scenario) {
-        case 0: return new String[] {"-Dsun.reflect.inflationThreshold=10000"}; // Don't generate bytecodes but call through runtime for reflective calls
-        case 1: return new String[] {"-Dsun.reflect.inflationThreshold=10000"};
-        case 3: return new String[] {"-XX:FlatArrayElementMaxSize=0"};
-        }
-        return null;
-    }
+public class TestCallingConvention {
+
+    static MethodHandle test32_mh, test33_mh, test37_mh;
 
     static {
         try {
@@ -72,80 +66,188 @@ public class TestCallingConvention extends InlineTypeTest {
         }
     }
 
-    public static void main(String[] args) throws Throwable {
-        TestCallingConvention test = new TestCallingConvention();
-        test.run(args, MyValue1.class, MyValue2.class, MyValue2Inline.class, MyValue3.class, MyValue3Inline.class, MyValue4.class,
-                 Test27Value1.class, Test27Value2.class, Test27Value3.class, Test37Value.class, EmptyContainer.class, MixedContainer.class);
+    static final TestFramework testFramework = InlineTypes.getFramework();
+
+    public static void main(String[] args) {
+
+        Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
+        // Don't generate bytecodes but call through runtime for reflective calls
+        scenarios[0].addFlags("-Dsun.reflect.inflationThreshold=10000");
+        scenarios[1].addFlags("-Dsun.reflect.inflationThreshold=10000");
+        scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
+
+        testFramework.addScenarios(scenarios)
+                .addHelperClasses(MyValue1.class,
+                                  MyValue2.class,
+                                  MyValue2Inline.class,
+                                  MyValue3.class,
+                                  MyValue3Inline.class,
+                                  MyValue4.class)
+                .start();
     }
 
+    // Helper methods and classes
+
+    // Test calling convention with deep hierarchy of flattened fields
+    @ForceCompileClassInitializer
+    final primitive class Test27Value1 {
+        final Test27Value2 valueField;
+
+        private Test27Value1(Test27Value2 val2) {
+            valueField = val2;
+        }
+
+        @DontInline
+        public int test(Test27Value1 val1) {
+            return valueField.test(valueField) + val1.valueField.test(valueField);
+        }
+    }
+
+    @ForceCompileClassInitializer
+    final primitive class Test27Value2 {
+        final Test27Value3 valueField;
+
+        private Test27Value2(Test27Value3 val3) {
+            valueField = val3;
+        }
+
+        @DontInline
+        public int test(Test27Value2 val2) {
+            return valueField.test(valueField) + val2.valueField.test(valueField);
+        }
+    }
+
+    @ForceCompileClassInitializer
+    final primitive class Test27Value3 {
+        final int x;
+
+        private Test27Value3(int x) {
+            this.x = x;
+        }
+
+        @DontInline
+        public int test(Test27Value3 val3) {
+            return x + val3.x;
+        }
+    }
+
+    @ForceCompileClassInitializer
+    primitive class Test37Value {
+        int x = rI;
+
+        @DontInline
+        public int test() {
+            return x;
+        }
+    }
+
+    @ForceCompileClassInitializer
+    primitive class EmptyContainer {
+        private MyValueEmpty empty;
+
+        EmptyContainer(MyValueEmpty empty) {
+            this.empty = empty;
+        }
+
+        @ForceInline
+        MyValueEmpty getInline() { return empty; }
+
+        @DontInline
+        MyValueEmpty getNoInline() { return empty; }
+    }
+
+    @ForceCompileClassInitializer
+    primitive class MixedContainer {
+        public int val;
+        private EmptyContainer empty;
+
+        MixedContainer(int val, EmptyContainer empty) {
+            this.val = val;
+            this.empty = empty;
+        }
+
+        @ForceInline
+        EmptyContainer getInline() { return empty; }
+
+        @DontInline
+        EmptyContainer getNoInline() { return empty; }
+    }
+
+
     // Test interpreter to compiled code with various signatures
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test1(MyValue2 v) {
         return v.hash();
     }
 
-    @DontCompile
-    public void test1_verifier(boolean warmup) {
+    @Run(test = "test1")
+    public void test1_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test1(v);
         Asserts.assertEQ(result, v.hashInterpreted());
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test2(int i1, MyValue2 v, int i2) {
         return v.hash() + i1 - i2;
     }
 
-    @DontCompile
-    public void test2_verifier(boolean warmup) {
+    @Run(test = "test2")
+    public void test2_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test2(rI, v, 2*rI);
         Asserts.assertEQ(result, v.hashInterpreted() - rI);
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test3(long l1, MyValue2 v, long l2) {
         return v.hash() + l1 - l2;
     }
 
-    @DontCompile
-    public void test3_verifier(boolean warmup) {
+    @Run(test = "test3")
+    public void test3_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test3(rL, v, 2*rL);
         Asserts.assertEQ(result, v.hashInterpreted() - rL);
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test4(int i, MyValue2 v, long l) {
         return v.hash() + i + l;
     }
 
-    @DontCompile
-    public void test4_verifier(boolean warmup) {
+    @Run(test = "test4")
+    public void test4_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test4(rI, v, rL);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test5(long l, MyValue2 v, int i) {
         return v.hash() + i + l;
     }
 
-    @DontCompile
-    public void test5_verifier(boolean warmup) {
+    @Run(test = "test5")
+    public void test5_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test5(rL, v, rI);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test6(long l, MyValue1 v1, int i, MyValue2 v2) {
         return v1.hash() + i + l + v2.hash();
     }
 
-    @DontCompile
-    public void test6_verifier(boolean warmup) {
+    @Run(test = "test6")
+    public void test6_verifier(RunInfo info) {
         MyValue1 v1 = MyValue1.createWithFieldsDontInline(rI, rL);
         MyValue2 v2 = MyValue2.createWithFieldsInline(rI, rD);
         long result = test6(rL, v1, rI, v2);
@@ -158,13 +260,14 @@ public class TestCallingConvention extends InlineTypeTest {
         return v.hash();
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test7(MyValue2 v) {
         return test7_interp(v);
     }
 
-    @DontCompile
-    public void test7_verifier(boolean warmup) {
+    @Run(test = "test7")
+    public void test7_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test7(v);
         Asserts.assertEQ(result, v.hashInterpreted());
@@ -175,13 +278,14 @@ public class TestCallingConvention extends InlineTypeTest {
         return v.hash() + i1 - i2;
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test8(int i1, MyValue2 v, int i2) {
         return test8_interp(i1, v, i2);
     }
 
-    @DontCompile
-    public void test8_verifier(boolean warmup) {
+    @Run(test = "test8")
+    public void test8_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test8(rI, v, 2*rI);
         Asserts.assertEQ(result, v.hashInterpreted() - rI);
@@ -192,13 +296,14 @@ public class TestCallingConvention extends InlineTypeTest {
         return v.hash() + l1 - l2;
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test9(long l1, MyValue2 v, long l2) {
         return test9_interp(l1, v, l2);
     }
 
-    @DontCompile
-    public void test9_verifier(boolean warmup) {
+    @Run(test = "test9")
+    public void test9_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test9(rL, v, 2*rL);
         Asserts.assertEQ(result, v.hashInterpreted() - rL);
@@ -209,30 +314,33 @@ public class TestCallingConvention extends InlineTypeTest {
         return v.hash() + i + l;
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test10(int i, MyValue2 v, long l) {
         return test10_interp(i, v, l);
     }
 
-    @DontCompile
-    public void test10_verifier(boolean warmup) {
+    @Run(test = "test10")
+    public void test10_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test10(rI, v, rL);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
     }
+
 
     @DontCompile
     public long test11_interp(long l, MyValue2 v, int i) {
         return v.hash() + i + l;
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test11(long l, MyValue2 v, int i) {
         return test11_interp(l, v, i);
     }
 
-    @DontCompile
-    public void test11_verifier(boolean warmup) {
+    @Run(test = "test11")
+    public void test11_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test11(rL, v, rI);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
@@ -243,13 +351,14 @@ public class TestCallingConvention extends InlineTypeTest {
         return v1.hash() + i + l + v2.hash();
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test12(long l, MyValue1 v1, int i, MyValue2 v2) {
         return test12_interp(l, v1, i, v2);
     }
 
-    @DontCompile
-    public void test12_verifier(boolean warmup) {
+    @Run(test = "test12")
+    public void test12_verifier(RunInfo info) {
         MyValue1 v1 = MyValue1.createWithFieldsDontInline(rI, rL);
         MyValue2 v2 = MyValue2.createWithFieldsInline(rI, rD);
         long result = test12(rL, v1, rI, v2);
@@ -261,23 +370,25 @@ public class TestCallingConvention extends InlineTypeTest {
     public long test13_interp(MyValue2 v, MyValue1[] va, boolean deopt) {
         if (deopt) {
             // uncommon trap
-            WHITE_BOX.deoptimizeMethod(tests.get(getClass().getSimpleName() + "::test13"));
+            Method m = testFramework.getTestMethod("test13");
+            testFramework.deoptimize(m);
         }
         return v.hash() + va[0].hash() + va[1].hash();
     }
 
-    @Test(failOn = ALLOC + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, STORE, TRAP})
     public long test13(MyValue2 v, MyValue1[] va, boolean flag, long l) {
         return test13_interp(v, va, flag) + l;
     }
 
-    @DontCompile
-    public void test13_verifier(boolean warmup) {
+    @Run(test = "test13")
+    public void test13_verifier(RunInfo info) {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         MyValue1[] va = new MyValue1[2];
         va[0] = MyValue1.createWithFieldsDontInline(rI, rL);
         va[1] = MyValue1.createWithFieldsDontInline(rI, rL);
-        long result = test13(v, va, !warmup, rL);
+        long result = test13(v, va, !info.isWarmUp(), rL);
         Asserts.assertEQ(result, v.hashInterpreted() + va[0].hash() + va[1].hash() + rL);
     }
 
@@ -286,19 +397,20 @@ public class TestCallingConvention extends InlineTypeTest {
     public MyValue2 test14_interp(boolean deopt) {
         if (deopt) {
             // uncommon trap
-            WHITE_BOX.deoptimizeMethod(tests.get(getClass().getSimpleName() + "::test14"));
+            Method m = testFramework.getTestMethod("test14");
+            testFramework.deoptimize(m);
         }
         return MyValue2.createWithFieldsInline(rI, rD);
     }
 
-    @Test()
+    @Test
     public MyValue2 test14(boolean flag) {
         return test14_interp(flag);
     }
 
-    @DontCompile
-    public void test14_verifier(boolean warmup) {
-        MyValue2 result = test14(!warmup);
+    @Run(test = "test14")
+    public void test14_verifier(RunInfo info) {
+        MyValue2 result = test14(!info.isWarmUp());
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         Asserts.assertEQ(result.hash(), v.hash());
     }
@@ -311,31 +423,34 @@ public class TestCallingConvention extends InlineTypeTest {
     }
 
     MyValue3 test15_vt2;
-    @Test(valid = InlineTypeReturnedAsFieldsOn, failOn = ALLOC + LOAD + TRAP)
-    @Test(valid = InlineTypeReturnedAsFieldsOff)
+    @Test
+    @IR(applyIf = {"InlineTypeReturnedAsFields", "true"},
+        failOn = {ALLOC, LOAD, TRAP})
     public void test15() {
         test15_vt2 = test15_interp();
     }
 
-    @DontCompile
-    public void test15_verifier(boolean warmup) {
+    @Run(test = "test15")
+    public void test15_verifier(RunInfo info) {
         test15();
         test15_vt.verify(test15_vt2);
     }
 
     // Return inline types in registers from compiled -> interpreter
     final MyValue3 test16_vt = MyValue3.create();
-    @Test(valid = InlineTypeReturnedAsFieldsOn, failOn = ALLOC + STORE + TRAP)
-    @Test(valid = InlineTypeReturnedAsFieldsOff)
+    @Test
+    @IR(applyIf = {"InlineTypeReturnedAsFields", "true"},
+        failOn = {ALLOC, STORE, TRAP})
     public MyValue3 test16() {
         return test16_vt;
     }
 
-    @DontCompile
-    public void test16_verifier(boolean warmup) {
+    @Run(test = "test16")
+    public void test16_verifier(RunInfo info) {
         MyValue3 vt = test16();
         test16_vt.verify(vt);
     }
+
 
     // Return inline types in registers from compiled -> compiled
     final MyValue3 test17_vt = MyValue3.create();
@@ -345,19 +460,21 @@ public class TestCallingConvention extends InlineTypeTest {
     }
 
     MyValue3 test17_vt2;
-    @Test(valid = InlineTypeReturnedAsFieldsOn, failOn = ALLOC + LOAD + TRAP)
-    @Test(valid = InlineTypeReturnedAsFieldsOff)
+    @Test
+    @IR(applyIf = {"InlineTypeReturnedAsFields", "true"},
+            failOn = {ALLOC, LOAD, TRAP})
     public void test17() {
         test17_vt2 = test17_comp();
     }
 
-    @DontCompile
-    public void test17_verifier(boolean warmup) throws Exception {
+    @Run(test = "test17")
+    public void test17_verifier(RunInfo info) throws Exception {
         Method helper_m = getClass().getDeclaredMethod("test17_comp");
-        if (!warmup && USE_COMPILER && !WHITE_BOX.isMethodCompiled(helper_m, false)) {
-            enqueueMethodForCompilation(helper_m, COMP_LEVEL_FULL_OPTIMIZATION);
-            Asserts.assertTrue(WHITE_BOX.isMethodCompiled(helper_m, false), "test17_comp not compiled");
+        if (!info.isWarmUp() && testFramework.isCompiled(helper_m)) {
+            testFramework.compile(helper_m, CompLevel.C2);
+            testFramework.assertCompiledByC2(helper_m);
         }
+
         test17();
         test17_vt.verify(test17_vt2);
     }
@@ -377,8 +494,8 @@ public class TestCallingConvention extends InlineTypeTest {
         test18_vt2 = test18_interp();
     }
 
-    @DontCompile
-    public void test18_verifier(boolean warmup) {
+    @Run(test = "test18")
+    public void test18_verifier(RunInfo info) {
         test18();
         test18_vt.verify(test18_vt2);
     }
@@ -390,8 +507,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return test19_vt;
     }
 
-    @DontCompile
-    public void test19_verifier(boolean warmup) {
+    @Run(test = "test19")
+    public void test19_verifier(RunInfo info) {
         MyValue4 vt = test19();
         test19_vt.verify(vt);
     }
@@ -409,16 +526,17 @@ public class TestCallingConvention extends InlineTypeTest {
         test20_vt2 = test20_comp();
     }
 
-    @DontCompile
-    public void test20_verifier(boolean warmup) throws Exception {
+    @Run(test = "test20")
+    public void test20_verifier(RunInfo info) throws Exception {
         Method helper_m = getClass().getDeclaredMethod("test20_comp");
-        if (!warmup && USE_COMPILER && !WHITE_BOX.isMethodCompiled(helper_m, false)) {
-            enqueueMethodForCompilation(helper_m, COMP_LEVEL_FULL_OPTIMIZATION);
-            Asserts.assertTrue(WHITE_BOX.isMethodCompiled(helper_m, false), "test20_comp not compiled");
+        if (!info.isWarmUp() && testFramework.isCompiled(helper_m)) {
+            testFramework.compile(helper_m, CompLevel.C2);
+            testFramework.assertCompiledByC2(helper_m);
         }
         test20();
         test20_vt.verify(test20_vt2);
     }
+
 
     // Test no result from inlined method for incremental inlining
     final MyValue3 test21_vt = MyValue3.create();
@@ -435,8 +553,8 @@ public class TestCallingConvention extends InlineTypeTest {
         }
     }
 
-    @DontCompile
-    public void test21_verifier(boolean warmup) {
+    @Run(test = "test21")
+    public void test21_verifier(RunInfo info) {
         MyValue3 vt = test21();
         test21_vt.verify(vt);
     }
@@ -449,13 +567,14 @@ public class TestCallingConvention extends InlineTypeTest {
         return (MyValue3) test22_vt;
     }
 
-    @DontCompile
-    public void test22_verifier(boolean warmup) {
+    @Run(test = "test22")
+    public void test22_verifier(RunInfo info) {
         MyValue3 vt = test22();
         test22_vt.verify(vt);
     }
 
     // Test calling a method that has circular register/stack dependencies when unpacking inline type arguments
+    @ForceCompileClassInitializer
     primitive class TestValue23 {
         final double f1;
         TestValue23(double val) {
@@ -478,8 +597,8 @@ public class TestCallingConvention extends InlineTypeTest {
                             d1, d2, d3, d4, d5, d6, d7, d8);
     }
 
-    @DontCompile
-    public void test23_verifier(boolean warmup) {
+    @Run(test = "test23")
+    public void test23_verifier(RunInfo info) {
         TestValue23 vt = new TestValue23(rI);
         double res1 = test23(rI, rI, rI, rI, rI, rI,
                             vt, vt, vt, vt, vt, vt, vt, vt,
@@ -498,8 +617,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return null;
     }
 
-    @DontCompile
-    public void test24_verifier(boolean warmup) {
+    @Run(test = "test24")
+    public void test24_verifier(RunInfo info) {
         MyValue2.ref vt = test24();
         Asserts.assertEQ(vt, null);
     }
@@ -519,52 +638,12 @@ public class TestCallingConvention extends InlineTypeTest {
         return test26_callee(b);
     }
 
-    @DontCompile
-    public void test26_verifier(boolean warmup) {
+    @Run(test = "test26")
+    public void test26_verifier(RunInfo info) {
         MyValue2.ref vt = test26(true);
         Asserts.assertEQ(vt, null);
         vt = test26(false);
         Asserts.assertEQ(vt.hash(), MyValue2.createWithFieldsInline(rI, rD).hash());
-    }
-
-    // Test calling convention with deep hierarchy of flattened fields
-    final primitive class Test27Value1 {
-        final Test27Value2 valueField;
-
-        private Test27Value1(Test27Value2 val2) {
-            valueField = val2;
-        }
-
-        @DontInline
-        public int test(Test27Value1 val1) {
-            return valueField.test(valueField) + val1.valueField.test(valueField);
-        }
-    }
-
-    final primitive class Test27Value2 {
-        final Test27Value3 valueField;
-
-        private Test27Value2(Test27Value3 val3) {
-            valueField = val3;
-        }
-
-        @DontInline
-        public int test(Test27Value2 val2) {
-            return valueField.test(valueField) + val2.valueField.test(valueField);
-        }
-    }
-
-    final primitive class Test27Value3 {
-        final int x;
-
-        private Test27Value3(int x) {
-            this.x = x;
-        }
-
-        @DontInline
-        public int test(Test27Value3 val3) {
-            return x + val3.x;
-        }
     }
 
     @Test
@@ -572,8 +651,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return val.test(val);
     }
 
-    @DontCompile
-    public void test27_verifier(boolean warmup) {
+    @Run(test = "test27")
+    public void test27_verifier(RunInfo info) {
         Test27Value3 val3 = new Test27Value3(rI);
         Test27Value2 val2 = new Test27Value2(val3);
         Test27Value1 val1 = new Test27Value1(val2);
@@ -584,13 +663,13 @@ public class TestCallingConvention extends InlineTypeTest {
     static final MyValue1.ref test28Val = MyValue1.createWithFieldsDontInline(rI, rL);
 
     @Test
-    @Warmup(0)
     public String test28() {
         return test28Val.toString();
     }
 
-    @DontCompile
-    public void test28_verifier(boolean warmup) {
+    @Run(test = "test28")
+    @Warmup(0)
+    public void test28_verifier(RunInfo info) {
         String result = test28();
     }
 
@@ -602,8 +681,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return test29_vt;
     }
 
-    @DontCompile
-    public void test29_verifier(boolean warmup) throws Exception {
+    @Run(test = "test29")
+    public void test29_verifier(RunInfo info) throws Exception {
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test29").invoke(this);
         test29_vt.verify(vt);
     }
@@ -615,8 +694,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return result;
     }
 
-    @DontCompile
-    public void test30_verifier(boolean warmup) throws Exception {
+    @Run(test = "test30")
+    public void test30_verifier(RunInfo info) throws Exception {
         MyValue3[] array = new MyValue3[1];
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test30", MyValue3[].class).invoke(this, (Object)array);
         array[0].verify(vt);
@@ -631,21 +710,21 @@ public class TestCallingConvention extends InlineTypeTest {
         return result;
     }
 
-    @DontCompile
-    public void test31_verifier(boolean warmup) throws Exception {
+    @Run(test = "test31")
+    public void test31_verifier(RunInfo info) throws Exception {
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test31").invoke(this);
         test31_vt.verify(vt);
     }
 
     // Test deoptimization at call return with inline type returned in registers.
     // Same as test14, except the interpreted method is called via a MethodHandle.
-    static MethodHandle test32_mh;
 
     @DontCompile
     public MyValue2 test32_interp(boolean deopt) {
         if (deopt) {
             // uncommon trap
-            WHITE_BOX.deoptimizeMethod(tests.get(getClass().getSimpleName() + "::test32"));
+            Method m = testFramework.getTestMethod("test32");
+            testFramework.deoptimize(m);
         }
         return MyValue2.createWithFieldsInline(rI+32, rD);
     }
@@ -655,21 +734,21 @@ public class TestCallingConvention extends InlineTypeTest {
         return (MyValue2)test32_mh.invokeExact(this, flag);
     }
 
-    @DontCompile
-    public void test32_verifier(boolean warmup) throws Throwable {
-        MyValue2 result = test32(!warmup);
+    @Run(test = "test32")
+    public void test32_verifier(RunInfo info) throws Throwable {
+        MyValue2 result = test32(!info.isWarmUp());
         MyValue2 v = MyValue2.createWithFieldsInline(rI+32, rD);
         Asserts.assertEQ(result.hash(), v.hash());
     }
 
     // Same as test32, except the return type is not flattenable.
-    static MethodHandle test33_mh;
 
     @DontCompile
     public Object test33_interp(boolean deopt) {
         if (deopt) {
             // uncommon trap
-            WHITE_BOX.deoptimizeMethod(tests.get(getClass().getSimpleName() + "::test33"));
+            Method m = testFramework.getTestMethod("test33");
+            testFramework.deoptimize(m);
         }
         return MyValue2.createWithFieldsInline(rI+33, rD);
     }
@@ -680,9 +759,9 @@ public class TestCallingConvention extends InlineTypeTest {
         return (MyValue2)o;
     }
 
-    @DontCompile
-    public void test33_verifier(boolean warmup) throws Throwable {
-        MyValue2 result = test33(!warmup);
+    @Run(test = "test33")
+    public void test33_verifier(RunInfo info) throws Throwable {
+        MyValue2 result = test33(!info.isWarmUp());
         MyValue2 v = MyValue2.createWithFieldsInline(rI+33, rD);
         Asserts.assertEQ(result.hash(), v.hash());
     }
@@ -709,17 +788,17 @@ public class TestCallingConvention extends InlineTypeTest {
     }
 
     @Test()
-    @Warmup(10000) // Make sure test34_callee is compiled
     public static long test34(MyValue2 vt, int i1, int i2, int i3, int i4) {
         return test34_callee(vt, i1, i2, i3, i4);
     }
 
-    @DontCompile
-    public void test34_verifier(boolean warmup) {
+    @Run(test = "test34")
+    @Warmup(10000) // Make sure test34_callee is compiled
+    public void test34_verifier(RunInfo info) {
         MyValue2 vt = MyValue2.createWithFieldsInline(rI, rD);
         long result = test34(vt, rI, rI, rI, rI);
         Asserts.assertEQ(result, vt.hash()+4*rI);
-        if (!warmup) {
+        if (!info.isWarmUp()) {
             test34_deopt = true;
             for (int i = 0; i < 100; ++i) {
                 result = test34(vt, rI, rI, rI, rI);
@@ -739,8 +818,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return vt.hash() + i1 + i2 + i3 + i4 + result;
     }
 
-    @DontCompile
-    public void test35_verifier(boolean warmup) {
+    @Run(test = "test35")
+    public void test35_verifier(RunInfo info) {
         MyValue2 vt = MyValue2.createWithFieldsInline(rI, rD);
         long result = test35(vt, rI, rI, rI, rI);
         Asserts.assertEQ(result, vt.hash()+10004*rI);
@@ -758,50 +837,41 @@ public class TestCallingConvention extends InlineTypeTest {
         return result;
     }
 
-    @DontCompile
-    public void test36_verifier(boolean warmup) throws Exception {
+    @Run(test = "test36")
+    public void test36_verifier(RunInfo info) throws Exception {
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test36").invoke(this);
         test36_vt.verify(vt);
     }
 
     // Test method resolution with scalarized inline type receiver at invokespecial
-    static final MethodHandle test37_mh;
-
-    primitive class Test37Value {
-        int x = rI;
-
-        @DontInline
-        public int test() {
-            return x;
-        }
-    }
-
     @Test
     public int test37(Test37Value vt) throws Throwable {
         // Generates invokespecial call of Test37Value::test
         return (int)test37_mh.invokeExact(vt);
     }
 
-    @DontCompile
-    public void test37_verifier(boolean warmup) throws Throwable {
+    @Run(test = "test37")
+    public void test37_verifier(RunInfo info) throws Throwable {
         Test37Value vt = new Test37Value();
         int res = test37(vt);
         Asserts.assertEQ(res, rI);
     }
 
     // Test passing/returning an empty inline type
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public MyValueEmpty test38(MyValueEmpty vt) {
         return vt.copy(vt);
     }
 
-    @DontCompile
-    public void test38_verifier(boolean warmup) {
+    @Run(test = "test38")
+    public void test38_verifier(RunInfo info) {
         MyValueEmpty vt = new MyValueEmpty();
         MyValueEmpty res = test38(vt);
         Asserts.assertEQ(res, vt);
     }
 
+    @ForceCompileClassInitializer
     static primitive class LargeValueWithOops {
         // Use all 6 int registers + 50/2 on stack = 29
         Object o1 = null;
@@ -835,6 +905,7 @@ public class TestCallingConvention extends InlineTypeTest {
         Object o29 = null;
     }
 
+    @ForceCompileClassInitializer
     static primitive class LargeValueWithoutOops {
         // Use all 6 int registers + 50/2 on stack = 29
         int i1 = 0;
@@ -883,8 +954,8 @@ public class TestCallingConvention extends InlineTypeTest {
         return vt;
     }
 
-    @DontCompile
-    public void test39_verifier(boolean warmup) {
+    @Run(test = "test39")
+    public void test39_verifier(RunInfo info) {
         LargeValueWithOops vt = new LargeValueWithOops();
         LargeValueWithOops res = test39(vt);
         Asserts.assertEQ(res, vt);
@@ -896,142 +967,122 @@ public class TestCallingConvention extends InlineTypeTest {
         return vt;
     }
 
-    @DontCompile
-    public void test40_verifier(boolean warmup) {
+    @Run(test = "test40")
+    public void test40_verifier(RunInfo info) {
         LargeValueWithoutOops vt = new LargeValueWithoutOops();
         LargeValueWithoutOops res = test40(vt);
         Asserts.assertEQ(res, vt);
     }
 
+
     // Test passing/returning an empty inline type together with non-empty
     // inline types such that only some inline type arguments are scalarized.
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public MyValueEmpty test41(MyValue1 vt1, MyValueEmpty vt2, MyValue1 vt3) {
         return vt2.copy(vt2);
     }
 
-    @DontCompile
-    public void test41_verifier(boolean warmup) {
+    @Run(test = "test41")
+    public void test41_verifier(RunInfo info) {
         MyValueEmpty res = test41(MyValue1.default, MyValueEmpty.default, MyValue1.default);
         Asserts.assertEQ(res, MyValueEmpty.default);
     }
 
     // More empty inline type tests with containers
 
-    static primitive class EmptyContainer {
-        private MyValueEmpty empty;
-
-        EmptyContainer(MyValueEmpty empty) {
-            this.empty = empty;
-        }
-
-        @ForceInline
-        MyValueEmpty getInline() { return empty; }
-
-        @DontInline
-        MyValueEmpty getNoInline() { return empty; }
-    }
-
-    static primitive class MixedContainer {
-        public int val;
-        private EmptyContainer empty;
-
-        MixedContainer(int val, EmptyContainer empty) {
-            this.val = val;
-            this.empty = empty;
-        }
-
-        @ForceInline
-        EmptyContainer getInline() { return empty; }
-
-        @DontInline
-        EmptyContainer getNoInline() { return empty; }
-    }
-
     // Empty inline type return
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public MyValueEmpty test42() {
         EmptyContainer c = new EmptyContainer(MyValueEmpty.default);
         return c.getInline();
     }
 
-    @DontCompile
-    public void test42_verifier(boolean warmup) {
+    @Run(test = "test42")
+    public void test42_verifier(RunInfo info) {
         MyValueEmpty empty = test42();
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
 
     // Empty inline type container return
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public EmptyContainer test43(EmptyContainer c) {
         return c;
     }
 
-    @DontCompile
-    public void test43_verifier(boolean warmup) {
+    @Run(test = "test43")
+    public void test43_verifier(RunInfo info) {
         EmptyContainer c = test43(EmptyContainer. default);
         Asserts.assertEquals(c, EmptyContainer.default);
     }
 
     // Empty inline type container (mixed) return
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public MixedContainer test44() {
         MixedContainer c = new MixedContainer(rI, EmptyContainer.default);
         c = new MixedContainer(rI, c.getInline());
         return c;
     }
 
-    @DontCompile
-    public void test44_verifier(boolean warmup) {
+    @Run(test = "test44")
+    public void test44_verifier(RunInfo info) {
         MixedContainer c = test44();
         Asserts.assertEquals(c, new MixedContainer(rI, EmptyContainer.default));
     }
 
+
     // Empty inline type container argument
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public EmptyContainer test45(EmptyContainer c) {
         return new EmptyContainer(c.getInline());
     }
 
-    @DontCompile
-    public void test45_verifier(boolean warmup) {
+    @Run(test = "test45")
+    public void test45_verifier(RunInfo info) {
         EmptyContainer empty = test45(EmptyContainer.default);
         Asserts.assertEquals(empty, EmptyContainer.default);
     }
 
     // Empty inline type container and mixed container arguments
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public MyValueEmpty test46(EmptyContainer c1, MixedContainer c2, MyValueEmpty empty) {
         c2 = new MixedContainer(c2.val, c1);
         return c2.getNoInline().getNoInline();
     }
 
-    @DontCompile
-    public void test46_verifier(boolean warmup) {
+    @Run(test = "test46")
+    public void test46_verifier(RunInfo info) {
         MyValueEmpty empty = test46(EmptyContainer.default, MixedContainer.default, MyValueEmpty.default);
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
 
     // No receiver and only empty argument
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public static MyValueEmpty test47(MyValueEmpty empty) {
         return empty;
     }
 
-    @DontCompile
-    public void test47_verifier(boolean warmup) {
+    @Run(test = "test47")
+    public void test47_verifier(RunInfo info) {
         MyValueEmpty empty = test47(MyValueEmpty.default);
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
 
     // No receiver and only empty container argument
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public static MyValueEmpty test48(EmptyContainer empty) {
         return empty.getNoInline();
     }
 
-    @DontCompile
-    public void test48_verifier(boolean warmup) {
+    @Run(test = "test48")
+    public void test48_verifier(RunInfo info) {
         MyValueEmpty empty = test48(EmptyContainer.default);
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
@@ -1054,8 +1105,8 @@ public class TestCallingConvention extends InlineTypeTest {
         test49_inlined2(b);
     }
 
-    @DontCompile
-    public void test49_verifier(boolean warmup) {
+    @Run(test = "test49")
+    public void test49_verifier(RunInfo info) {
         test49(true);
         test49(false);
     }
@@ -1082,8 +1133,8 @@ public class TestCallingConvention extends InlineTypeTest {
         test50_vt.verify(vt);
     }
 
-    @DontCompile
-    public void test50_verifier(boolean warmup) {
+    @Run(test = "test50")
+    public void test50_verifier(RunInfo info) {
         test50(true);
         test50(false);
     }

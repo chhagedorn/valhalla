@@ -115,6 +115,7 @@ public class TestArrays {
         return false;
     }
 
+    @ForceCompileClassInitializer
     primitive static class NotFlattenable {
         private final Object o1 = null;
         private final Object o2 = null;
@@ -2196,6 +2197,7 @@ public class TestArrays {
         Asserts.assertEQ(test90(), true);
     }
 
+    @ForceCompileClassInitializer
     primitive static final class Test91Value {
         public final int f0;
         public final int f1;
@@ -3094,6 +3096,7 @@ public class TestArrays {
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
 
+    @ForceCompileClassInitializer
     static primitive class EmptyContainer {
         MyValueEmpty empty = MyValueEmpty.default;
     }
@@ -3392,6 +3395,7 @@ public class TestArrays {
         public int hash();
     }
 
+    @ForceCompileClassInitializer
     static class MyObject143 implements MyInterface143 {
         public int hash() { return 42; }
     }

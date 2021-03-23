@@ -24,10 +24,12 @@
 package jdk.test.lib.hotspot.ir_framework;
 
 import jdk.test.lib.Platform;
+import jdk.test.lib.management.InputArguments;
 import sun.hotspot.WhiteBox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.Predicate;
 
 
 class TestFrameworkPrepareFlags {
@@ -113,7 +115,9 @@ class TestFrameworkPrepareFlags {
     }
 
     private static void setupIrVerificationFlags(Class<?> testClass, ArrayList<String> cmds) {
-        if (VERIFY_IR && cmds.stream().anyMatch(flag -> flag.startsWith("-XX:CompileThreshold"))) {
+        Predicate<String> matchCompileThreshold = flag -> flag.startsWith("-XX:CompileThreshold");
+        if (VERIFY_IR && (cmds.stream().anyMatch(matchCompileThreshold)
+                          || Arrays.stream(InputArguments.getVmInputArgs()).anyMatch(matchCompileThreshold))) {
             // Disable IR verification if non-default CompileThreshold is set
             if (VERBOSE) {
                 System.out.println("Disabled IR verification due to CompileThreshold flag");

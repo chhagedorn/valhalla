@@ -704,10 +704,7 @@ public class TestFrameworkExecution {
         No
     }
 
-    // Can be called from tests for non-@Test methods
     static void compile(Method m, CompLevel compLevel) {
-//        TestRun.check(getAnnotation(m, Test.class) == null,
-//                      "Cannot call enqueueMethodForCompilation() for @Test annotated method " + m);
         TestRun.check(compLevel != CompLevel.SKIP && compLevel != CompLevel.WAIT_FOR_COMPILATION,
                          "Invalid compilation request with level " + compLevel);
         enqueueForCompilation(m, compLevel);

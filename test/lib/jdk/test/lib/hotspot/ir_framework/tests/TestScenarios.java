@@ -53,6 +53,17 @@ public class TestScenarios {
         } catch (RuntimeException e) {
             Asserts.assertTrue(e.getMessage().contains("Cannot define two scenarios with the same index 3"), e.getMessage());
         }
+        try {
+            TestFramework.runWithScenarios(MyExceptionTest.class, s1, s2, s3);
+            Asserts.fail("Should not reach");
+        } catch (TestRunException e) {
+            Asserts.assertTrue(s1.getTestVMOutput().contains("Caused by: jdk.test.lib.hotspot.ir_framework.tests.MyScenarioException"));
+            Asserts.assertTrue(s2.getTestVMOutput().contains("Caused by: jdk.test.lib.hotspot.ir_framework.tests.MyScenarioException"));
+            Asserts.assertTrue(s3.getTestVMOutput().contains("Caused by: jdk.test.lib.hotspot.ir_framework.tests.MyScenarioException"));
+        } catch (Exception e) {
+            Asserts.fail("Should not catch other exceptions");
+        }
+
     }
 
     @Test
@@ -73,3 +84,15 @@ class ScenarioTest {
     public void doesNotFail() {
     }
 }
+
+class MyExceptionTest {
+    int iFld;
+    @Test
+    @IR(failOn = IRNode.STORE) // Not evaluated due to MyScenarioException
+    public void test() {
+        iFld = 42;
+        throw new MyScenarioException();
+    }
+}
+
+class MyScenarioException extends RuntimeException {}

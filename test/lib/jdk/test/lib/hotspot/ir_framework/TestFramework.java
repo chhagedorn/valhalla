@@ -311,15 +311,10 @@ public class TestFramework {
      */
     public void start() {
         installWhiteBox();
-        socket = new TestFrameworkSocket();
-        try {
-            if (scenarios == null) {
-                start(null);
-            } else {
-                startWithScenarios();
-            }
-        } finally {
-            socket.close();
+        if (scenarios == null) {
+            start(null);
+        } else {
+            startWithScenarios();
         }
     }
 
@@ -351,7 +346,14 @@ public class TestFramework {
      * Calling these methods from main() results in a linking exception (Whitebox not yet loaded and enabled).
      */
 
-    // Can be called from tests for non-@Test methods
+    /**
+     * Compile {@code m} at compilation level {@code compLevel}. {@code m} is first enqueued and might not be compiled
+     * yet upon returning from this method.
+     *
+     * @param m the method to be compiled
+     * @param compLevel the (valid) compilation level at which the method should be compiled.
+     * @throws TestRunException if compilation level is {@link CompLevel#SKIP} or {@link CompLevel#WAIT_FOR_COMPILATION}
+     */
     public static void compile(Method m, CompLevel compLevel) {
         TestFrameworkExecution.compile(m, compLevel);
     }
@@ -477,24 +479,25 @@ public class TestFramework {
                                "-DScenarios and is therefore not executed.");
             return;
         }
-
-        // Use TestFramework flags and scenario flags for new VMs.
-        List<String> additionalFlags = new ArrayList<>(flags);
-        if (scenario != null) {
-            List<String> scenarioFlags = scenario.getFlags();
-            String scenarioFlagsString = scenarioFlags.isEmpty() ? "" : " - [" + String.join(", ", scenarioFlags) + "]";
-            System.out.println("Scenario #" + scenario.getIndex() + scenarioFlagsString + ":");
-            additionalFlags.addAll(scenarioFlags);
+        socket = TestFrameworkSocket.getSocket();
+        try {
+            // Use TestFramework flags and scenario flags for new VMs.
+            List<String> additionalFlags = new ArrayList<>(flags);
+            if (scenario != null) {
+                List<String> scenarioFlags = scenario.getFlags();
+                String scenarioFlagsString = scenarioFlags.isEmpty() ? "" : " - [" + String.join(", ", scenarioFlags) + "]";
+                System.out.println("Scenario #" + scenario.getIndex() + scenarioFlagsString + ":");
+                additionalFlags.addAll(scenarioFlags);
+            }
+            System.out.println("Run Flag VM:");
+            runFlagVM(additionalFlags);
+            String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
+            System.out.println("Run Test VM" + flagsString + ":");
+            runTestVM(additionalFlags, scenario);
+            System.out.println();
+        } finally {
+            socket.close();
         }
-        System.out.println("Run Flag VM:");
-        runFlagVM(additionalFlags);
-        String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
-        System.out.println("Run Test VM" + flagsString + ":");
-        runTestVM(additionalFlags);
-        if (scenario != null) {
-            scenario.setTestVMOutput(lastTestVMOutput);
-        }
-        System.out.println();
     }
 
     private void runFlagVM(List<String> additionalFlags) {
@@ -545,7 +548,7 @@ public class TestFramework {
         }
     }
 
-    private void runTestVM(List<String> additionalFlags) {
+    private void runTestVM(List<String> additionalFlags, Scenario scenario) {
         List<String> cmds = prepareTestVMFlags(additionalFlags);
         if (VERIFY_IR) {
             // We only need the socket if we are doing IR verification.
@@ -564,10 +567,17 @@ public class TestFramework {
         }
 
         lastTestVMOutput = oa.getOutput();
+        if (scenario != null) {
+            scenario.setTestVMOutput(lastTestVMOutput);
+        }
         checkTestVMExitCode(oa);
         if (VERIFY_IR) {
             IRMatcher irMatcher = new IRMatcher(lastTestVMOutput, socket.getOutput(), testClass);
             irMatcher.applyRules();
+        } else {
+            System.out.println("IR Verification disabled either through explicitly setting -DVerify=false or due to " +
+                               "not running a debug build, running with -Xint, or other VM flags that make the verification " +
+                               "inaccurate or impossible (e.g. using -XX:CompileThreshold, running with C1 only etc.).");
         }
     }
 
@@ -601,10 +611,10 @@ public class TestFramework {
             cmds.add(socket.getPortPropertyFlag());
         }
 
-        cmds.add(TestFrameworkExecution.class.getCanonicalName());
-        cmds.add(testClass.getCanonicalName());
+        cmds.add(TestFrameworkExecution.class.getName());
+        cmds.add(testClass.getName());
         if (helperClasses != null) {
-            helperClasses.forEach(c -> cmds.add(c.getCanonicalName()));
+            helperClasses.forEach(c -> cmds.add(c.getName()));
         }
         return cmds;
     }
@@ -683,7 +693,9 @@ class TestFrameworkSocket {
     private Thread socketThread;
     private ServerSocket serverSocket;
 
-    TestFrameworkSocket() {
+    private static TestFrameworkSocket singleton = null;
+
+    private TestFrameworkSocket() {
         try {
             serverSocket = new ServerSocket(0);
         } catch (IOException e) {
@@ -694,6 +706,14 @@ class TestFrameworkSocket {
             System.out.println("TestFramework server socket uses port " + port);
         }
         serverPortPropertyFlag = "-D" + SERVER_PORT_PROPERTY + "=" + port;
+    }
+
+    public static TestFrameworkSocket getSocket() {
+        if (singleton == null || singleton.serverSocket.isClosed()) {
+            singleton = new TestFrameworkSocket();
+            return singleton;
+        }
+        return singleton;
     }
 
     public String getPortPropertyFlag() {

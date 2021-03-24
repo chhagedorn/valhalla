@@ -148,6 +148,12 @@ public class TestFrameworkExecution {
             this.helperClasses = new HashSet<>();
 
             for (Class<?> helperClass : helperClasses) {
+                if (Arrays.stream(testClass.getDeclaredClasses()).anyMatch(c -> c == helperClass)) {
+                    // Nested class of test class is automatically treated as helper class
+                    TestFormat.failNoThrow("Nested " + helperClass + " inside test " + testClass + " is implicitly"
+                                           + " treated as helper class and does not need to be specified as such.");
+                    continue;
+                }
                 TestRun.check(!this.helperClasses.contains(helperClass), "Cannot add the same class twice: " + helperClass);
                 this.helperClasses.add(helperClass);
             }

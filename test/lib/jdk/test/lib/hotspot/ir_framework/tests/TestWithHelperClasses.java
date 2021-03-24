@@ -57,6 +57,14 @@ public class TestWithHelperClasses {
             Asserts.assertTrue(e.getMessage().contains("Cannot specify test class jdk.test.lib.hotspot.ir_framework." +
                                                        "tests.TestAsHelper as helper class, too"));
         }
+
+        try {
+            TestFramework.runWithHelperClasses(TestWithHelperClasses.class, NestedHelper.class);
+            shouldNotReach();
+        } catch (TestFormatException e) {
+            Asserts.assertTrue(e.getMessage().contains("Nested class"));
+            Asserts.assertTrue(e.getMessage().contains("TestWithHelperClasses$NestedHelper inside test class"));
+        }
     }
 
     public static void  shouldNotReach() {

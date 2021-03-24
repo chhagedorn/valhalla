@@ -44,8 +44,18 @@ public class TestFrameworkExecution {
         try {
             WHITE_BOX = WhiteBox.getWhiteBox();
         } catch (UnsatisfiedLinkError e) {
-            System.err.println("Did you call a test-related interface method from TestFramework in main() of your test? " +
-                               "Make sure to only call setup/run methods and no checks/assertions from main() of your test!");
+            System.err.println("""
+                               ##########################################################
+                                - Did you call a test-related interface method from 
+                                  TestFramework in main() of your test? Make sure to 
+                                  only call setup/run methods and no checks or 
+                                  assertions from main() of your test!
+                                - Are you rerunning the test VM (TestFrameworkExecution)
+                                  directly after a JTreg run? Make sure to start it
+                                  from within JTwork/scratch and with the flag 
+                                  -DReproduce=true!
+                               ##########################################################
+                               """);
             throw e;
         }
     }
@@ -78,7 +88,7 @@ public class TestFrameworkExecution {
     private final HashMap<String, Method> testMethodMap = new HashMap<>();
     private final List<String> excludeList;
     private final List<String> testList;
-    private List<Class<?>> helperClasses = null;
+    private Set<Class<?>> helperClasses = null;
     private final IREncodingPrinter irMatchRulePrinter;
     private final Class<?> testClass;
     private final Map<Executable, CompLevel> forceCompileMap = new HashMap<>();
@@ -135,7 +145,7 @@ public class TestFrameworkExecution {
         Class<?>[] helperClasses = getHelperClasses(args);
         if (helperClasses != null) {
             TestRun.check(Arrays.stream(helperClasses).noneMatch(Objects::isNull), "A Helper class cannot be null");
-            this.helperClasses = new ArrayList<>();
+            this.helperClasses = new HashSet<>();
 
             for (Class<?> helperClass : helperClasses) {
                 TestRun.check(!this.helperClasses.contains(helperClass), "Cannot add the same class twice: " + helperClass);
@@ -174,6 +184,8 @@ public class TestFrameworkExecution {
         if (helperClasses != null) {
             for (Class<?> helperClass : helperClasses) {
                 // Process the helper classes and apply the explicit compile commands
+                TestFormat.checkNoThrow(helperClass != testClass,
+                                        "Cannot specify test " + testClass + " as helper class, too.");
                 checkHelperClass(helperClass);
                 processControlAnnotations(helperClass);
             }
@@ -194,7 +206,7 @@ public class TestFrameworkExecution {
         Method[] methods = c.getDeclaredMethods();
         for (Method m : methods) {
             TestFormat.checkNoThrow(getAnnotation(m, Test.class) == null,
-                                    "Cannot use @Test annotation in " + clazzType + " class: " + m);
+                                    "Cannot use @Test annotation in " + clazzType + " " + c + " at " + m);
         }
     }
 
@@ -452,7 +464,7 @@ public class TestFrameworkExecution {
         }
 
         if (PRINT_VALID_IR_RULES) {
-            irMatchRulePrinter.emitRuleEncoding(m);
+            irMatchRulePrinter.emitRuleEncoding(m, testAnno.compLevel());
         }
 
         if (!XCOMP) {

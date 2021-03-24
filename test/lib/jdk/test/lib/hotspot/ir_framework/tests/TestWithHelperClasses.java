@@ -23,39 +23,44 @@
 
 package jdk.test.lib.hotspot.ir_framework.tests;
 
-import jdk.test.lib.hotspot.ir_framework.CompLevel;
-import jdk.test.lib.hotspot.ir_framework.ForceCompile;
-import jdk.test.lib.hotspot.ir_framework.Test;
-import jdk.test.lib.hotspot.ir_framework.TestFramework;
+import jdk.test.lib.hotspot.ir_framework.*;
 import jdk.test.lib.Asserts;
 
 public class TestWithHelperClasses {
 
     public static void main(String[] args) {
-        int exceptionsCaught = 0;
         TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class, Helper2.class);
         try {
             TestFramework.runWithHelperClasses(TestWithHelperClasses.class, Helper1.class);
-        } catch (Exception e) {
-            Asserts.assertFalse(e.getMessage().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper1.foo() should have been C2 compiled"));
+            shouldNotReach();
+        } catch (TestVMException e) {
+            Asserts.assertFalse(e.getExceptionInfo().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper1.foo() should have been C2 compiled"));
             Asserts.assertFalse(TestFramework.getLastTestVMOutput().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper1.foo() should have been C2 compiled"));
             Asserts.assertTrue(TestFramework.getLastTestVMOutput().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
-            Asserts.assertTrue(e.getMessage().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
+            Asserts.assertTrue(e.getExceptionInfo().contains("public static void jdk.test.lib.hotspot.ir_framework.tests.Helper2.foo() should have been C2 compiled"));
             Asserts.assertFalse(TestFramework.getLastTestVMOutput().contains("Should not be executed"));
-            Asserts.assertFalse(e.getMessage().contains("Should not be executed"));
-            exceptionsCaught++;
-        }
-        try {
-            TestFramework.runWithHelperClasses(BadHelperClasses.class, BadHelper.class);
-        } catch (Exception e) {
-            Asserts.assertTrue(e.getMessage().contains("Cannot use @Test annotation in helper class:"));
-            Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
-            exceptionsCaught++;
+            Asserts.assertFalse(e.getExceptionInfo().contains("Should not be executed"));
         }
 
-        if (exceptionsCaught != 2) {
-            throw new RuntimeException("Did not catch " + exceptionsCaught + " exceptions!");
+        try {
+            TestFramework.runWithHelperClasses(BadHelperClasses.class, BadHelper.class);
+            shouldNotReach();
+        } catch (TestFormatException e) {
+            Asserts.assertTrue(e.getMessage().contains("Cannot use @Test annotation in helper class"));
+            Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
         }
+
+        try {
+            TestFramework.runWithHelperClasses(TestAsHelper.class, TestAsHelper.class);
+            shouldNotReach();
+        } catch (TestFormatException e) {
+            Asserts.assertTrue(e.getMessage().contains("Cannot specify test class jdk.test.lib.hotspot.ir_framework." +
+                                                       "tests.TestAsHelper as helper class, too"));
+        }
+    }
+
+    public static void  shouldNotReach() {
+        throw new RuntimeException("should not reach");
     }
 
     @Test
@@ -80,6 +85,12 @@ public class TestWithHelperClasses {
             throw new RuntimeException("Should not be executed");
         }
     }
+}
+
+class TestAsHelper {
+
+    @Test
+    public void foo() {}
 }
 
 class Helper1 {

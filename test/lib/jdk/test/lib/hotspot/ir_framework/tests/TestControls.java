@@ -80,6 +80,7 @@ public class TestControls {
         Asserts.assertTrue(m.find());
 
         new TestFramework(TestWarmup.class).setDefaultWarmup(500).start();
+        TestFramework.run(ExplicitSkip.class);
     }
 
     @Test
@@ -353,5 +354,23 @@ class TestWarmup {
                 throw new RuntimeException("Must be 501 but was " + iFld2);
             }
         }
+    }
+}
+
+
+class ExplicitSkip {
+    int iFld;
+
+    // Test skipped and thus also no IR verification should be done.
+    @Test(compLevel = CompLevel.SKIP)
+    @IR(counts = {IRNode.STORE_I, "1"})
+    public int test(int x) {
+        iFld = x;
+        return x;
+    }
+
+    @Run(test = "test")
+    public void run(RunInfo info) {
+        test(34);
     }
 }

@@ -56,21 +56,23 @@ class IREncodingPrinter {
      * - indices of all @IR rules that should be applied, separated by a comma
      * - "-1" if no @IR rule should not be applied
      */
-    public void emitRuleEncoding(Method m) {
+    public void emitRuleEncoding(Method m, CompLevel compLevel) {
         method = m;
         int i = 0;
         ArrayList<Integer> validRules = new ArrayList<>();
         IR[] irAnnos = m.getAnnotationsByType(IR.class);
-        for (IR irAnno : irAnnos) {
-            ruleIndex = i + 1;
-            try {
-                if (shouldApplyIrRule(irAnno)) {
-                    validRules.add(i);
+        if (compLevel != CompLevel.SKIP) {
+            for (IR irAnno : irAnnos) {
+                ruleIndex = i + 1;
+                try {
+                    if (shouldApplyIrRule(irAnno)) {
+                        validRules.add(i);
+                    }
+                } catch (TestFormatException e) {
+                    // Catch logged failure and continue to check other IR annotations.
                 }
-            } catch (TestFormatException e) {
-                // Catch logged failure and continue to check other IR annotations.
+                i++;
             }
-            i++;
         }
         if (irAnnos.length != 0) {
             output.append(m.getName());

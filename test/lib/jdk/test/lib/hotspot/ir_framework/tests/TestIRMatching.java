@@ -210,17 +210,14 @@ public class TestIRMatching {
     }
 
     private static void runWithArguments(Class<?> clazz, String... args) {
-        TestFramework.runWithScenarios(clazz, new Scenario(0, args));
+        TestFramework.runWithFlags(clazz, args);
     }
 
     private static void runCheck(String[] args , Constraint... constraints) {
         try {
-            Scenario s = new Scenario(0, args);
-            TestFramework.runWithScenarios(constraints[0].getKlass(), s); // All constraints have the same class.
+            TestFramework.runWithFlags(constraints[0].getKlass(), args); // All constraints have the same class.
             shouldNotReach();
-        } catch (ShouldNotReachException e) {
-            throw e;
-        } catch (RuntimeException e) {
+        } catch (IRViolationException e) {
             checkConstraints(e, constraints);
         }
     }
@@ -229,9 +226,7 @@ public class TestIRMatching {
         try {
             TestFramework.run(constraints[0].getKlass()); // All constraints have the same class.
             shouldNotReach();
-        } catch (ShouldNotReachException e) {
-            throw e;
-        } catch (RuntimeException e) {
+        } catch (IRViolationException e) {
             checkConstraints(e, constraints);
         }
     }
@@ -252,10 +247,9 @@ public class TestIRMatching {
     // Single constraint
     private static void runFailOnTestsArgs(Constraint constraint, String... args) {
         try {
-            Scenario scenario = new Scenario(0, args);
-            TestFramework.runWithScenarios(constraint.getKlass(), scenario); // All constraints have the same class.
+            TestFramework.runWithFlags(constraint.getKlass(), args); // All constraints have the same class.
             shouldNotReach();
-        } catch (TestRunException e) {
+        } catch (IRViolationException e) {
             constraint.checkConstraint(e);
         }
     }

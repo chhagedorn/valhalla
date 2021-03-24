@@ -312,7 +312,12 @@ public class TestFramework {
     public void start() {
         installWhiteBox();
         if (scenarios == null) {
-            start(null);
+            try {
+                start(null);
+            } catch (TestVMException e) {
+                System.err.println("\n" + e.getExceptionInfo());
+                throw e;
+            }
         } else {
             startWithScenarios();
         }
@@ -445,27 +450,42 @@ public class TestFramework {
     }
 
     private void reportScenarioFailures(Map<Scenario, Exception> exceptionMap) {
-        StringBuilder builder = new StringBuilder("The following scenarios have failed: #");
-        builder.append(exceptionMap.keySet().stream().map(s -> String.valueOf(s.getIndex())).
-                collect(Collectors.joining(", #"))).append("\n\n");
+        String failedScenarios = "The following scenarios have failed: #"
+                                 + exceptionMap.keySet().stream()
+                                               .map(s -> String.valueOf(s.getIndex()))
+                                               .collect(Collectors.joining(", #"));
+        StringBuilder builder = new StringBuilder(failedScenarios);
+        builder.append("\n\n");
         for (Map.Entry<Scenario, Exception> entry : exceptionMap.entrySet()) {
-            Scenario scenario = entry.getKey();
-            String title = "Stacktrace for Scenario #" + scenario.getIndex();
-            builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
-            builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n\n");
             Exception e = entry.getValue();
+            Scenario scenario = entry.getKey();
+            String errorMsg = "";
+            if (scenario != null) {
+                errorMsg = getScenarioTitleAndFlags(scenario);
+            }
             if (e instanceof IRViolationException) {
                 // For IR violations, only show the actual violations and not the (uninteresting) stack trace.
                 builder.append(e.getMessage());
+            } else if (e instanceof TestVMException) {
+                builder.append(errorMsg).append(((TestVMException) e).getExceptionInfo());
             } else {
-                // Print stack trace if it was not a format violation or test run exception
+                // Print stack trace otherwise
                 StringWriter errors = new StringWriter();
                 e.printStackTrace(new PrintWriter(errors));
                 builder.append(errors.toString());
             }
             builder.append("\n");
         }
-        TestRun.fail(builder.toString());
+        System.err.println(builder.toString());
+        TestRun.fail(failedScenarios + ". Please check stderr for more information.");
+    }
+
+    private static String getScenarioTitleAndFlags(Scenario scenario) {
+        StringBuilder builder = new StringBuilder();
+        String title = "Scenario #" + scenario.getIndex();
+        builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
+        builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n\n");
+        return builder.toString();
     }
 
     /**
@@ -491,6 +511,7 @@ public class TestFramework {
             }
             System.out.println("Run Flag VM:");
             runFlagVM(additionalFlags);
+
             String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
             System.out.println("Run Test VM" + flagsString + ":");
             runTestVM(additionalFlags, scenario);
@@ -556,21 +577,22 @@ public class TestFramework {
         }
 
         OutputAnalyzer oa;
+        ProcessBuilder process = ProcessTools.createJavaProcessBuilder(cmds);
         try {
             // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
             // Use executeProcess instead of executeTestJvm as we have already added the JTreg VM and
             // Java options in prepareTestVMFlags().
-            oa = ProcessTools.executeProcess(ProcessTools.createJavaProcessBuilder(cmds));
+            oa = ProcessTools.executeProcess(process);
         } catch (Exception e) {
             fail("Error while executing Test VM", e);
             return;
         }
-
+        JVMOutput output = new JVMOutput(oa, scenario, process);
         lastTestVMOutput = oa.getOutput();
         if (scenario != null) {
             scenario.setTestVMOutput(lastTestVMOutput);
         }
-        checkTestVMExitCode(oa);
+        checkTestVMExitCode(output);
         if (VERIFY_IR) {
             IRMatcher irMatcher = new IRMatcher(lastTestVMOutput, socket.getOutput(), testClass);
             irMatcher.applyRules();
@@ -637,29 +659,27 @@ public class TestFramework {
         return new ArrayList<>(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
     }
 
-    private static void checkTestVMExitCode(OutputAnalyzer oa) {
-        final int exitCode = oa.getExitValue();
+    private static void checkTestVMExitCode(JVMOutput vmOutput) {
+        final int exitCode = vmOutput.getExitCode();
         if (VERBOSE && exitCode == 0) {
             System.out.println("--- OUTPUT TestFramework test VM ---");
-            System.out.println(oa.getOutput());
+            System.out.println(vmOutput.getOutput());
         }
 
         if (exitCode != 0) {
-            throwTestException(oa, exitCode);
+            throwTestVMException(vmOutput);
         }
     }
 
-    private static void throwTestException(OutputAnalyzer oa, int exitCode) {
-        String stdErr = oa.getStderr();
+    private static void throwTestVMException(JVMOutput vmOutput) {
+        String stdErr = vmOutput.getStderr();
         if (stdErr.contains("TestFormat.reportIfAnyFailures")) {
             Pattern pattern = Pattern.compile("Violations \\(\\d+\\)[\\s\\S]*(?=/============/)");
             Matcher matcher = pattern.matcher(stdErr);
             TestFramework.check(matcher.find(), "Must find violation matches");
             throw new TestFormatException("\n\n" + matcher.group());
         } else {
-            System.err.println("--- Standard Output TestFramework test VM ---");
-            System.err.println(oa.getStdout());
-            throw new TestRunException("\nTestFramework test VM exited with " + exitCode + "\n\nError Output:\n" + stdErr);
+            throw new TestVMException(vmOutput);
         }
     }
 
@@ -678,6 +698,42 @@ public class TestFramework {
     }
 }
 
+class JVMOutput {
+    private final Scenario scenario;
+    private final OutputAnalyzer oa;
+    private final ProcessBuilder process;
+
+    JVMOutput(OutputAnalyzer oa, Scenario scenario, ProcessBuilder process) {
+        this.oa = oa;
+        this.scenario = scenario;
+        this.process = process;
+    }
+
+    public Scenario getScenario() {
+        return scenario;
+    }
+
+    public String getCommandLine() {
+        return String.join(" ", process.command());
+    }
+
+    public int getExitCode() {
+        return oa.getExitValue();
+    }
+
+    public String getOutput() {
+        return oa.getOutput();
+    }
+
+    public String getStdout() {
+        return oa.getStdout();
+    }
+
+    public String getStderr() {
+        return oa.getStderr();
+    }
+}
+
 /**
  * Dedicated socket to send data from flag and test VM back to the driver VM.
  */
@@ -686,11 +742,11 @@ class TestFrameworkSocket {
 
     // Static fields used by flag and test VM only.
     private static final int SERVER_PORT = Integer.getInteger(SERVER_PORT_PROPERTY, -1);
+    private static final boolean REPRODUCE = Boolean.getBoolean("Reproduce");
     private static final String HOSTNAME = null;
 
     private final String serverPortPropertyFlag;
     private FutureTask<String> socketTask;
-    private Thread socketThread;
     private ServerSocket serverSocket;
 
     private static TestFrameworkSocket singleton = null;
@@ -722,7 +778,7 @@ class TestFrameworkSocket {
 
     public void start() {
         socketTask = initSocketTask();
-        socketThread = new Thread(socketTask);
+        Thread socketThread = new Thread(socketTask);
         socketThread.start();
     }
 
@@ -752,22 +808,14 @@ class TestFrameworkSocket {
         }
     }
 
-    public void checkTerminated() {
-        try {
-            socketThread.join(5000);
-            if (socketThread.isAlive()) {
-                serverSocket.close();
-                TestFramework.fail("Socket thread was not terminated");
-            }
-        } catch (InterruptedException | IOException e) {
-            TestFramework.fail("Socket thread was not closed", e);
-        }
-    }
-
     /**
      * Only called by flag and test VM to write to server socket.
      */
     public static void write(String msg, String type) {
+        if (REPRODUCE) {
+            System.out.println("Debugging Test VM: Skip writing due to -DReproduce");
+            return;
+        }
         TestFramework.check(SERVER_PORT != -1, "Server port was not set correctly for flag and/or test VM "
                                               + "or method not called from flag or test VM");
         try (Socket socket = new Socket(HOSTNAME, SERVER_PORT);
@@ -775,7 +823,15 @@ class TestFrameworkSocket {
         ) {
             out.print(msg);
         } catch (Exception e) {
-            TestFramework.fail("Failed to write to socket", e);
+            String failMsg = """
+                             
+                             ###########################################################
+                              Did you directly run the test VM (TestFrameworkExecution) 
+                              to reproduce a bug?                                       
+                              => Append the flag -DReproduce=true and try again!        
+                             ###########################################################
+                             """;
+            TestRun.fail(failMsg, e);
         }
         if (TestFramework.VERBOSE) {
             System.out.println("Written " + type + " to socket:");

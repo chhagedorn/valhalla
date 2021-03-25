@@ -1,8 +1,49 @@
+/*
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.Utils;
 import jdk.test.lib.hotspot.ir_framework.*;
+
+// This class should not be moved.
+// TestGetfieldChains has hard codded line numbers for NamedRectangle methods
+class NamedRectangle {
+    Rectangle rect = new Rectangle();
+    String name = "";
+
+    static int getP1X(NamedRectangle nr) {
+        return nr.rect
+                .p1
+                .x;
+    }
+
+    static Point getP1(NamedRectangle nr) {
+        return nr.rect
+                .p1;
+    }
+}
 
 public class InlineTypes {
     public static final int  rI = Utils.getRandomInstance().nextInt() % 1000;
@@ -128,26 +169,10 @@ abstract class MyAbstract implements MyInterface {
 
 }
 
-final primitive class MyValueEmpty implements MyInterface {
+final primitive class MyValueEmpty extends MyAbstract {
     public long hash() { return 0; }
 
     public MyValueEmpty copy(MyValueEmpty other) { return other; }
-}
-
-class NamedRectangle {
-    Rectangle rect = new Rectangle();
-    String name = "";
-
-    static int getP1X(NamedRectangle nr) {
-        return nr.rect
-                .p1
-                .x;
-    }
-
-    static Point getP1(NamedRectangle nr) {
-        return nr.rect
-                .p1;
-    }
 }
 
 primitive class Point {
@@ -173,7 +198,7 @@ primitive class SimpleInlineType {
 }
 
 @ForceCompileClassInitializer
-final primitive class MyValue1 implements MyInterface {
+final primitive class MyValue1 extends MyAbstract {
     static int s;
     static final long sf = InlineTypes.rL;
     final int x;
@@ -341,7 +366,7 @@ final primitive class MyValue2Inline {
 }
 
 @ForceCompileClassInitializer
-final primitive class MyValue2 implements MyInterface {
+final primitive class MyValue2 extends MyAbstract {
     final int x;
     final byte y;
     final MyValue2Inline v;
@@ -641,7 +666,7 @@ final primitive class MyValue3 extends MyAbstract {
 
 // Inline type definition with too many fields to return in registers
 @ForceCompileClassInitializer
-final primitive class MyValue4 implements MyInterface {
+final primitive class MyValue4 extends MyAbstract {
     final MyValue3 v1;
     final MyValue3 v2;
 

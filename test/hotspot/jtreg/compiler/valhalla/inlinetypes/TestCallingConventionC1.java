@@ -40,6 +40,7 @@ import sun.hotspot.WhiteBox;
  * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConventionC1
  */
+
 public class TestCallingConventionC1 {
     public static void main(String[] args) {
         final Scenario[] scenarios = {
@@ -1979,13 +1980,12 @@ public class TestCallingConventionC1 {
         return test97_helper(p1, p2);
     }
 
-    @DontInline
-    @ForceCompile(CompLevel.C1)
+    @DontCompile
     public int test97_helper(Point p1, Point p2) {
         return p1.x + p1.y + p2.x + p2.y;
     }
 
-    @Run(test = "test97")
+    @ForceCompile(CompLevel.C1)
     public void test97_verifier(RunInfo info) {
         int count = info.isWarmUp() ? 1 : 20;
         for (int i=0; i<count; i++) {
@@ -1995,19 +1995,23 @@ public class TestCallingConventionC1 {
         }
     }
 
+    @Run(test = "test97")
+    public void run_test97_verifier(RunInfo info) {
+        test97_verifier(info);
+    }
+
     // CompLevel.C1->CompLevel.C2  - same as test97, except the callee is compiled by CompLevel.C2.
     @Test(compLevel = CompLevel.C2)
     public int test98(Point p1, Point p2) {
         return test98_helper(p1, p2);
     }
 
-    @DontInline
-    @ForceCompile(CompLevel.C1)
+    @DontCompile
     public int test98_helper(Point p1, Point p2) {
         return p1.x + p1.y + p2.x + p2.y;
     }
 
-    @Run(test = "test98")
+    @ForceCompile(CompLevel.C1)
     public void test98_verifier(RunInfo info) {
         int count = info.isWarmUp() ? 1 : 20;
         for (int i=0; i<count; i++) {
@@ -2017,19 +2021,23 @@ public class TestCallingConventionC1 {
         }
     }
 
+    @Run(test = "test98")
+    public void run_test98_verifier(RunInfo info) {
+        test98_verifier(info);
+    }
+
     // CompLevel.C1->CompLevel.C2  - same as test97, except the callee is a static method.
     @Test(compLevel = CompLevel.C1)
     public static int test99(Point p1, Point p2) {
         return test99_helper(p1, p2);
     }
 
-    @DontInline
-    @ForceCompile(CompLevel.C1)
+    @DontCompile
     public static int test99_helper(Point p1, Point p2) {
         return p1.x + p1.y + p2.x + p2.y;
     }
 
-    @Run(test = "test99")
+    @ForceCompile(CompLevel.C1)
     public void test99_verifier(RunInfo info) {
         int count = info.isWarmUp() ? 1 : 20;
         for (int i=0; i<count; i++) {
@@ -2039,6 +2047,10 @@ public class TestCallingConventionC1 {
         }
     }
 
+    @Run(test = "test99")
+    public void run_test99_verifier(RunInfo info) {
+        test99_verifier(info);
+    }
 
     // CompLevel.C2->CompLevel.C1 invokestatic, packing causes stack growth (1 extra stack word).
     // Make sure stack frame is set up properly for GC.
@@ -2270,8 +2282,7 @@ public class TestCallingConventionC1 {
         return intf.func1(a, b);
     }
 
-    @Run(test = "test107")
-    @Warmup(0)
+    @ForceCompile
     public void test107_verifier(RunInfo info) {
         Intf intf1 = new MyImplVal1X();
         Intf intf2 = new MyImplVal2X();
@@ -2294,14 +2305,19 @@ public class TestCallingConventionC1 {
         }
     }
 
+    @Run(test = "test107")
+    @Warmup(0)
+    public void run_test107_verifier(RunInfo info) {
+        test107_verifier(info);
+    }
+
     // Same as test107, except we call MyImplVal2X.func2 (compiled by CompLevel.C1, VVEP_RO != VVEP)
     @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
     public int test108(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
     }
 
-    @Run(test = "test108")
-    @Warmup(0)
+    @ForceCompile
     public void test108_verifier(RunInfo info) {
         Intf intf1 = new MyImplVal1X();
         Intf intf2 = new MyImplVal2X();
@@ -2324,14 +2340,20 @@ public class TestCallingConventionC1 {
         }
     }
 
+    @Run(test = "test108")
+    @Warmup(0)
+    public void run_test108_verifier(RunInfo info) {
+        test108_verifier(info);
+    }
+
+    /*
     // Same as test107, except we call MyImplPojo3.func2 (compiled by CompLevel.C1, VVEP_RO == VEP)
     @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
     public int test109(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
     }
 
-    @Run(test = "test109")
-    @Warmup(0)
+    @ForceCompile
     public void test109_verifier(RunInfo info) {
         Intf intf1 = new MyImplPojo0();
         Intf intf2 = new MyImplPojo3();
@@ -2353,4 +2375,11 @@ public class TestCallingConventionC1 {
             }
         }
     }
+
+    @Run(test = "test109")
+    @Warmup(0)
+    public void run_test109_verifier(RunInfo info) {
+        test109_verifier(info);
+    }
+    */
 }

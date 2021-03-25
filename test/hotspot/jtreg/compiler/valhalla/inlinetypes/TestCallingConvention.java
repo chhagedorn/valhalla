@@ -78,13 +78,13 @@ public class TestCallingConvention {
         scenarios[4].addFlags("-XX:-UseTLAB");
 
         testFramework.addScenarios(scenarios)
-                .addHelperClasses(MyValue1.class,
-                                  MyValue2.class,
-                                  MyValue2Inline.class,
-                                  MyValue3.class,
-                                  MyValue3Inline.class,
-                                  MyValue4.class)
-                .start();
+                    .addHelperClasses(MyValue1.class,
+                                      MyValue2.class,
+                                      MyValue2Inline.class,
+                                      MyValue3.class,
+                                      MyValue3Inline.class,
+                                      MyValue4.class)
+                    .start();
     }
 
     // Helper methods and classes
@@ -183,7 +183,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test1")
-    public void test1_verifier(RunInfo info) {
+    public void test1_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test1(v);
         Asserts.assertEQ(result, v.hashInterpreted());
@@ -209,7 +209,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test3")
-    public void test3_verifier(RunInfo info) {
+    public void test3_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test3(rL, v, 2*rL);
         Asserts.assertEQ(result, v.hashInterpreted() - rL);
@@ -222,7 +222,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test4")
-    public void test4_verifier(RunInfo info) {
+    public void test4_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test4(rI, v, rL);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
@@ -235,7 +235,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test5")
-    public void test5_verifier(RunInfo info) {
+    public void test5_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test5(rL, v, rI);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
@@ -248,7 +248,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test6")
-    public void test6_verifier(RunInfo info) {
+    public void test6_verifier() {
         MyValue1 v1 = MyValue1.createWithFieldsDontInline(rI, rL);
         MyValue2 v2 = MyValue2.createWithFieldsInline(rI, rD);
         long result = test6(rL, v1, rI, v2);
@@ -268,7 +268,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test7")
-    public void test7_verifier(RunInfo info) {
+    public void test7_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test7(v);
         Asserts.assertEQ(result, v.hashInterpreted());
@@ -286,7 +286,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test8")
-    public void test8_verifier(RunInfo info) {
+    public void test8_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test8(rI, v, 2*rI);
         Asserts.assertEQ(result, v.hashInterpreted() - rI);
@@ -304,7 +304,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test9")
-    public void test9_verifier(RunInfo info) {
+    public void test9_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test9(rL, v, 2*rL);
         Asserts.assertEQ(result, v.hashInterpreted() - rL);
@@ -322,12 +322,11 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test10")
-    public void test10_verifier(RunInfo info) {
+    public void test10_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test10(rI, v, rL);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
     }
-
 
     @DontCompile
     public long test11_interp(long l, MyValue2 v, int i) {
@@ -341,7 +340,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test11")
-    public void test11_verifier(RunInfo info) {
+    public void test11_verifier() {
         MyValue2 v = MyValue2.createWithFieldsInline(rI, rD);
         long result = test11(rL, v, rI);
         Asserts.assertEQ(result, v.hashInterpreted() + rL + rI);
@@ -359,7 +358,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test12")
-    public void test12_verifier(RunInfo info) {
+    public void test12_verifier() {
         MyValue1 v1 = MyValue1.createWithFieldsDontInline(rI, rL);
         MyValue2 v2 = MyValue2.createWithFieldsInline(rI, rD);
         long result = test12(rL, v1, rI, v2);
@@ -372,7 +371,7 @@ public class TestCallingConvention {
         if (deopt) {
             // uncommon trap
             Method m = testFramework.getTestMethod("test13");
-            testFramework.deoptimize(m);
+            TestFramework.deoptimize(m);
         }
         return v.hash() + va[0].hash() + va[1].hash();
     }
@@ -399,7 +398,7 @@ public class TestCallingConvention {
         if (deopt) {
             // uncommon trap
             Method m = testFramework.getTestMethod("test14");
-            testFramework.deoptimize(m);
+            TestFramework.deoptimize(m);
         }
         return MyValue2.createWithFieldsInline(rI, rD);
     }
@@ -432,7 +431,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test15")
-    public void test15_verifier(RunInfo info) {
+    public void test15_verifier() {
         test15();
         test15_vt.verify(test15_vt2);
     }
@@ -447,7 +446,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test16")
-    public void test16_verifier(RunInfo info) {
+    public void test16_verifier() {
         MyValue3 vt = test16();
         test16_vt.verify(vt);
     }
@@ -471,9 +470,9 @@ public class TestCallingConvention {
     @Run(test = "test17")
     public void test17_verifier(RunInfo info) throws Exception {
         Method helper_m = getClass().getDeclaredMethod("test17_comp");
-        if (!info.isWarmUp() && testFramework.isCompiled(helper_m)) {
-            testFramework.compile(helper_m, CompLevel.C2);
-            testFramework.assertCompiledByC2(helper_m);
+        if (!info.isWarmUp() && TestFramework.isCompiled(helper_m)) {
+            TestFramework.compile(helper_m, CompLevel.C2);
+            TestFramework.assertCompiledByC2(helper_m);
         }
 
         test17();
@@ -496,7 +495,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test18")
-    public void test18_verifier(RunInfo info) {
+    public void test18_verifier() {
         test18();
         test18_vt.verify(test18_vt2);
     }
@@ -509,7 +508,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test19")
-    public void test19_verifier(RunInfo info) {
+    public void test19_verifier() {
         MyValue4 vt = test19();
         test19_vt.verify(vt);
     }
@@ -530,14 +529,13 @@ public class TestCallingConvention {
     @Run(test = "test20")
     public void test20_verifier(RunInfo info) throws Exception {
         Method helper_m = getClass().getDeclaredMethod("test20_comp");
-        if (!info.isWarmUp() && testFramework.isCompiled(helper_m)) {
-            testFramework.compile(helper_m, CompLevel.C2);
-            testFramework.assertCompiledByC2(helper_m);
+        if (!info.isWarmUp() && TestFramework.isCompiled(helper_m)) {
+            TestFramework.compile(helper_m, CompLevel.C2);
+            TestFramework.assertCompiledByC2(helper_m);
         }
         test20();
         test20_vt.verify(test20_vt2);
     }
-
 
     // Test no result from inlined method for incremental inlining
     final MyValue3 test21_vt = MyValue3.create();
@@ -555,7 +553,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test21")
-    public void test21_verifier(RunInfo info) {
+    public void test21_verifier() {
         MyValue3 vt = test21();
         test21_vt.verify(vt);
     }
@@ -569,7 +567,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test22")
-    public void test22_verifier(RunInfo info) {
+    public void test22_verifier() {
         MyValue3 vt = test22();
         test22_vt.verify(vt);
     }
@@ -640,7 +638,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test26")
-    public void test26_verifier(RunInfo info) {
+    public void test26_verifier() {
         MyValue2.ref vt = test26(true);
         Asserts.assertEQ(vt, null);
         vt = test26(false);
@@ -653,7 +651,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test27")
-    public void test27_verifier(RunInfo info) {
+    public void test27_verifier() {
         Test27Value3 val3 = new Test27Value3(rI);
         Test27Value2 val2 = new Test27Value2(val3);
         Test27Value1 val1 = new Test27Value1(val2);
@@ -670,7 +668,7 @@ public class TestCallingConvention {
 
     @Run(test = "test28")
     @Warmup(0)
-    public void test28_verifier(RunInfo info) {
+    public void test28_verifier() {
         String result = test28();
     }
 
@@ -683,7 +681,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test29")
-    public void test29_verifier(RunInfo info) throws Exception {
+    public void test29_verifier() throws Exception {
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test29").invoke(this);
         test29_vt.verify(vt);
     }
@@ -696,7 +694,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test30")
-    public void test30_verifier(RunInfo info) throws Exception {
+    public void test30_verifier() throws Exception {
         MyValue3[] array = new MyValue3[1];
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test30", MyValue3[].class).invoke(this, (Object)array);
         array[0].verify(vt);
@@ -712,7 +710,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test31")
-    public void test31_verifier(RunInfo info) throws Exception {
+    public void test31_verifier() throws Exception {
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test31").invoke(this);
         test31_vt.verify(vt);
     }
@@ -725,7 +723,7 @@ public class TestCallingConvention {
         if (deopt) {
             // uncommon trap
             Method m = testFramework.getTestMethod("test32");
-            testFramework.deoptimize(m);
+            TestFramework.deoptimize(m);
         }
         return MyValue2.createWithFieldsInline(rI+32, rD);
     }
@@ -749,7 +747,7 @@ public class TestCallingConvention {
         if (deopt) {
             // uncommon trap
             Method m = testFramework.getTestMethod("test33");
-            testFramework.deoptimize(m);
+            TestFramework.deoptimize(m);
         }
         return MyValue2.createWithFieldsInline(rI+33, rD);
     }
@@ -820,7 +818,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test35")
-    public void test35_verifier(RunInfo info) {
+    public void test35_verifier() {
         MyValue2 vt = MyValue2.createWithFieldsInline(rI, rD);
         long result = test35(vt, rI, rI, rI, rI);
         Asserts.assertEQ(result, vt.hash()+10004*rI);
@@ -839,7 +837,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test36")
-    public void test36_verifier(RunInfo info) throws Exception {
+    public void test36_verifier() throws Exception {
         MyValue3 vt = (MyValue3)TestCallingConvention.class.getDeclaredMethod("test36").invoke(this);
         test36_vt.verify(vt);
     }
@@ -852,7 +850,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test37")
-    public void test37_verifier(RunInfo info) throws Throwable {
+    public void test37_verifier() throws Throwable {
         Test37Value vt = new Test37Value();
         int res = test37(vt);
         Asserts.assertEQ(res, rI);
@@ -866,7 +864,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test38")
-    public void test38_verifier(RunInfo info) {
+    public void test38_verifier() {
         MyValueEmpty vt = new MyValueEmpty();
         MyValueEmpty res = test38(vt);
         Asserts.assertEQ(res, vt);
@@ -956,7 +954,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test39")
-    public void test39_verifier(RunInfo info) {
+    public void test39_verifier() {
         LargeValueWithOops vt = new LargeValueWithOops();
         LargeValueWithOops res = test39(vt);
         Asserts.assertEQ(res, vt);
@@ -969,12 +967,11 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test40")
-    public void test40_verifier(RunInfo info) {
+    public void test40_verifier() {
         LargeValueWithoutOops vt = new LargeValueWithoutOops();
         LargeValueWithoutOops res = test40(vt);
         Asserts.assertEQ(res, vt);
     }
-
 
     // Test passing/returning an empty inline type together with non-empty
     // inline types such that only some inline type arguments are scalarized.
@@ -985,7 +982,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test41")
-    public void test41_verifier(RunInfo info) {
+    public void test41_verifier() {
         MyValueEmpty res = test41(MyValue1.default, MyValueEmpty.default, MyValue1.default);
         Asserts.assertEQ(res, MyValueEmpty.default);
     }
@@ -1001,7 +998,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test42")
-    public void test42_verifier(RunInfo info) {
+    public void test42_verifier() {
         MyValueEmpty empty = test42();
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
@@ -1014,7 +1011,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test43")
-    public void test43_verifier(RunInfo info) {
+    public void test43_verifier() {
         EmptyContainer c = test43(EmptyContainer. default);
         Asserts.assertEquals(c, EmptyContainer.default);
     }
@@ -1029,7 +1026,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test44")
-    public void test44_verifier(RunInfo info) {
+    public void test44_verifier() {
         MixedContainer c = test44();
         Asserts.assertEquals(c, new MixedContainer(rI, EmptyContainer.default));
     }
@@ -1043,7 +1040,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test45")
-    public void test45_verifier(RunInfo info) {
+    public void test45_verifier() {
         EmptyContainer empty = test45(EmptyContainer.default);
         Asserts.assertEquals(empty, EmptyContainer.default);
     }
@@ -1057,7 +1054,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test46")
-    public void test46_verifier(RunInfo info) {
+    public void test46_verifier() {
         MyValueEmpty empty = test46(EmptyContainer.default, MixedContainer.default, MyValueEmpty.default);
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
@@ -1070,7 +1067,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test47")
-    public void test47_verifier(RunInfo info) {
+    public void test47_verifier() {
         MyValueEmpty empty = test47(MyValueEmpty.default);
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
@@ -1083,7 +1080,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test48")
-    public void test48_verifier(RunInfo info) {
+    public void test48_verifier() {
         MyValueEmpty empty = test48(EmptyContainer.default);
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
@@ -1107,7 +1104,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test49")
-    public void test49_verifier(RunInfo info) {
+    public void test49_verifier() {
         test49(true);
         test49(false);
     }
@@ -1135,7 +1132,7 @@ public class TestCallingConvention {
     }
 
     @Run(test = "test50")
-    public void test50_verifier(RunInfo info) {
+    public void test50_verifier() {
         test50(true);
         test50(false);
     }

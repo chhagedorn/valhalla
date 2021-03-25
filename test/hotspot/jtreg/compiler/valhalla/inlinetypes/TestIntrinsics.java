@@ -59,12 +59,12 @@ public class TestIntrinsics {
         scenarios[3].addFlags("-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
         scenarios[4].addFlags("-XX:-MonomorphicArrayCheck");
 
-        TestFramework testFramework = new TestFramework(TestIntrinsics.class);
-        testFramework.addScenarios(scenarios)
-                .addHelperClasses(MyValue1.class,
-                        MyValue2.class,
-                        MyValue2Inline.class)
-                .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class)
+                    .start();
     }
 
     // Test correctness of the Class::isAssignableFrom intrinsic
@@ -74,7 +74,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test1")
-    public void test1_verifier(RunInfo info) {
+    public void test1_verifier() {
         Asserts.assertTrue(test1(java.util.AbstractList.class, java.util.ArrayList.class), "test1_1 failed");
         Asserts.assertTrue(test1(MyValue1.ref.class, MyValue1.ref.class), "test1_2 failed");
         Asserts.assertTrue(test1(MyValue1.class, MyValue1.class), "test1_3 failed");
@@ -105,7 +105,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test2")
-    public void test2_verifier(RunInfo info) {
+    public void test2_verifier() {
         Asserts.assertTrue(test2(), "test2 failed");
     }
 
@@ -116,7 +116,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test3")
-    public void test3_verifier(RunInfo info) {
+    public void test3_verifier() {
         Asserts.assertTrue(test3(Object.class) == null, "test3_1 failed");
         Asserts.assertTrue(test3(MyValue1.ref.class) == MyAbstract.class, "test3_2 failed");
         Asserts.assertTrue(test3(MyValue1.val.class) == MyValue1.ref.class, "test3_3 failed");
@@ -125,7 +125,7 @@ public class TestIntrinsics {
 
     // Verify that Class::getSuperclass checks with statically known classes are folded
     @Test
-    @IR(failOn = {LOADK})
+    @IR(failOn = LOADK)
     public boolean test4() {
         boolean check1 = Object.class.getSuperclass() == null;
         // TODO 8244562: Remove cast as workaround once javac is fixed
@@ -137,7 +137,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test4")
-    public void test4_verifier(RunInfo info) {
+    public void test4_verifier() {
         Asserts.assertTrue(test4(), "test4 failed");
     }
 
@@ -148,7 +148,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test5")
-    public void test5_verifier(RunInfo info) {
+    public void test5_verifier() {
         MyValue1 v = MyValue1.createDefaultInline();
         test5(v);
     }
@@ -160,7 +160,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test6")
-    public void test6_verifier(RunInfo info) {
+    public void test6_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         int res = test6(v);
         Asserts.assertEQ(res, v.hashCode());
@@ -174,7 +174,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test7")
-    public void test7_verifier(RunInfo info) {
+    public void test7_verifier() {
         int len = Math.abs(rI) % 42;
         long hash = MyValue1.createDefaultDontInline().hashPrimitive();
         Object[] va = test7(MyValue1.class, len);
@@ -190,7 +190,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test8")
-    public void test8_verifier(RunInfo info) {
+    public void test8_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         boolean result = test8(MyValue1.class, vt);
         Asserts.assertTrue(result);
@@ -204,7 +204,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test9")
-    public void test9_verifier(RunInfo info) {
+    public void test9_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         boolean result = test9(MyValue2.class, vt);
         Asserts.assertFalse(result);
@@ -219,7 +219,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test10")
-    public void test10_verifier(RunInfo info) {
+    public void test10_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test10(MyValue1.class, vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
@@ -231,7 +231,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test11")
-    public void test11_verifier(RunInfo info) {
+    public void test11_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         try {
             test11(MyValue2.class, vt);
@@ -246,7 +246,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test12")
-    public void test12_verifier(RunInfo info) {
+    public void test12_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test12(vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
@@ -258,7 +258,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test13")
-    public void test13_verifier(RunInfo info) {
+    public void test13_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         try {
             test13(vt);
@@ -277,7 +277,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test14")
-    public void test14_verifier(RunInfo info) {
+    public void test14_verifier() {
         int len = Math.abs(rI) % 42;
         long hash = MyValue1.createDefaultDontInline().hashPrimitive();
         test14(len, hash);
@@ -290,7 +290,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test15")
-    public void test15_verifier(RunInfo info) {
+    public void test15_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         int res = test15(v);
         Asserts.assertEQ(res, v.hashCode());
@@ -302,7 +302,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test16")
-    public void test16_verifier(RunInfo info) {
+    public void test16_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         int res = test16(v);
         Asserts.assertEQ(res, System.identityHashCode((Object)v));
@@ -314,7 +314,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test17")
-    public void test17_verifier(RunInfo info) {
+    public void test17_verifier() {
         Integer v = Integer.valueOf(rI);
         int res = test17(v);
         Asserts.assertEQ(res, System.identityHashCode(v));
@@ -326,7 +326,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test18")
-    public void test18_verifier(RunInfo info) {
+    public void test18_verifier() {
         Object v = null;
         int res = test18(v);
         Asserts.assertEQ(res, System.identityHashCode(v));
@@ -340,7 +340,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test19")
-    public void test19_verifier(RunInfo info) {
+    public void test19_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         int res = test19(vt, vt, true);
         Asserts.assertEQ(res, vt.hashCode());
@@ -355,7 +355,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test20")
-    public void test20_verifier(RunInfo info) {
+    public void test20_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         String res = test20(vt, vt, true);
         Asserts.assertEQ(res, vt.toString());
@@ -385,13 +385,13 @@ public class TestIntrinsics {
     protected static final String CALL_Unsafe = START + "CallStaticJava" + MID + "# Static  jdk.internal.misc.Unsafe::" + END;
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public int test21(MyValue1 v) {
        return U.getInt(v, X_OFFSET);
     }
 
     @Run(test = "test21")
-    public void test21_verifier(RunInfo info) {
+    public void test21_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         int res = test21(v);
         Asserts.assertEQ(res, v.x);
@@ -408,20 +408,20 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test22")
-    public void test22_verifier(RunInfo info) {
+    public void test22_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         test22(v.setX(v, 0));
         Asserts.assertEQ(test22_vt.hash(), v.hash());
     }
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public int test23(MyValue1 v, long offset) {
         return U.getInt(v, offset);
     }
 
     @Run(test = "test23")
-    public void test23_verifier(RunInfo info) {
+    public void test23_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         int res = test23(v, X_OFFSET);
         Asserts.assertEQ(res, v.x);
@@ -430,13 +430,13 @@ public class TestIntrinsics {
     MyValue1 test24_vt = MyValue1.createWithFieldsInline(rI, rL);
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public int test24(long offset) {
         return U.getInt(test24_vt, offset);
     }
 
     @Run(test = "test24")
-    public void test24_verifier(RunInfo info) {
+    public void test24_verifier() {
         int res = test24(X_OFFSET);
         Asserts.assertEQ(res, test24_vt.x);
     }
@@ -459,7 +459,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test25")
-    public void test25_verifier(RunInfo info) {
+    public void test25_verifier() {
         Test25Value vt = new Test25Value();
         test25(vt);
     }
@@ -475,7 +475,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test26")
-    public void test26_verifier(RunInfo info) {
+    public void test26_verifier() {
         Object[] res = (Object[])test26();
         Asserts.assertEQ(((MyValue1)res[0]).hashPrimitive(), MyValue1.createDefaultInline().hashPrimitive());
     }
@@ -493,26 +493,26 @@ public class TestIntrinsics {
     }
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue1 test27() {
         return (MyValue1)U.getReference(this, TEST27_OFFSET);
     }
 
     @Run(test = "test27")
-    public void test27_verifier(RunInfo info) {
+    public void test27_verifier() {
         MyValue1 res = test27();
         Asserts.assertEQ(res.hash(), test24_vt.hash());
     }
 
     // Mismatched type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public int test28(MyValue1 v) {
         return U.getByte(v, X_OFFSET);
     }
 
     @Run(test = "test28")
-    public void test28_verifier(RunInfo info) {
+    public void test28_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         int res = test28(v);
         if (java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN) {
@@ -524,7 +524,7 @@ public class TestIntrinsics {
 
     // Wrong alignment
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public long test29(MyValue1 v) {
         // Read the field that's guaranteed to not be last in the
         // inline type so we don't read out of bounds.
@@ -535,7 +535,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test29")
-    public void test29_verifier(RunInfo info) {
+    public void test29_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         long res = test29(v);
         if (java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN) {
@@ -556,7 +556,7 @@ public class TestIntrinsics {
 
     // getValue to retrieve flattened field from inline type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue2 test30(MyValue1 v) {
         if (V1_FLATTENED) {
             return U.getValue(v, V1_OFFSET, MyValue2.val.class);
@@ -565,7 +565,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test30")
-    public void test30_verifier(RunInfo info) {
+    public void test30_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue2 res = test30(v);
         Asserts.assertEQ(res.hash(), v.v1.hash());
@@ -586,7 +586,7 @@ public class TestIntrinsics {
 
     // getValue to retrieve flattened field from object
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue1 test31() {
         if (TEST31_VT_FLATTENED) {
             return U.getValue(this, TEST31_VT_OFFSET, MyValue1.val.class);
@@ -595,7 +595,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test31")
-    public void test31_verifier(RunInfo info) {
+    public void test31_verifier() {
         test31_vt = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1 res = test31();
         Asserts.assertEQ(res.hash(), test31_vt.hash());
@@ -603,7 +603,7 @@ public class TestIntrinsics {
 
     // putValue to set flattened field in object
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public void test32(MyValue1 vt) {
         if (TEST31_VT_FLATTENED) {
             U.putValue(this, TEST31_VT_OFFSET, MyValue1.val.class, vt);
@@ -613,7 +613,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test32")
-    public void test32_verifier(RunInfo info) {
+    public void test32_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         test31_vt = MyValue1.createDefaultInline();
         test32(vt);
@@ -634,7 +634,7 @@ public class TestIntrinsics {
     }
     // getValue to retrieve flattened field from array
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue1 test33(MyValue1[] arr) {
         if (TEST33_FLATTENED_ARRAY) {
             return U.getValue(arr, TEST33_BASE_OFFSET + TEST33_INDEX_SCALE, MyValue1.val.class);
@@ -643,7 +643,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test33")
-    public void test33_verifier(RunInfo info) {
+    public void test33_verifier() {
         MyValue1[] arr = new MyValue1[2];
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         arr[1] = vt;
@@ -653,7 +653,7 @@ public class TestIntrinsics {
 
     // putValue to set flattened field in array
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public void test34(MyValue1[] arr, MyValue1 vt) {
         if (TEST33_FLATTENED_ARRAY) {
             U.putValue(arr, TEST33_BASE_OFFSET + TEST33_INDEX_SCALE, MyValue1.val.class, vt);
@@ -663,7 +663,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test34")
-    public void test34_verifier(RunInfo info) {
+    public void test34_verifier() {
         MyValue1[] arr = new MyValue1[2];
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         test34(arr, vt);
@@ -673,7 +673,7 @@ public class TestIntrinsics {
     // getValue to retrieve flattened field from object with unknown
     // container type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue1 test35(Object o) {
         if (TEST31_VT_FLATTENED) {
             return U.getValue(o, TEST31_VT_OFFSET, MyValue1.val.class);
@@ -682,7 +682,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test35")
-    public void test35_verifier(RunInfo info) {
+    public void test35_verifier() {
         test31_vt = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1 res = test35(this);
         Asserts.assertEQ(res.hash(), test31_vt.hash());
@@ -691,7 +691,7 @@ public class TestIntrinsics {
     // getValue to retrieve flattened field from object at unknown
     // offset
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue1 test36(long offset) {
         if (TEST31_VT_FLATTENED) {
             return U.getValue(this, offset, MyValue1.val.class);
@@ -700,7 +700,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test36")
-    public void test36_verifier(RunInfo info) {
+    public void test36_verifier() {
         test31_vt = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1 res = test36(TEST31_VT_OFFSET);
         Asserts.assertEQ(res.hash(), test31_vt.hash());
@@ -709,7 +709,7 @@ public class TestIntrinsics {
     // putValue to set flattened field in object with unknown
     // container
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public void test37(Object o, MyValue1 vt) {
         if (TEST31_VT_FLATTENED) {
             U.putValue(o, TEST31_VT_OFFSET, MyValue1.val.class, vt);
@@ -719,7 +719,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test37")
-    public void test37_verifier(RunInfo info) {
+    public void test37_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         test31_vt = MyValue1.createDefaultInline();
         test37(this, vt);
@@ -739,7 +739,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test38")
-    public void test38_verifier(RunInfo info) {
+    public void test38_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         test31_vt = MyValue1.createDefaultInline();
         test38(vt);
@@ -747,7 +747,7 @@ public class TestIntrinsics {
     }
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue1 test39(MyValue1 v) {
         v = U.makePrivateBuffer(v);
         U.putInt(v, X_OFFSET, rI);
@@ -756,7 +756,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test39")
-    public void test39_verifier(RunInfo info) {
+    public void test39_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1 res = test39(v.setX(v, 0));
         Asserts.assertEQ(res.hash(), v.hash());
@@ -770,7 +770,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test40")
-    public void test40_verifier(RunInfo info) {
+    public void test40_verifier() {
         int len = Math.abs(rI) % 42;
         Object[] va = test40(MyValue1.ref.class, len);
         for (int i = 0; i < len; ++i) {
@@ -785,7 +785,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test41")
-    public void test41_verifier(RunInfo info) {
+    public void test41_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         boolean result = test41(MyValue1.ref.class, vt);
         Asserts.assertTrue(result);
@@ -799,7 +799,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test42")
-    public void test42_verifier(RunInfo info) {
+    public void test42_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         boolean result = test42(MyValue2.ref.class, vt);
         Asserts.assertFalse(result);
@@ -814,7 +814,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test43")
-    public void test43_verifier(RunInfo info) {
+    public void test43_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test43(MyValue1.ref.class, vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
@@ -828,7 +828,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test44")
-    public void test44_verifier(RunInfo info) {
+    public void test44_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         try {
             test44(MyValue2.ref.class, vt);
@@ -843,7 +843,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test45")
-    public void test45_verifier(RunInfo info) {
+    public void test45_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test45(vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
@@ -857,7 +857,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test46")
-    public void test46_verifier(RunInfo info) {
+    public void test46_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         test46(null);
         try {
@@ -873,7 +873,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test47")
-    public void test47_verifier(RunInfo info) {
+    public void test47_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test47(vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
@@ -890,7 +890,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test48")
-    public void test48_verifier(RunInfo info) {
+    public void test48_verifier() {
         MyValue1.ref vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test48(MyValue1.class, vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
@@ -907,12 +907,11 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test49")
-    public void test49_verifier(RunInfo info) {
+    public void test49_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         Object result = test49(vt);
         Asserts.assertEQ(((MyValue1)result).hash(), vt.hash());
     }
-
 
     @Test()
     public Object test50(Class c, Object obj) {
@@ -920,7 +919,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test50")
-    public void test50_verifier(RunInfo info) {
+    public void test50_verifier() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1[] va  = new MyValue1[42];
         MyValue1.ref[] vba = new MyValue1.ref[42];
@@ -956,7 +955,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test51")
-    public void test51_verifier(RunInfo info) {
+    public void test51_verifier() {
         int len = Math.abs(rI) % 42;
         test51(len);
     }
@@ -984,7 +983,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test52")
-    public void test52_verifier(RunInfo info) {
+    public void test52_verifier() {
         test52(1, 1);
         test52(1, 2);
     }
@@ -1028,7 +1027,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test53")
-    public void test53_verifier(RunInfo info) {
+    public void test53_verifier() {
         int len = Math.abs(rI) % 42;
         test53(MyValue1[].class, MyValue1.ref[].class, len, 1);
         test53(MyValue1[].class, MyValue1.ref[].class, len, 2);
@@ -1052,7 +1051,7 @@ public class TestIntrinsics {
 
     @Run(test = "test54")
     @Warmup(10000) // Fill up the TLAB to trigger slow path allocation
-    public void test54_verifier(RunInfo info) {
+    public void test54_verifier() {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1 res = test54(v.setX(v, 0));
         Asserts.assertEQ(res.hash(), v.hash());
@@ -1062,7 +1061,7 @@ public class TestIntrinsics {
 
     // Same as test30 but with constant field holder
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = CALL_Unsafe)
     public MyValue2 test55() {
         if (V1_FLATTENED) {
             return U.getValue(test55_vt, V1_OFFSET, MyValue2.val.class);
@@ -1071,7 +1070,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test55")
-    public void test55_verifier(RunInfo info) {
+    public void test55_verifier() {
         MyValue2 res = test55();
         Asserts.assertEQ(res.hash(), test55_vt.v1.hash());
     }
@@ -1086,7 +1085,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test56")
-    public void test56_verifier(RunInfo info) {
+    public void test56_verifier() {
         test56(0);
     }
 
@@ -1100,7 +1099,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test57")
-    public void test57_verifier(RunInfo info) {
+    public void test57_verifier() {
         test57();
     }
 
@@ -1113,7 +1112,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test58")
-    public void test58_verifier(RunInfo info) throws Exception {
+    public void test58_verifier() throws Exception {
         boolean res = test58(MyValue1.class, MyValue1.class);
         Asserts.assertTrue(res);
         res = test58(Object.class, MyValue1.class);
@@ -1132,7 +1131,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test59")
-    public void test59_verifier(RunInfo info) throws Exception {
+    public void test59_verifier() throws Exception {
         test59(Integer.class);
         try {
             test59(MyValue1.class);
@@ -1151,7 +1150,7 @@ public class TestIntrinsics {
     }
 
     @Run(test = "test60")
-    public void test60_verifier(RunInfo info) throws Exception {
+    public void test60_verifier() throws Exception {
         Asserts.assertTrue(test60(MyValue1.class, MyValue1.class, false, false));
         Asserts.assertFalse(test60(MyValue1.class, MyValue2.class, false, false));
         Asserts.assertFalse(test60(MyValue1.class, MyValue1.class, false, true));

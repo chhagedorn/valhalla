@@ -105,11 +105,11 @@ public class TestArrays {
         }
     }
 
-    static boolean compile_and_run_again_if_deoptimized(boolean warmup, String test) {
-        if (!warmup) {
-            Method m = testFramework.getTestMethod(test);
-            if (testFramework.isCompiled(m)) {
-                testFramework.compile(m, CompLevel.C2);
+    static boolean compile_and_run_again_if_deoptimized(RunInfo info) {
+        if (!info.isWarmUp()) {
+            Method m = info.getTest();
+            if (TestFramework.isCompiled(m)) {
+                TestFramework.compile(m, CompLevel.C2);
             }
         }
         return false;
@@ -131,7 +131,7 @@ public class TestArrays {
         counts = {ALLOCA, "= 1"})
     @IR(applyIf = {"FlatArrayElementMaxSize", "!= -1"},
         counts = {ALLOCA, "= 1"},
-        failOn = {LOAD})
+        failOn = LOAD)
     public MyValue1[] test1(int len) {
         MyValue1[] va = new MyValue1[len];
         for (int i = 0; i < len; ++i) {
@@ -148,7 +148,6 @@ public class TestArrays {
             Asserts.assertEQ(va[i].hash(), hash());
         }
     }
-
 
     // Test creation of an inline type array and element access
     @Test
@@ -168,7 +167,7 @@ public class TestArrays {
     // Test receiving an inline type array from the interpreter,
     // updating its elements in a loop and computing a hash.
     @Test
-    @IR(failOn = {ALLOCA})
+    @IR(failOn = ALLOCA)
     public long test3(MyValue1[] va) {
         long result = 0;
         for (int i = 0; i < 10; ++i) {
@@ -271,7 +270,7 @@ public class TestArrays {
 
     // Test default initialization of inline type arrays
     @Test
-    @IR(failOn = {LOAD})
+    @IR(failOn = LOAD)
     public MyValue1[] test7(int len) {
         return new MyValue1[len];
     }
@@ -303,7 +302,7 @@ public class TestArrays {
 
     // Test that inline type array loaded from field has correct type
     @Test
-    @IR(failOn = {LOOP})
+    @IR(failOn = LOOP)
     public long test9() {
         return test9_va[0].hash();
     }
@@ -341,7 +340,6 @@ public class TestArrays {
             }
         }
     }
-
 
     @Test
     public void test11(MyValue1[][][] arr, long[] res) {
@@ -562,7 +560,6 @@ public class TestArrays {
         }
     }
 
-
     // arraycopy() of inline type array with oop fields
     @Test
     public void test20(MyValue1[] src, MyValue1[] dst) {
@@ -729,7 +726,6 @@ public class TestArrays {
         }
     }
 
-
     // non escaping allocations
     // TODO 8252027: Make sure this is optimized with ZGC
     @Test
@@ -748,7 +744,6 @@ public class TestArrays {
         MyValue2 result = test28();
         Asserts.assertEQ(result.hash(), v.hash());
     }
-
 
     // non escaping allocations
     // TODO 8227588: shouldn't this have the same IR matching rules as test6?
@@ -773,7 +768,6 @@ public class TestArrays {
         MyValue2 v = test29(src);
         Asserts.assertEQ(src[0].hash(), v.hash());
     }
-
 
     // non escaping allocation with uncommon trap that needs
     // eliminated inline type array element as debug info
@@ -810,7 +804,7 @@ public class TestArrays {
         if (deopt) {
             // uncommon trap
             Method m = testFramework.getTestMethod("test31");
-            testFramework.deoptimize(m);
+            TestFramework.deoptimize(m);
         }
         return src[0].hash();
     }
@@ -824,7 +818,6 @@ public class TestArrays {
         long result2 = test31(false, !info.isWarmUp());
         Asserts.assertEQ(result2, v2.hash());
     }
-
 
     // Tests with Object arrays and clone/arraycopy
     // clone() as stub call
@@ -904,7 +897,7 @@ public class TestArrays {
                 // Expected
             }
         }
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test34")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             Object[] result = test34(true);
             verify(test34_orig, result);
             // Check that array has correct properties (null-free)
@@ -936,7 +929,7 @@ public class TestArrays {
         verify(src, dst1);
         test35(src, dst2, src.length);
         verify(src, dst2);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test35")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test35(src, dst1, src.length);
             verify(src, dst1);
         }
@@ -957,7 +950,7 @@ public class TestArrays {
         }
         test36(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test36")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test36(src, dst);
             verify(src, dst);
         }
@@ -978,7 +971,7 @@ public class TestArrays {
         }
         test37(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test37")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test37(src, dst);
             verify(src, dst);
         }
@@ -1002,15 +995,14 @@ public class TestArrays {
         test38(src, dst);
         verify(dst, src);
         if (!info.isWarmUp()) {
-            Method m = testFramework.getTestMethod("test38");
-            testFramework.assertDeoptimizedByC2(m);
-            testFramework.compile(m, CompLevel.C2);
+            Method m = info.getTest();
+            TestFramework.assertDeoptimizedByC2(m);
+            TestFramework.compile(m, CompLevel.C2);
             test38(src, dst);
             verify(dst, src);
-            testFramework.assertCompiledByC2(m);
+            TestFramework.assertCompiledByC2(m);
         }
     }
-
 
     @Test
     public void test39(MyValue2[] src, Object dst) {
@@ -1027,7 +1019,7 @@ public class TestArrays {
         }
         test39(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test39")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test39(src, dst);
             verify(src, dst);
         }
@@ -1050,12 +1042,12 @@ public class TestArrays {
         test40(src, dst);
         verify(dst, src);
         if (!info.isWarmUp()) {
-            Method m = testFramework.getTestMethod("test40");
-            testFramework.assertDeoptimizedByC2(m);
-            testFramework.compile(m, CompLevel.C2);
+            Method m = info.getTest();
+            TestFramework.assertDeoptimizedByC2(m);
+            TestFramework.compile(m, CompLevel.C2);
             test40(src, dst);
             verify(dst, src);
-            testFramework.assertCompiledByC2(m);
+            TestFramework.assertCompiledByC2(m);
         }
     }
 
@@ -1074,7 +1066,7 @@ public class TestArrays {
         }
         test41(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test41")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test41(src, dst);
             verify(src, dst);
         }
@@ -1096,8 +1088,7 @@ public class TestArrays {
         test42(src, dst);
         verify(src, dst);
         if (!info.isWarmUp()) {
-            Method m = testFramework.getTestMethod("test42");
-            testFramework.assertCompiledByC2(m);
+            TestFramework.assertCompiledByC2(info.getTest());
         }
     }
 
@@ -1116,7 +1107,7 @@ public class TestArrays {
         }
         test43(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test43")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test43(src, dst);
             verify(src, dst);
         }
@@ -1136,7 +1127,7 @@ public class TestArrays {
         }
         test44(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test44")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test44(src, dst);
             verify(src, dst);
         }
@@ -1156,7 +1147,7 @@ public class TestArrays {
         }
         test45(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test45")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test45(src, dst);
             verify(src, dst);
         }
@@ -1178,12 +1169,12 @@ public class TestArrays {
         test46(src, dst);
         verify(dst, src);
         if (!info.isWarmUp()) {
-            Method m = testFramework.getTestMethod("test46");
-            testFramework.assertDeoptimizedByC2(m);
-            testFramework.compile(m, CompLevel.C2);
+            Method m = info.getTest();
+            TestFramework.assertDeoptimizedByC2(m);
+            TestFramework.compile(m, CompLevel.C2);
             test46(src, dst);
             verify(dst, src);
-            testFramework.assertCompiledByC2(m);
+            TestFramework.assertCompiledByC2(m);
         }
     }
 
@@ -1201,7 +1192,7 @@ public class TestArrays {
         }
         test47(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test47")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test47(src, dst);
             verify(src, dst);
         }
@@ -1223,12 +1214,12 @@ public class TestArrays {
         test48(src, dst);
         verify(dst, src);
         if (!info.isWarmUp()) {
-            Method m = testFramework.getTestMethod("test48");
-            testFramework.assertDeoptimizedByC2(m);
-            testFramework.compile(m, CompLevel.C2);
+            Method m = info.getTest();
+            TestFramework.assertDeoptimizedByC2(m);
+            TestFramework.compile(m, CompLevel.C2);
             test48(src, dst);
             verify(dst, src);
-            testFramework.assertCompiledByC2(m);
+            TestFramework.assertCompiledByC2(m);
         }
     }
 
@@ -1246,7 +1237,7 @@ public class TestArrays {
         }
         test49(src, dst);
         verify(src, dst);
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test49")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             test49(src, dst);
             verify(src, dst);
         }
@@ -1267,8 +1258,8 @@ public class TestArrays {
         test50(src, dst);
         verify(src, dst);
         if (!info.isWarmUp()) {
-            Method m = testFramework.getTestMethod("test50");
-            testFramework.assertCompiledByC2(m);
+            Method m = info.getTest();
+            TestFramework.assertCompiledByC2(m);
         }
     }
 
@@ -1408,7 +1399,7 @@ public class TestArrays {
             Object[] result = test58(va, MyValue1[].class);
             verify(va, result);
         }
-        if (compile_and_run_again_if_deoptimized(info.isWarmUp(), "test58")) {
+        if (compile_and_run_again_if_deoptimized(info)) {
             Object[] result = test58(va, MyValue1[].class);
             verify(va, result);
         }
@@ -2323,7 +2314,7 @@ public class TestArrays {
 
     // Test propagation of not null-free/flat information
     @Test
-    @IR(failOn = {CHECKCAST_ARRAY})
+    @IR(failOn = CHECKCAST_ARRAY)
     public MyValue1[] test95(Object[] array) {
         array[0] = null;
         // Always throws a ClassCastException because we just successfully
@@ -2351,7 +2342,7 @@ public class TestArrays {
 
     // Same as test95 but with cmp user of cast result
     @Test
-    @IR(failOn = {CHECKCAST_ARRAY})
+    @IR(failOn = CHECKCAST_ARRAY)
     public boolean test96(Object[] array) {
         array[0] = null;
         // Always throws a ClassCastException because we just successfully
@@ -2380,7 +2371,7 @@ public class TestArrays {
 
     // Same as test95 but with instanceof instead of cast
     @Test
-    @IR(failOn = {CHECKCAST_ARRAY})
+    @IR(failOn = CHECKCAST_ARRAY)
     public boolean test97(Object[] array) {
         array[0] = 42;
         // Always throws a ClassCastException because we just successfully stored
@@ -2405,7 +2396,7 @@ public class TestArrays {
     // Same as test95 but with non-flattenable store
     @Test
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
-        failOn = {CHECKCAST_ARRAY})
+        failOn = CHECKCAST_ARRAY)
     public MyValue1[] test98(Object[] array) {
         array[0] = NotFlattenable.default;
         // Always throws a ClassCastException because we just successfully stored a
@@ -2434,7 +2425,7 @@ public class TestArrays {
     // Same as test98 but with cmp user of cast result
     @Test
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
-        failOn = {CHECKCAST_ARRAY})
+        failOn = CHECKCAST_ARRAY)
     public boolean test99(Object[] array) {
         array[0] = NotFlattenable.default;
         // Always throws a ClassCastException because we just successfully stored a
@@ -2464,7 +2455,7 @@ public class TestArrays {
     // Same as test98 but with instanceof instead of cast
     @Test
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
-        failOn = {CHECKCAST_ARRAY})
+        failOn = CHECKCAST_ARRAY)
     public boolean test100(Object[] array) {
         array[0] = NotFlattenable.default;
         // Always throws a ClassCastException because we just successfully stored a
@@ -2530,7 +2521,7 @@ public class TestArrays {
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
         counts = {INTRINSIC_SLOW_PATH, "= 1"})
     @IR(applyIf = {"FlatArrayElementMaxSize", "!= -1"},
-        failOn = {INTRINSIC_SLOW_PATH})
+        failOn = INTRINSIC_SLOW_PATH)
     public void test102() {
         System.arraycopy(val_src, 0, obj_dst, 0, 8);
     }
@@ -2603,7 +2594,7 @@ public class TestArrays {
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
         counts = {INTRINSIC_SLOW_PATH, "= 1"})
     @IR(applyIf = {"FlatArrayElementMaxSize", "!= -1"},
-        failOn = {INTRINSIC_SLOW_PATH})
+        failOn = INTRINSIC_SLOW_PATH)
     public void test106() {
         System.arraycopy(get_val_src(), 0, get_obj_dst(), 0, 8);
     }
@@ -2618,7 +2609,7 @@ public class TestArrays {
     // at parse time it looks as if src could be flat and dst could be not flat.
     @Test
     @IR(applyIf = {"FlatArrayElementMaxSize", "!= -1"},
-        failOn = {INTRINSIC_SLOW_PATH})
+        failOn = INTRINSIC_SLOW_PATH)
     public void test107() {
         System.arraycopy(get_val_src(), 0, get_val_dst(), 0, 8);
     }
@@ -2630,7 +2621,7 @@ public class TestArrays {
     }
 
     @Test
-    @IR(failOn = {INTRINSIC_SLOW_PATH})
+    @IR(failOn = INTRINSIC_SLOW_PATH)
     public void test108() {
         System.arraycopy(get_obj_src(), 0, get_obj_dst(), 0, 8);
     }
@@ -3002,7 +2993,7 @@ public class TestArrays {
         counts = {JLONG_ARRAYCOPY, "= 1"},
         failOn = {CHECKCAST_ARRAYCOPY, CLONE_INTRINSIC_SLOW_PATH})
     @IR(applyIf = {"FlatArrayElementMaxSize", "!= -1"},
-        failOn = {CLONE_INTRINSIC_SLOW_PATH})
+        failOn = CLONE_INTRINSIC_SLOW_PATH)
     public Object[] test126(MyValue2[] src) {
         return src.clone();
     }
@@ -3039,7 +3030,7 @@ public class TestArrays {
     @Test
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
         counts = {JLONG_ARRAYCOPY, "= 1"},
-        failOn = {CHECKCAST_ARRAYCOPY})
+        failOn = CHECKCAST_ARRAYCOPY)
     public Object[] test128(MyValue2[] src, Class klass) {
         return Arrays.copyOf(src, 8, klass);
     }
@@ -3342,8 +3333,8 @@ public class TestArrays {
 
     // Test load from array that is only known to be inline after parsing
     // TODO 8255938
-    // @Test(failOn = {ALLOC, ALLOCA, ALLOC_G, ALLOCA_G, LOOP, LOAD, STORE, TRAP, LOAD_UNKNOWN_INLINE, STORE_UNKNOWN_INLINE, INLINE_ARRAY_NULL_GUARD})
     @Test
+    // @IR(failOn = {ALLOC, ALLOCA, ALLOC_G, ALLOCA_G, LOOP, LOAD, STORE, TRAP, LOAD_UNKNOWN_INLINE, STORE_UNKNOWN_INLINE, INLINE_ARRAY_NULL_GUARD})
     public Object test141() {
         Object[]  array = null;
         Object[] iarray = new Integer[1];
@@ -3363,8 +3354,8 @@ public class TestArrays {
 
     // Test store to array that is only known to be inline after parsing
     // TODO 8255938
-    // @Test(failOn = {ALLOC, ALLOCA, ALLOC_G, LOOP, LOAD, STORE, TRAP, LOAD_UNKNOWN_INLINE, STORE_UNKNOWN_INLINE, INLINE_ARRAY_NULL_GUARD})
     @Test
+    // @IR(failOn = {ALLOC, ALLOCA, ALLOC_G, LOOP, LOAD, STORE, TRAP, LOAD_UNKNOWN_INLINE, STORE_UNKNOWN_INLINE, INLINE_ARRAY_NULL_GUARD})
     public Object[] test142(Object val) {
         Object[]  array = null;
         Object[] iarray = new Integer[1];

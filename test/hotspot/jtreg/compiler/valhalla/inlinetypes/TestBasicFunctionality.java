@@ -109,7 +109,6 @@ public class TestBasicFunctionality {
         return v;
     }
 
-
     @Run(test = "test3")
     public void test3_verifier() {
         MyValue1 v1 = MyValue1.createWithFieldsDontInline(rI, rL);
@@ -117,7 +116,6 @@ public class TestBasicFunctionality {
         Asserts.assertEQ(v1.x, v2.x);
         Asserts.assertEQ(v1.y, v2.y);
     }
-
 
     // Create an inline type in compiled code and only use fields.
     // Allocation should go away because inline type does not escape.
@@ -133,7 +131,6 @@ public class TestBasicFunctionality {
         long result = test4();
         Asserts.assertEQ(result, hash());
     }
-
 
     // Create an inline type in compiled code and pass it to
     // an inlined compiled method via a call.
@@ -154,7 +151,6 @@ public class TestBasicFunctionality {
         long result = test5();
         Asserts.assertEQ(result, hash());
     }
-
 
     // Create an inline type in compiled code and pass it to
     // the interpreter via a call.
@@ -190,7 +186,6 @@ public class TestBasicFunctionality {
         MyValue1 v = test7(rI, rL);
         Asserts.assertEQ(v.hash(), hash());
     }
-
 
     // Merge inline types created from two branches
     @Test
@@ -286,11 +281,10 @@ public class TestBasicFunctionality {
         Asserts.assertEQ(result, hash(rI + 10, rL + 10));
     }
 
-
     // Test loop with uncommon trap referencing an inline type
     @Test
     @IR(counts = {SCOBJ, ">= 1"}, // at least 1
-        failOn = {LOAD})
+        failOn = LOAD)
     public long test12(boolean b) {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue1[] va = new MyValue1[Math.abs(rI) % 10];
@@ -318,7 +312,6 @@ public class TestBasicFunctionality {
         long result = test12(info.isWarmUp());
         Asserts.assertEQ(result, info.isWarmUp() ? rL + (1000 * rI) : ((Math.abs(rI) % 10) + 1) * hash());
     }
-
 
     // Test loop with uncommon trap referencing an inline type
     @Test
@@ -349,7 +342,6 @@ public class TestBasicFunctionality {
         long result = test13(info.isWarmUp());
         Asserts.assertEQ(result, info.isWarmUp() ? rL + (1000 * rI) : ((Math.abs(rI) % 10) + 1) * hash());
     }
-
 
     // Create an inline type in a non-inlined method and then call a
     // non-inlined method on that inline type.
@@ -474,7 +466,7 @@ public class TestBasicFunctionality {
         failOn = {LOAD, ALLOC, STORE})
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
         counts = {ALLOC, "= 1"},
-        failOn = {LOAD})
+        failOn = LOAD)
     public long test20(boolean deopt) {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue2[] va = new MyValue2[3];
@@ -494,7 +486,6 @@ public class TestBasicFunctionality {
         Asserts.assertEQ(result, hash() + va[0].hash() + va[1].hash() + va[2].hash());
     }
 
-
     // Inline type fields in regular object
     MyValue1 val1;
     MyValue2 val2;
@@ -505,7 +496,7 @@ public class TestBasicFunctionality {
     // Test inline type fields in objects
     @Test
     @IR(counts = {ALLOC, "= 1"},
-        failOn = {TRAP})
+        failOn = TRAP)
     public long test21(int x, long y) {
         // Compute hash of inline type fields
         long result = val1.hash() + val2.hash() + val3.hash() + val4.hash() + val5.hash();
@@ -610,8 +601,6 @@ public class TestBasicFunctionality {
         public MyValue1 v;
     }
 
-
-
     // Test allocation elimination of unused object with initialized inline type field
     @Test
     @IR(failOn = {ALLOC, LOAD, STORE, LOOP})
@@ -629,8 +618,6 @@ public class TestBasicFunctionality {
     public void test27_verifier(RunInfo info) {
         test27(!info.isWarmUp());
     }
-
-
 
     static MyValue3 staticVal3;
     static MyValue3 staticVal3_copy;

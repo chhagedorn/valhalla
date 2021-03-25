@@ -67,7 +67,7 @@ public class TestWithHelperClasses {
         }
     }
 
-    public static void  shouldNotReach() {
+    public static void shouldNotReach() {
         throw new RuntimeException("should not reach");
     }
 

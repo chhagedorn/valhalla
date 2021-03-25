@@ -72,10 +72,9 @@ public class TestGetfieldChains {
                         "-Xcomp")
         };
 
-
-        TestFramework testFramework = new TestFramework(TestGetfieldChains.class);
-        testFramework.addScenarios(scenarios)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .start();
     }
 
 
@@ -86,7 +85,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test1")
-    public void test1_verifier(RunInfo info) {
+    public void test1_verifier() {
         int res = test1();
         Asserts.assertEQ(res, 4);
     }
@@ -98,7 +97,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test2")
-    public void test2_verifier(RunInfo info) {
+    public void test2_verifier() {
         Point p = test2();
         Asserts.assertEQ(p.x, 4);
         Asserts.assertEQ(p.y, 7);
@@ -117,7 +116,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test3")
-    public void test3_verifier(RunInfo info) {
+    public void test3_verifier() {
         NullPointerException npe = test3();
         Asserts.assertNE(npe, null);
         StackTraceElement st = npe.getStackTrace()[0];
@@ -138,7 +137,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test4")
-    public void test4_verifier(RunInfo info) {
+    public void test4_verifier() {
         IllegalAccessError iae = test4();
         Asserts.assertNE(iae, null);
         StackTraceElement st = iae.getStackTrace()[0];
@@ -160,7 +159,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test5")
-    public void test5_verifier(RunInfo info) {
+    public void test5_verifier() {
         NoSuchFieldError nsfe = test5();
         Asserts.assertNE(nsfe, null);
         StackTraceElement st = nsfe.getStackTrace()[0];
@@ -186,7 +185,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test6")
-    public void test6_verifier(RunInfo info) {
+    public void test6_verifier() {
         EmptyType et = test6();
         Asserts.assertEQ(et, EmptyType.default);
     }
@@ -198,7 +197,7 @@ public class TestGetfieldChains {
     }
 
     @Run(test = "test7")
-    public void test7_verifier(RunInfo info) {
+    public void test7_verifier() {
         EmptyType et = test7();
         Asserts.assertEQ(et, EmptyType.default);
     }

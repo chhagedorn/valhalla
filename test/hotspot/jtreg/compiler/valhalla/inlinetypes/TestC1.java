@@ -62,11 +62,11 @@ public class TestC1 {
                              "-XX:TieredStopAtLevel=4", "-XX:-TieredCompilation", "-Xcomp")
         };
 
-        TestFramework testFramework = InlineTypes.getFramework();
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class,
-                                       MyValue3.class, MyValue3Inline.class)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class,
+                                     MyValue3.class, MyValue3Inline.class)
+                   .start();
     }
 
     // JDK-8229799
@@ -361,5 +361,4 @@ public class TestC1 {
         }
         Asserts.assertNotNull(e);
     }
-
 }

@@ -75,6 +75,7 @@ public class TestCallingConvention {
         scenarios[0].addFlags("-Dsun.reflect.inflationThreshold=10000");
         scenarios[1].addFlags("-Dsun.reflect.inflationThreshold=10000");
         scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
+        scenarios[4].addFlags("-XX:-UseTLAB");
 
         testFramework.addScenarios(scenarios)
                 .addHelperClasses(MyValue1.class,

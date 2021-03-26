@@ -41,6 +41,8 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rL;
  */
 
 public class TestCallingConventionC1 {
+    static final TestFramework testFramework = InlineTypes.getFramework();
+
     public static void main(String[] args) {
         final Scenario[] scenarios = {
                 // Default: both C1 and C2 are enabled, tiered compilation enabled
@@ -73,7 +75,6 @@ public class TestCallingConventionC1 {
 
         System.gc(); // Resolve this call, to avoid C1 code patching in the test cases.
 
-        TestFramework testFramework = new TestFramework(TestCallingConventionC1.class);
         testFramework.addScenarios(scenarios)
                      .start();
     }

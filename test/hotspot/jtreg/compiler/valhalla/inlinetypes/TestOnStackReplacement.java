@@ -44,18 +44,19 @@ import java.lang.reflect.Method;
 
 public class TestOnStackReplacement {
 
+    static final TestFramework testFramework = InlineTypes.getFramework();
+
     public static void main(String[] args) throws Throwable {
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
 
-        InlineTypes.getFramework()
-                   .addScenarios(scenarios)
-                   .addHelperClasses(MyValue1.class,
-                                     MyValue2.class,
-                                     MyValue2Inline.class,
-                                     MyValue3.class,
-                                     MyValue3Inline.class)
-                   .start();
+        testFramework.addScenarios(scenarios)
+                     .addHelperClasses(MyValue1.class,
+                                       MyValue2.class,
+                                       MyValue2Inline.class,
+                                       MyValue3.class,
+                                       MyValue3Inline.class)
+                     .start();
     }
 
     // Helper methods

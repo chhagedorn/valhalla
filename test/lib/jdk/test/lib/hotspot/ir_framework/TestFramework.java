@@ -541,6 +541,8 @@ public class TestFramework {
     private ArrayList<String> prepareFlagVMFlags(List<String> additionalFlags) {
         ArrayList<String> cmds = new ArrayList<>();
         cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
+        // Set java.library.path so JNI tests which rely on jtreg nativepath setting work
+        cmds.add("-Djava.library.path=" + Utils.TEST_NATIVE_PATH);
         cmds.add("-cp");
         cmds.add(Utils.TEST_CLASS_PATH);
         cmds.add("-Xbootclasspath/a:.");
@@ -605,7 +607,8 @@ public class TestFramework {
 
     private List<String> prepareTestVMFlags(List<String> additionalFlags) {
         ArrayList<String> cmds = new ArrayList<>();
-
+        // Set java.library.path so JNI tests which rely on jtreg nativepath setting work
+        cmds.add("-Djava.library.path=" + Utils.TEST_NATIVE_PATH);
         // Need White Box access in test VM.
         cmds.add("-Xbootclasspath/a:.");
         cmds.add("-XX:+UnlockDiagnosticVMOptions");

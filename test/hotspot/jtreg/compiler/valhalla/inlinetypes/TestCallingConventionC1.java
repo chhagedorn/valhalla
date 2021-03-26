@@ -2345,7 +2345,6 @@ public class TestCallingConventionC1 {
         test108_verifier(info);
     }
 
-    /*
     // Same as test107, except we call MyImplPojo3.func2 (compiled by C1, VVEP_RO == VEP)
     @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
     public int test109(Intf intf, int a, int b) {
@@ -2380,5 +2379,4 @@ public class TestCallingConventionC1 {
     public void run_test109_verifier(RunInfo info) {
         test109_verifier(info);
     }
-    */
 }

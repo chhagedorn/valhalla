@@ -187,16 +187,7 @@ public class TestFrameworkExecution {
     }
 
     private void start() {
-        if (helperClasses != null) {
-            for (Class<?> helperClass : helperClasses) {
-                // Process the helper classes and apply the explicit compile commands
-                TestFormat.checkNoThrow(helperClass != testClass,
-                                        "Cannot specify test " + testClass + " as helper class, too.");
-                checkHelperClass(helperClass);
-                processControlAnnotations(helperClass);
-            }
-        }
-        parseTestClass();
+        parseTests();
         checkForcedCompilationsCompleted();
         runTests();
     }
@@ -216,13 +207,15 @@ public class TestFrameworkExecution {
         }
     }
 
-    private void parseTestClass() {
+    private void parseTests() {
         for (Class<?> clazz : testClass.getDeclaredClasses()) {
             checkTestAnnotationInnerClass(clazz, "inner");
         }
         addReplay();
-        processControlAnnotations(testClass);
+        // Make sure to first parse tests and make them non-inlineable and only then process compile commands.
         setupTests();
+        processControlAnnotations(testClass);
+        processHelperClasses();
         setupCheckAndRunMethods();
 
         // All remaining tests are simple base tests without check or specific way to run them.
@@ -534,6 +527,18 @@ public class TestFrameworkExecution {
             }
         }
         return compLevel;
+    }
+
+    private void processHelperClasses() {
+        if (helperClasses != null) {
+            for (Class<?> helperClass : helperClasses) {
+                // Process the helper classes and apply the explicit compile commands
+                TestFormat.checkNoThrow(helperClass != testClass,
+                                        "Cannot specify test " + testClass + " as helper class, too.");
+                checkHelperClass(helperClass);
+                processControlAnnotations(helperClass);
+            }
+        }
     }
 
     private void setupCheckAndRunMethods() {
@@ -1033,8 +1038,9 @@ abstract class AbstractTest {
         final boolean maybeCodeBufferOverflow = (TestFrameworkExecution.TEST_C1 && VERIFY_OOPS);
         final long started = System.currentTimeMillis();
         boolean stateCleared = false;
-        while (true) {
-            long elapsed = System.currentTimeMillis() - started;
+        long elapsed = 0;
+        do {
+            elapsed = System.currentTimeMillis() - started;
             int level = WHITE_BOX.getMethodCompilationLevel(testMethod);
             if (maybeCodeBufferOverflow && elapsed > 5000
                 && (!WHITE_BOX.isMethodCompiled(testMethod, false) || level != test.getCompLevel().getValue())) {
@@ -1050,11 +1056,10 @@ abstract class AbstractTest {
             }
             if (isCompiled || TestFrameworkExecution.XCOMP) {
                 // Don't wait for compilation if -Xcomp is enabled.
-                break;
+                return;
             }
-            TestRun.check(WAIT_FOR_COMPILATION_TIMEOUT < 0 || elapsed < WAIT_FOR_COMPILATION_TIMEOUT,
-                          testMethod + " not compiled after waiting for " + WAIT_FOR_COMPILATION_TIMEOUT/1000 + " s");
-        }
+        } while (elapsed < WAIT_FOR_COMPILATION_TIMEOUT);
+        TestRun.fail(testMethod + " not compiled after waiting for " + WAIT_FOR_COMPILATION_TIMEOUT/1000 + " s");
     }
 
     private void retryDisabledVerifyOops(Method testMethod, boolean stateCleared) {

@@ -25,16 +25,15 @@ package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
+import sun.hotspot.WhiteBox;
+
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
-
-import sun.hotspot.WhiteBox;
 
 /*
  * @test
  * @key randomness
- * @summary Test calls from {CompLevel.C1} to {CompLevel.C2, Interpreter}, and vice versa.
+ * @summary Test calls from {C1} to {C2, Interpreter}, and vice versa.
  * @library /test/lib
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
  * @compile InlineTypes.java
@@ -44,12 +43,12 @@ import sun.hotspot.WhiteBox;
 public class TestCallingConventionC1 {
     public static void main(String[] args) {
         final Scenario[] scenarios = {
-                // Default: both CompLevel.C1 and CompLevel.C2 are enabled, tiered compilation enabled
+                // Default: both C1 and C2 are enabled, tiered compilation enabled
                 new Scenario(0,
                         "-XX:CICompilerCount=2",
                         "-XX:TieredStopAtLevel=4",
                         "-XX:+TieredCompilation"),
-                // Default: both CompLevel.C1 and CompLevel.C2 are enabled, tiered compilation enabled
+                // Default: both C1 and C2 are enabled, tiered compilation enabled
                 new Scenario(1,
                         "-XX:CICompilerCount=2",
                         "-XX:TieredStopAtLevel=4",
@@ -61,18 +60,18 @@ public class TestCallingConventionC1 {
                         "-XX:CICompilerCount=2",
                         "-XX:TieredStopAtLevel=4",
                         "-XX:+TieredCompilation",
-                        "-DFlipCompLevel.C1CompLevel.C2=true"),
-                // Only CompLevel.C1. Tiered compilation disabled.
+                        "-DFlipC1C2=true"),
+                // Only C1. Tiered compilation disabled.
                 new Scenario(3,
                         "-XX:TieredStopAtLevel=1",
                         "-XX:+TieredCompilation"),
-                // Only CompLevel.C2.
+                // Only C2.
                 new Scenario(4,
                         "-XX:TieredStopAtLevel=4",
                         "-XX:-TieredCompilation")
         };
 
-        System.gc(); // Resolve this call, to avoid CompLevel.C1 code patching in the test cases.
+        System.gc(); // Resolve this call, to avoid C1 code patching in the test cases.
 
         TestFramework testFramework = new TestFramework(TestCallingConventionC1.class);
         testFramework.addScenarios(scenarios)
@@ -264,10 +263,10 @@ public class TestCallingConventionC1 {
 
     static Intf intfs[] = {
         new MyImplPojo0(), // methods not compiled
-        new MyImplPojo1(), // methods compiled by CompLevel.C1
-        new MyImplPojo2(), // methods compiled by CompLevel.C2
-        new MyImplVal1(),  // methods compiled by CompLevel.C1
-        new MyImplVal2()   // methods compiled by CompLevel.C2
+        new MyImplPojo1(), // methods compiled by C1
+        new MyImplPojo2(), // methods compiled by C2
+        new MyImplVal1(),  // methods compiled by C1
+        new MyImplVal2()   // methods compiled by C2
     };
     static Intf getIntf(int i) {
         int n = i % intfs.length;
@@ -449,10 +448,10 @@ public class TestCallingConventionC1 {
     static TooBigToReturnAsFields tooBig = new TooBigToReturnAsFields();
 
     //**********************************************************************
-    // PART 1 - CompLevel.C1 calls interpreted code
+    // PART 1 - C1 calls interpreted code
     //**********************************************************************
 
-    //** CompLevel.C1 passes inline type to interpreter (static)
+    //** C1 passes inline type to interpreter (static)
     @Test(compLevel = CompLevel.C1)
     public int test1() {
         return test1_helper(pointField);
@@ -472,7 +471,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    //** CompLevel.C1 passes inline type to interpreter (monomorphic)
+    //** C1 passes inline type to interpreter (monomorphic)
     @Test(compLevel = CompLevel.C1)
     public int test2() {
         return test2_helper(pointField);
@@ -492,7 +491,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C1 passes inline type to interpreter (megamorphic: vtable)
+    // C1 passes inline type to interpreter (megamorphic: vtable)
     @Test(compLevel = CompLevel.C1)
     public int test3(Functor functor) {
         return functor.apply_interp(pointField);
@@ -508,7 +507,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // Same as test3, but compiled with CompLevel.C2. Test the hastable of VtableStubs
+    // Same as test3, but compiled with C2. Test the hastable of VtableStubs
     @Test(compLevel = CompLevel.C2)
     public int test3b(Functor functor) {
         return functor.apply_interp(pointField);
@@ -525,7 +524,7 @@ public class TestCallingConventionC1 {
     }
 
 
-    // CompLevel.C1 passes inline type to interpreter (megamorphic: itable)
+    // C1 passes inline type to interpreter (megamorphic: itable)
     @Test(compLevel = CompLevel.C1)
     public int test4(FunctorInterface fi) {
         return fi.apply_interp(pointField);
@@ -542,23 +541,23 @@ public class TestCallingConventionC1 {
     }
 
     //**********************************************************************
-    // PART 2 - interpreter calls CompLevel.C1
+    // PART 2 - interpreter calls C1
     //**********************************************************************
 
-    // Interpreter passes inline type to CompLevel.C1 (static)
+    // Interpreter passes inline type to C1 (static)
     @Test(compLevel = CompLevel.C1)
     static public int test20(Point p1, long l, Point p2) {
         return p1.x + p2.y;
     }
 
     @Run(test = "test20")
-    public void test20_verifier(RunInfo info) {
+    public void test20_verifier() {
         int result = test20(pointField1, 0, pointField2);
         int n = pointField1.x + pointField2.y;
         Asserts.assertEQ(result, n);
     }
 
-    // Interpreter passes inline type to CompLevel.C1 (instance method in inline class)
+    // Interpreter passes inline type to C1 (instance method in inline class)
     @Test
     public int test21(Point p) {
         return test21_helper(p);
@@ -570,7 +569,7 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test21")
-    public void test21_verifier(RunInfo info) {
+    public void test21_verifier() {
         int result = test21(pointField);
         int n = 2 * (pointField.x + pointField.y);
         Asserts.assertEQ(result, n);
@@ -578,10 +577,10 @@ public class TestCallingConventionC1 {
 
 
     //**********************************************************************
-    // PART 3 - CompLevel.C2 calls CompLevel.C1
+    // PART 3 - C2 calls C1
     //**********************************************************************
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, single inline arg
+    // C2->C1 invokestatic, single inline arg
     @Test(compLevel = CompLevel.C2)
     public int test30() {
         return test30_helper(pointField);
@@ -603,7 +602,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, two single inline args
+    // C2->C1 invokestatic, two single inline args
     @Test(compLevel = CompLevel.C2)
     public int test31() {
       return test31_helper(pointField1, pointField2);
@@ -625,7 +624,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, two single inline args and interleaving ints (all passed in registers on x64)
+    // C2->C1 invokestatic, two single inline args and interleaving ints (all passed in registers on x64)
     @Test(compLevel = CompLevel.C2)
     public int test32() {
       return test32_helper(0, pointField1, 1, pointField2);
@@ -647,7 +646,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface -- no verified_ro_entry (no inline args except for receiver)
+    // C2->C1 invokeinterface -- no verified_ro_entry (no inline args except for receiver)
     @Test(compLevel = CompLevel.C2)
     public int test33(Intf intf, int a, int b) {
         return intf.func1(a, b);
@@ -663,7 +662,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface -- use verified_ro_entry (has inline args other than receiver)
+    // C2->C1 invokeinterface -- use verified_ro_entry (has inline args other than receiver)
     @Test(compLevel = CompLevel.C2)
     public int test34(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -679,7 +678,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, Point.y is on stack (x64)
+    // C2->C1 invokestatic, Point.y is on stack (x64)
     @Test(compLevel = CompLevel.C2)
     public int test35() {
         return test35_helper(1, 2, 3, 4, 5, pointField);
@@ -701,7 +700,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, shuffling arguments that are passed on stack
+    // C2->C1 invokestatic, shuffling arguments that are passed on stack
     @Test(compLevel = CompLevel.C2)
     public int test36() {
         return test36_helper(pointField, 1, 2, 3, 4, 5, 6, 7, 8);
@@ -723,7 +722,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, shuffling long arguments
+    // C2->C1 invokestatic, shuffling long arguments
     @Test(compLevel = CompLevel.C2)
     public int test37() {
         return test37_helper(pointField, 1, 2, 3, 4, 5, 6, 7, 8);
@@ -745,7 +744,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, shuffling boolean, byte, char, short, int, long arguments
+    // C2->C1 invokestatic, shuffling boolean, byte, char, short, int, long arguments
     @Test(compLevel = CompLevel.C2)
     public int test38() {
         return test38_helper(pointField, true, (byte)1, (char)2, (short)3, 4, 5, (byte)6, (short)7, 8);
@@ -771,7 +770,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, packing an inline type with all types of fixed point primitive fields.
+    // C2->C1 invokestatic, packing an inline type with all types of fixed point primitive fields.
     @Test(compLevel = CompLevel.C2)
     public long test39() {
         return test39_helper(1, fixedPointsField, 2, fixedPointsField);
@@ -797,7 +796,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, shuffling floating point args
+    // C2->C1 invokestatic, shuffling floating point args
     @Test(compLevel = CompLevel.C2)
     public double test40() {
         return test40_helper(1.1f, 1.2, floatPointField, doublePointField, 1.3f, 1.4, 1.5f, 1.7, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12);
@@ -819,7 +818,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, mixing floats and ints
+    // C2->C1 invokestatic, mixing floats and ints
     @Test(compLevel = CompLevel.C2)
     public double test41() {
         return test41_helper(1, 1.2, pointField, floatPointField, doublePointField, 1.3f, 4, 1.5f, 1.7, 1.7, 1.8, 9, 1.10, 1.11, 1.12);
@@ -841,7 +840,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, circular dependency (between rdi and first stack slot on x64)
+    // C2->C1 invokestatic, circular dependency (between rdi and first stack slot on x64)
     @Test(compLevel = CompLevel.C2)
     public float test42() {
         return test42_helper(eightFloatsField, pointField, 3, 4, 5, floatPointField, 7);
@@ -871,7 +870,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, packing causes stack growth (1 extra stack word)
+    // C2->C1 invokestatic, packing causes stack growth (1 extra stack word)
     @Test(compLevel = CompLevel.C2)
     public float test43() {
         return test43_helper(floatPointField, 1, 2, 3, 4, 5, 6);
@@ -896,7 +895,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, packing causes stack growth (2 extra stack words)
+    // C2->C1 invokestatic, packing causes stack growth (2 extra stack words)
     @Test(compLevel = CompLevel.C2)
     public float test44() {
       return test44_helper(floatPointField, floatPointField, 1, 2, 3, 4, 5, 6);
@@ -924,7 +923,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, packing causes stack growth (5 extra stack words)
+    // C2->C1 invokestatic, packing causes stack growth (5 extra stack words)
     @Test(compLevel = CompLevel.C2)
     public float test45() {
       return test45_helper(floatPointField, floatPointField, floatPointField, floatPointField, floatPointField, 1, 2, 3, 4, 5, 6, 7);
@@ -951,7 +950,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, packing causes stack growth (1 extra stack word -- mixing Point and FloatPoint)
+    // C2->C1 invokestatic, packing causes stack growth (1 extra stack word -- mixing Point and FloatPoint)
     @Test(compLevel = CompLevel.C2)
     public float test46() {
       return test46_helper(floatPointField, floatPointField, pointField, floatPointField, floatPointField, pointField, floatPointField, 1, 2, 3, 4, 5, 6, 7);
@@ -1000,7 +999,7 @@ public class TestCallingConventionC1 {
     }
     //*
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, make sure stack walking works (with static variable)
+    // C2->C1 invokestatic, make sure stack walking works (with static variable)
     @Test(compLevel = CompLevel.C2)
     public void test47(int n) {
         try {
@@ -1038,7 +1037,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, make sure stack walking works (with returned inline type)
+    // C2->C1 invokestatic, make sure stack walking works (with returned inline type)
     @Test(compLevel = CompLevel.C2)
     public int test48(int n) {
         try {
@@ -1073,9 +1072,9 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->interpreter invokestatic, make sure stack walking works (same as test 48, but with stack extension/repair)
+    // C2->interpreter invokestatic, make sure stack walking works (same as test 48, but with stack extension/repair)
     // (this is the baseline for test50 --
-    // the only difference is: test49_helper is interpreted but test50_helper is compiled by CompLevel.C1).
+    // the only difference is: test49_helper is interpreted but test50_helper is compiled by C1).
     @Test(compLevel = CompLevel.C2)
     public int test49(int n) {
         try {
@@ -1109,7 +1108,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, make sure stack walking works (same as test 48, but with stack extension/repair)
+    // C2->C1 invokestatic, make sure stack walking works (same as test 48, but with stack extension/repair)
     @Test(compLevel = CompLevel.C2)
     public int test50(int n) {
         try {
@@ -1145,7 +1144,7 @@ public class TestCallingConventionC1 {
     }
 
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, inline class with ref fields (RefPoint)
+    // C2->C1 invokestatic, inline class with ref fields (RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test51() {
         return test51_helper(refPointField1);
@@ -1167,7 +1166,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, inline class with ref fields (Point, RefPoint)
+    // C2->C1 invokestatic, inline class with ref fields (Point, RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test52() {
         return test52_helper(pointField, refPointField1);
@@ -1189,7 +1188,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, inline class with ref fields (RefPoint, RefPoint, RefPoint, RefPoint)
+    // C2->C1 invokestatic, inline class with ref fields (RefPoint, RefPoint, RefPoint, RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test53() {
         return test53_helper(refPointField1, refPointField2, refPointField1, refPointField2);
@@ -1214,7 +1213,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, inline class with ref fields (RefPoint, RefPoint, float, int, RefPoint, RefPoint)
+    // C2->C1 invokestatic, inline class with ref fields (RefPoint, RefPoint, float, int, RefPoint, RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test54() {
         return test54_helper(refPointField1, refPointField2, 1.0f, 2, refPointField1, refPointField2);
@@ -1263,7 +1262,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, force GC for every allocation when entering a CompLevel.C1 VEP (Point)
+    // C2->C1 invokestatic, force GC for every allocation when entering a C1 VEP (Point)
     @Test(compLevel = CompLevel.C2)
     public int test55(Point p1) {
         return test55_helper(p1);
@@ -1289,7 +1288,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, force GC for every allocation when entering a CompLevel.C1 VEP (RefPoint)
+    // C2->C1 invokestatic, force GC for every allocation when entering a C1 VEP (RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test56(RefPoint rp1) {
         return test56_helper(rp1);
@@ -1315,7 +1314,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->Interpreter (same as test56, but test CompLevel.C2i entry instead of CompLevel.C1)
+    // C2->Interpreter (same as test56, but test C2i entry instead of C1)
     @Test(compLevel = CompLevel.C2)
     public int test57(RefPoint rp1) {
         return test57_helper(rp1);
@@ -1340,7 +1339,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, force GC for every allocation when entering a CompLevel.C1 VEP (a bunch of RefPoints and Numbers);
+    // C2->C1 invokestatic, force GC for every allocation when entering a C1 VEP (a bunch of RefPoints and Numbers);
     @Test(compLevel = CompLevel.C2)
     public int test58(RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
         return test58_helper(rp1, rp2, n1, rp3, rp4, n2);
@@ -1376,7 +1375,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, GC inside main body of CompLevel.C1-compiled method (caller's args should not be GC'ed).
+    // C2->C1 invokestatic, GC inside main body of C1-compiled method (caller's args should not be GC'ed).
     @Test(compLevel = CompLevel.C2)
     public int test59(RefPoint rp1, boolean doGC) {
       return test59_helper(rp1, 11, 222, 3333, 4444, doGC);
@@ -1403,7 +1402,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, GC inside main body of CompLevel.C1-compiled method (caller's args should not be GC'ed).
+    // C2->C1 invokestatic, GC inside main body of C1-compiled method (caller's args should not be GC'ed).
     // same as test59, but the incoming (scalarized) oops are passed in both registers and stack.
     @Test(compLevel = CompLevel.C2)
     public int test60(RefPoint rp1, RefPoint rp2, boolean doGC) {
@@ -1413,8 +1412,8 @@ public class TestCallingConventionC1 {
     @DontInline
     @ForceCompile(CompLevel.C1)
     private static int test60_helper(int x0, int x1, int x2, RefPoint rp1, RefPoint rp2,int a1, int a2, int a3, int a4, boolean doGC) {
-        // On x64, CompLevel.C2 passes:   reg0=x1, reg1=x1, reg2=x2, reg3=rp1.x, reg4=rp1.y, reg5=rp2.x stack0=rp2.y ....
-        //         CompLevel.C1 expects:  reg0=x1, reg1=x1, reg2=x2, reg3=rp1,   reg4=rp2,   reg5=a1    stack0=a2 ...
+        // On x64, C2 passes:   reg0=x1, reg1=x1, reg2=x2, reg3=rp1.x, reg4=rp1.y, reg5=rp2.x stack0=rp2.y ....
+        //         C1 expects:  reg0=x1, reg1=x1, reg2=x2, reg3=rp1,   reg4=rp2,   reg5=a1    stack0=a2 ...
         // When GC happens, make sure it does not treat reg5 and stack0 as oops!
         if (doGC) {
             System.gc();
@@ -1435,7 +1434,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface via VVEP(RO)
+    // C2->C1 invokeinterface via VVEP(RO)
     @Test(compLevel = CompLevel.C2)
     public int test61(RefPoint_Access rpa, RefPoint rp2) {
         return rpa.func1(rp2);
@@ -1453,7 +1452,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface via VVEP(RO) -- force GC for every allocation when entering a CompLevel.C1 VVEP(RO) (RefPoint)
+    // C2->C1 invokeinterface via VVEP(RO) -- force GC for every allocation when entering a C1 VVEP(RO) (RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test62(RefPoint_Access rpa, RefPoint rp2) {
         return rpa.func1(rp2);
@@ -1474,7 +1473,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface via VVEP(RO) -- force GC for every allocation when entering a CompLevel.C1 VVEP(RO) (a bunch of RefPoints and Numbers)
+    // C2->C1 invokeinterface via VVEP(RO) -- force GC for every allocation when entering a C1 VVEP(RO) (a bunch of RefPoints and Numbers)
     @Test(compLevel = CompLevel.C2)
     public int test63(RefPoint_Access rpa, RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
         return rpa.func2(rp1, rp2, n1, rp3, rp4, n2);
@@ -1500,7 +1499,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic (same as test63, but use invokestatic instead)
+    // C2->C1 invokestatic (same as test63, but use invokestatic instead)
     @Test(compLevel = CompLevel.C2)
     public int test64(RefPoint_Access rpa, RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
         return test64_helper(rpa, rp1, rp2, n1, rp3, rp4, n2);
@@ -1532,7 +1531,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokevirtual via VVEP(RO) (opt_virtual_call)
+    // C2->C1 invokevirtual via VVEP(RO) (opt_virtual_call)
     @Test(compLevel = CompLevel.C2)
     public int test76(RefPoint rp1, RefPoint rp2) {
         return rp1.final_func(rp2);
@@ -1550,7 +1549,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokevirtual, force GC for every allocation when entering a CompLevel.C1 VEP (RefPoint)
+    // C2->C1 invokevirtual, force GC for every allocation when entering a C1 VEP (RefPoint)
     // Same as test56, except we call the VVEP(RO) instead of VEP.
     @Test(compLevel = CompLevel.C2)
     public int test77(RefPoint rp1, RefPoint rp2) {
@@ -1573,9 +1572,9 @@ public class TestCallingConventionC1 {
     }
 
     //-------------------------------------------------------------------------------
-    // Tests for how CompLevel.C1 handles InlineTypeReturnedAsFields in both calls and returns
+    // Tests for how C1 handles InlineTypeReturnedAsFields in both calls and returns
     //-------------------------------------------------------------------------------
-    // CompLevel.C2->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (Point)
+    // C2->C1 invokestatic with InlineTypeReturnedAsFields (Point)
     @Test(compLevel = CompLevel.C2)
     public int test78(Point p) {
         Point np = test78_helper(p);
@@ -1589,13 +1588,13 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test78")
-    public void test78_verifier(RunInfo info) {
+    public void test78_verifier() {
         int result = test78(pointField1);
         int n = pointField1.x + pointField1.y;
         Asserts.assertEQ(result, n);
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (RefPoint)
+    // C2->C1 invokestatic with InlineTypeReturnedAsFields (RefPoint)
     @Test(compLevel = CompLevel.C2)
     public int test79(RefPoint p) {
         RefPoint np = test79_helper(p);
@@ -1609,13 +1608,13 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test79")
-    public void test79_verifier(RunInfo info) {
+    public void test79_verifier() {
         int result = test79(refPointField1);
         int n = refPointField1.x.n + refPointField1.y.n;
         Asserts.assertEQ(result, n);
     }
 
-    // CompLevel.C1->CompLevel.C2 invokestatic with InlineTypeReturnedAsFields (RefPoint)
+    // C1->C2 invokestatic with InlineTypeReturnedAsFields (RefPoint)
     @Test(compLevel = CompLevel.C1)
     public int test80(RefPoint p) {
         RefPoint np = test80_helper(p);
@@ -1629,20 +1628,20 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test80")
-    public void test80_verifier(RunInfo info) {
+    public void test80_verifier() {
         int result = test80(refPointField1);
         int n = refPointField1.x.n + refPointField1.y.n;
         Asserts.assertEQ(result, n);
     }
 
-    // Interpreter->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (Point)
+    // Interpreter->C1 invokestatic with InlineTypeReturnedAsFields (Point)
     @Test(compLevel = CompLevel.C1)
     public Point test81(Point p) {
         return p;
     }
 
     @Run(test = "test81")
-    public void test81_verifier(RunInfo info) {
+    public void test81_verifier() {
         Point p = test81(pointField1);
         Asserts.assertEQ(p.x, pointField1.x);
         Asserts.assertEQ(p.y, pointField1.y);
@@ -1651,7 +1650,7 @@ public class TestCallingConventionC1 {
         Asserts.assertEQ(p.y, pointField2.y);
     }
 
-    // CompLevel.C1->Interpreter invokestatic with InlineTypeReturnedAsFields (RefPoint)
+    // C1->Interpreter invokestatic with InlineTypeReturnedAsFields (RefPoint)
     @Test(compLevel = CompLevel.C1)
     public int test82(RefPoint p) {
         RefPoint np = test82_helper(p);
@@ -1664,7 +1663,7 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test82")
-    public void test82_verifier(RunInfo info) {
+    public void test82_verifier() {
         int result = test82(refPointField1);
         int n = refPointField1.x.n + refPointField1.y.n;
         Asserts.assertEQ(result, n);
@@ -1674,7 +1673,7 @@ public class TestCallingConventionC1 {
     // Tests for InlineTypeReturnedAsFields vs the inline class TooBigToReturnAsFields
     //-------------------------------------------------------------------------------
 
-    // CompLevel.C2->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
+    // C2->C1 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
     @Test(compLevel = CompLevel.C2)
     public int test83(TooBigToReturnAsFields p) {
         TooBigToReturnAsFields np = test83_helper(p);
@@ -1688,13 +1687,13 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test83")
-    public void test83_verifier(RunInfo info) {
+    public void test83_verifier() {
         int result = test83(tooBig);
         int n = tooBig.a0 + tooBig.a5;
         Asserts.assertEQ(result, n);
     }
 
-    // CompLevel.C1->CompLevel.C2 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
+    // C1->C2 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
     @Test(compLevel = CompLevel.C1)
     public int test84(TooBigToReturnAsFields p) {
         TooBigToReturnAsFields np = test84_helper(p);
@@ -1708,26 +1707,26 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test84")
-    public void test84_verifier(RunInfo info) {
+    public void test84_verifier() {
         int result = test84(tooBig);
         int n = tooBig.a0 + tooBig.a5;
         Asserts.assertEQ(result, n);
     }
 
-    // Interpreter->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
+    // Interpreter->C1 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
     @Test(compLevel = CompLevel.C1)
     public TooBigToReturnAsFields test85(TooBigToReturnAsFields p) {
         return p;
     }
 
     @Run(test = "test85")
-    public void test85_verifier(RunInfo info) {
+    public void test85_verifier() {
         TooBigToReturnAsFields p = test85(tooBig);
         Asserts.assertEQ(p.a0, tooBig.a0);
         Asserts.assertEQ(p.a2, tooBig.a2);
     }
 
-    // CompLevel.C1->Interpreter invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
+    // C1->Interpreter invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
     @Test(compLevel = CompLevel.C1)
     public int test86(TooBigToReturnAsFields p) {
         TooBigToReturnAsFields np = test86_helper(p);
@@ -1740,17 +1739,17 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test86")
-    public void test86_verifier(RunInfo info) {
+    public void test86_verifier() {
         int result = test86(tooBig);
         int n = tooBig.a0 + tooBig.a5;
         Asserts.assertEQ(result, n);
     }
 
     //-------------------------------------------------------------------------------
-    // Tests for how CompLevel.C1 handles InlineTypeReturnedAsFields in both calls and returns (RefPoint?)
+    // Tests for how C1 handles InlineTypeReturnedAsFields in both calls and returns (RefPoint?)
     //-------------------------------------------------------------------------------
 
-    // CompLevel.C2->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref)
+    // C2->C1 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref)
     @Test(compLevel = CompLevel.C2)
     public RefPoint.ref test87(RefPoint.ref p) {
         return test87_helper(p);
@@ -1763,12 +1762,12 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test87")
-    public void test87_verifier(RunInfo info) {
+    public void test87_verifier() {
         Object result = test87(null);
         Asserts.assertEQ(result, null);
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref with constant null)
+    // C2->C1 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref with constant null)
     @Test(compLevel = CompLevel.C2)
     public RefPoint.ref test88() {
         return test88_helper();
@@ -1781,12 +1780,12 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test88")
-    public void test88_verifier(RunInfo info) {
+    public void test88_verifier() {
         Object result = test88();
         Asserts.assertEQ(result, null);
     }
 
-    // CompLevel.C1->CompLevel.C2 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref)
+    // C1->C2 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref)
     @Test(compLevel = CompLevel.C1)
     public RefPoint.ref test89(RefPoint.ref p) {
         return test89_helper(p);
@@ -1799,22 +1798,22 @@ public class TestCallingConventionC1 {
     }
 
     @Run(test = "test89")
-    public void test89_verifier(RunInfo info) {
+    public void test89_verifier() {
         Object result = test89(null);
         Asserts.assertEQ(result, null);
     }
 
     //----------------------------------------------------------------------------------
     // Tests for unverified entries: there are 6 cases:
-    // CompLevel.C1 -> Unverified Value Entry compiled by CompLevel.C1
-    // CompLevel.C1 -> Unverified Value Entry compiled by CompLevel.C2
-    // CompLevel.C2 -> Unverified Entry compiled by CompLevel.C1 (target is NOT an inline type)
-    // CompLevel.C2 -> Unverified Entry compiled by CompLevel.C2 (target is NOT an inline type)
-    // CompLevel.C2 -> Unverified Entry compiled by CompLevel.C1 (target IS an inline type, i.e., has VVEP_RO)
-    // CompLevel.C2 -> Unverified Entry compiled by CompLevel.C2 (target IS an inline type, i.e., has VVEP_RO)
+    // C1 -> Unverified Value Entry compiled by C1
+    // C1 -> Unverified Value Entry compiled by C2
+    // C2 -> Unverified Entry compiled by C1 (target is NOT an inline type)
+    // C2 -> Unverified Entry compiled by C2 (target is NOT an inline type)
+    // C2 -> Unverified Entry compiled by C1 (target IS an inline type, i.e., has VVEP_RO)
+    // C2 -> Unverified Entry compiled by C2 (target IS an inline type, i.e., has VVEP_RO)
     //----------------------------------------------------------------------------------
 
-    // CompLevel.C1->CompLevel.C1 invokeinterface -- call Unverified Value Entry of MyImplPojo1.func2 (compiled by CompLevel.C1)
+    // C1->C1 invokeinterface -- call Unverified Value Entry of MyImplPojo1.func2 (compiled by C1)
     @Test(compLevel = CompLevel.C1)
     public int test90(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -1835,7 +1834,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C1->CompLevel.C2 invokeinterface -- call Unverified Value Entry of MyImplPojo2.func2 (compiled by CompLevel.C2)
+    // C1->C2 invokeinterface -- call Unverified Value Entry of MyImplPojo2.func2 (compiled by C2)
     @Test(compLevel = CompLevel.C1)
     public int test91(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -1856,7 +1855,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface -- call Unverified Entry of MyImplPojo1.func2 (compiled by CompLevel.C1)
+    // C2->C1 invokeinterface -- call Unverified Entry of MyImplPojo1.func2 (compiled by C1)
     @Test(compLevel = CompLevel.C2)
     public int test92(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -1877,7 +1876,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C2 invokeinterface -- call Unverified Entry of MyImplPojo2.func2 (compiled by CompLevel.C2)
+    // C2->C2 invokeinterface -- call Unverified Entry of MyImplPojo2.func2 (compiled by C2)
     @Test(compLevel = CompLevel.C2)
     public int test93(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -1898,7 +1897,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface -- call Unverified Entry of MyImplVal1.func2 (compiled by CompLevel.C1 - has VVEP_RO)
+    // C2->C1 invokeinterface -- call Unverified Entry of MyImplVal1.func2 (compiled by C1 - has VVEP_RO)
     @Test(compLevel = CompLevel.C2)
     public int test94(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -1919,7 +1918,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C2 invokeinterface -- call Unverified Entry of MyImplVal2.func2 (compiled by CompLevel.C2 - has VVEP_RO)
+    // C2->C2 invokeinterface -- call Unverified Entry of MyImplVal2.func2 (compiled by C2 - has VVEP_RO)
     @Test(compLevel = CompLevel.C2)
     public int test95(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -1940,7 +1939,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C1->CompLevel.C2 GC handling in StubRoutines::store_inline_type_fields_to_buf()
+    // C1->C2 GC handling in StubRoutines::store_inline_type_fields_to_buf()
     @Test(compLevel = CompLevel.C1)
     public RefPoint test96(RefPoint rp, boolean b) {
         RefPoint p = test96_helper(rp);
@@ -1971,7 +1970,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C1->CompLevel.C1  - caller is compiled first. It invokes callee(test97) a few times while the
+    // C1->C1  - caller is compiled first. It invokes callee(test97) a few times while the
     //           callee is executed by the interpreter. Then, callee is compiled
     //           and SharedRuntime::fixup_callers_callsite is called to fix up the
     //           callsite from test97_verifier->test97.
@@ -2000,7 +1999,7 @@ public class TestCallingConventionC1 {
         test97_verifier(info);
     }
 
-    // CompLevel.C1->CompLevel.C2  - same as test97, except the callee is compiled by CompLevel.C2.
+    // C1->C2  - same as test97, except the callee is compiled by C2.
     @Test(compLevel = CompLevel.C2)
     public int test98(Point p1, Point p2) {
         return test98_helper(p1, p2);
@@ -2026,7 +2025,7 @@ public class TestCallingConventionC1 {
         test98_verifier(info);
     }
 
-    // CompLevel.C1->CompLevel.C2  - same as test97, except the callee is a static method.
+    // C1->C2  - same as test97, except the callee is a static method.
     @Test(compLevel = CompLevel.C1)
     public static int test99(Point p1, Point p2) {
         return test99_helper(p1, p2);
@@ -2052,7 +2051,7 @@ public class TestCallingConventionC1 {
         test99_verifier(info);
     }
 
-    // CompLevel.C2->CompLevel.C1 invokestatic, packing causes stack growth (1 extra stack word).
+    // C2->C1 invokestatic, packing causes stack growth (1 extra stack word).
     // Make sure stack frame is set up properly for GC.
     @Test(compLevel = CompLevel.C2)
     public float test100(FloatPoint fp1, FloatPoint fp2, RefPoint rp, int a1, int a2, int a3, int a4) {
@@ -2101,7 +2100,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C1->CompLevel.C2 force GC for every allocation when storing the returned
+    // C1->C2 force GC for every allocation when storing the returned
     // fields back into a buffered object.
     @Test(compLevel = CompLevel.C1)
     public RefPoint test101(RefPoint rp) {
@@ -2132,7 +2131,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // Same as test101, except we have Interpreter->CompLevel.C2 instead.
+    // Same as test101, except we have Interpreter->C2 instead.
     @Test(compLevel = CompLevel.C1)
     public RefPoint test102(RefPoint rp) {
         return test102_interp(rp);
@@ -2169,7 +2168,7 @@ public class TestCallingConventionC1 {
 
     @Test(compLevel = CompLevel.C1)
     public void test103() {
-        // when this method is compiled by CompLevel.C1, the Test103Value class is not yet loaded.
+        // when this method is compiled by C1, the Test103Value class is not yet loaded.
         test103_v = new Test103Value(); // invokestatic "Test103Value.<init>()QTest103Value;"
     }
 
@@ -2194,7 +2193,7 @@ public class TestCallingConventionC1 {
     // Same as test103, but with an inline class that's too big to return as fields.
     @Test(compLevel = CompLevel.C1)
     public void test104() {
-        // when this method is compiled by CompLevel.C1, the Test104Value class is not yet loaded.
+        // when this method is compiled by C1, the Test104Value class is not yet loaded.
         test104_v = new Test104Value(); // invokestatic "Test104Value.<init>()QTest104Value;"
     }
 
@@ -2230,7 +2229,7 @@ public class TestCallingConventionC1 {
         Asserts.assertEQ(v.x0, rL);
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface -- call Unverified Entry of MyImplVal1.func1 (compiled by CompLevel.C1 - has VVEP_RO)
+    // C2->C1 invokeinterface -- call Unverified Entry of MyImplVal1.func1 (compiled by C1 - has VVEP_RO)
     /// (same as test94, except we are calling func1, which shares VVEP and VVEP_RO
     @Test(compLevel = CompLevel.C2)
     public int test105(Intf intf, int a, int b) {
@@ -2252,7 +2251,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C2 invokeinterface -- call Unverified Entry of MyImplVal2.func1 (compiled by CompLevel.C2 - has VVEP_RO)
+    // C2->C2 invokeinterface -- call Unverified Entry of MyImplVal2.func1 (compiled by C2 - has VVEP_RO)
     /// (same as test95, except we are calling func1, which shares VVEP and VVEP_RO
     @Test(compLevel = CompLevel.C2)
     public int test106(Intf intf, int a, int b) {
@@ -2274,8 +2273,8 @@ public class TestCallingConventionC1 {
         }
     }
 
-    // CompLevel.C2->CompLevel.C1 invokeinterface -- CompLevel.C2 calls call Unverified Entry of MyImplVal2X.func1 (compiled by
-    //                           CompLevel.C1, with VVEP_RO==VVEP)
+    // C2->C1 invokeinterface -- C2 calls call Unverified Entry of MyImplVal2X.func1 (compiled by
+    //                           C1, with VVEP_RO==VVEP)
     // This test is developed to validate JDK-8230325.
     @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
     public int test107(Intf intf, int a, int b) {
@@ -2291,14 +2290,14 @@ public class TestCallingConventionC1 {
             test107(intf1, 123, 456);
         }
         for (int i=0; i<500_000; i++) {
-            // Run enough loops so that test107 will be compiled by CompLevel.C2.
+            // Run enough loops so that test107 will be compiled by C2.
             if (i % 30 == 0) {
                 // This will indirectly call MyImplVal2X.func1, but the call frequency is low, so
-                // test107 will be compiled by CompLevel.C2, but MyImplVal2X.func1 will compiled by CompLevel.C1 only.
+                // test107 will be compiled by C2, but MyImplVal2X.func1 will compiled by C1 only.
                 int result = test107(intf2, 123, 456) + i;
                 Asserts.assertEQ(result, intf2.func1(123, 456) + i);
             } else {
-                // Call test107 with a mix of intf1 and intf2, so CompLevel.C2 will use a virtual call (not an optimized call)
+                // Call test107 with a mix of intf1 and intf2, so C2 will use a virtual call (not an optimized call)
                 // for the invokeinterface bytecode in test107.
                 test107(intf1, 123, 456);
             }
@@ -2311,7 +2310,7 @@ public class TestCallingConventionC1 {
         test107_verifier(info);
     }
 
-    // Same as test107, except we call MyImplVal2X.func2 (compiled by CompLevel.C1, VVEP_RO != VVEP)
+    // Same as test107, except we call MyImplVal2X.func2 (compiled by C1, VVEP_RO != VVEP)
     @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
     public int test108(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -2326,14 +2325,14 @@ public class TestCallingConventionC1 {
             test108(intf1, 123, 456);
         }
         for (int i=0; i<500_000; i++) {
-            // Run enough loops so that test108 will be compiled by CompLevel.C2.
+            // Run enough loops so that test108 will be compiled by C2.
             if (i % 30 == 0) {
                 // This will indirectly call MyImplVal2X.func2, but the call frequency is low, so
-                // test108 will be compiled by CompLevel.C2, but MyImplVal2X.func2 will compiled by CompLevel.C1 only.
+                // test108 will be compiled by C2, but MyImplVal2X.func2 will compiled by C1 only.
                 int result = test108(intf2, 123, 456) + i;
                 Asserts.assertEQ(result, intf2.func2(123, 456, pointField) + i);
             } else {
-                // Call test108 with a mix of intf1 and intf2, so CompLevel.C2 will use a virtual call (not an optimized call)
+                // Call test108 with a mix of intf1 and intf2, so C2 will use a virtual call (not an optimized call)
                 // for the invokeinterface bytecode in test108.
                 test108(intf1, 123, 456);
             }
@@ -2347,7 +2346,7 @@ public class TestCallingConventionC1 {
     }
 
     /*
-    // Same as test107, except we call MyImplPojo3.func2 (compiled by CompLevel.C1, VVEP_RO == VEP)
+    // Same as test107, except we call MyImplPojo3.func2 (compiled by C1, VVEP_RO == VEP)
     @Test(compLevel = CompLevel.WAIT_FOR_COMPILATION)
     public int test109(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
@@ -2362,14 +2361,14 @@ public class TestCallingConventionC1 {
             test109(intf1, 123, 456);
         }
         for (int i=0; i<500_000; i++) {
-            // Run enough loops so that test109 will be compiled by CompLevel.C2.
+            // Run enough loops so that test109 will be compiled by C2.
             if (i % 30 == 0) {
                 // This will indirectly call MyImplPojo3.func2, but the call frequency is low, so
-                // test109 will be compiled by CompLevel.C2, but MyImplPojo3.func2 will compiled by CompLevel.C1 only.
+                // test109 will be compiled by C2, but MyImplPojo3.func2 will compiled by C1 only.
                 int result = test109(intf2, 123, 456) + i;
                 Asserts.assertEQ(result, intf2.func2(123, 456, pointField) + i);
             } else {
-                // Call test109 with a mix of intf1 and intf2, so CompLevel.C2 will use a virtual call (not an optimized call)
+                // Call test109 with a mix of intf1 and intf2, so C2 will use a virtual call (not an optimized call)
                 // for the invokeinterface bytecode in test109.
                 test109(intf1, 123, 456);
             }

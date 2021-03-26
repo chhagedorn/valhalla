@@ -285,7 +285,7 @@ public class TestOnStackReplacement {
         return test8_vt;
     }
 
-    @Test()
+    @Test
     public int test8(int start) {
         MyValue3 vt = test8_callee(start);
         test8_vt.verify(vt);

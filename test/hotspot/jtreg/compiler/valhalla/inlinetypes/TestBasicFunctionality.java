@@ -29,19 +29,16 @@
  * @requires os.simpleArch == "x64"
  * @library /test/lib
  * @compile InlineTypes.java
- * @run driver compiler.valhalla.inlinetypes.TestBasicFunctionality
+ * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestBasicFunctionality
  */
 
 package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
-import java.lang.reflect.Method;
 
-import static compiler.valhalla.inlinetypes.InlineTypes.rI;
-import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
 import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+import static compiler.valhalla.inlinetypes.InlineTypes.*;
 
 public class TestBasicFunctionality {
 

@@ -25,16 +25,25 @@ package jdk.test.lib.hotspot.ir_framework;
 
 import java.util.*;
 
+/**
+ * This class represents a scenario that can be executed by the {@link TestFramework}.
+ * <p>
+ * A JTreg test should call the test framework with {@code @run driver}, not allowing to specify any additional flags.
+ * If a test should run with additional flags, use {@link TestFramework#addFlags(String...)}. If, however, the test
+ * should be run with different settings (equivalent to having multiple {@code @run} statements in a normal JTreg test),
+ * use scenarios. A scenario will be run with the scenario specific flags, if any, and the flags specified with
+ * {@link TestFramework#addFlags(String...)} whereas scenario flags will have precedence.
+ */
 public class Scenario {
 
-    static final String ADDITIONAL_SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
+    private static final String ADDITIONAL_SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
     private static final String SCENARIOS = System.getProperty("Scenarios", "");
     private static final List<String> additionalScenarioFlags = new ArrayList<>();
     private static final Set<Integer> enabledScenarios = new HashSet<>();
 
     private final List<String> flags;
     private final int index;
-    boolean enabled;
+    private final boolean enabled;
     private String testVMOutput;
 
     static {
@@ -47,41 +56,81 @@ public class Scenario {
         }
     }
 
+    /**
+     * Create a scenario with index {@code index} that will be run with the additionally specified flags specified in
+     * {@code flags} (or without any additional flags if null or parameter not specified).
+     * <p>
+     * The scenario index must be unique to be distinguishable in stdout and stderr output and when specifying
+     * {@code -DScenarios} (see {@link Scenario}).
+     *
+     * @param index the unique scenario index.
+     * @param flags the scenario flags or null (i.e. no parameter specified) if no flags should be used.
+     */
     public Scenario(int index, String... flags) {
         this.index = index;
-        if (flags != null && (enabledScenarios.isEmpty() || enabledScenarios.contains(index))) {
+        if (flags != null) {
             this.flags = new ArrayList<>(Arrays.asList(flags));
             this.flags.addAll(additionalScenarioFlags);
-            this.enabled = true;
         } else {
             this.flags = new ArrayList<>();
-            this.enabled = false;
         }
+        this.enabled = enabledScenarios.isEmpty() || enabledScenarios.contains(index);
     }
 
+    /**
+     * Add additional flags to this scenario.
+     *
+     * @param flags the additional scenario flags.
+     */
     public void addFlags(String... flags) {
         if (flags != null) {
             this.flags.addAll(Arrays.asList(flags));
         }
     }
 
+    /**
+     * Get all scenario specific flags as defined in {@link #Scenario(int, String...)}.
+     *
+     * @return the scenario flags.
+     */
     public List<String> getFlags() {
         return flags;
     }
 
+    /**
+     * Get the unique scenario index as defined in {@link #Scenario(int, String...)}.
+     *
+     * @return the scenario index.
+     */
     public int getIndex() {
         return index;
     }
 
+    /**
+     * Returns a boolean indicating if this scenario will be executed by the test framework. This only depends on
+     * the property flag {@code -DScenarios} (see {@link Scenario}).
+     *
+     * @return {@code true} if {@code -DScenarios} is either not set or if {@code -DScenarios} specifies the scenario
+     *         index set by {@link #Scenario(int, String...)}.
+     *         {@code false} otherwise.
+     */
     public boolean isEnabled() {
         return enabled;
     }
 
-    public void setTestVMOutput(String testVMOutput) {
-        this.testVMOutput = testVMOutput;
-    }
-
+    /**
+     * Get the test VM output (stdout + stderr) of this scenario from the last execution of the framework.
+     *
+     * @return the test VM output.
+     */
     public String getTestVMOutput() {
         return testVMOutput;
+    }
+
+    /**
+     * Set the test VM output, called by the framework.
+     */
+    void setTestVMOutput(String testVMOutput) {
+        this.testVMOutput = testVMOutput;
     }
 }

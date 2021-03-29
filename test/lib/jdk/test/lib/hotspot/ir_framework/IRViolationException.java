@@ -29,7 +29,7 @@ package jdk.test.lib.hotspot.ir_framework;
  * specific regex that could not be matched.
  */
 public class IRViolationException extends RuntimeException {
-    public IRViolationException(String message) {
+    IRViolationException(String message) {
         super(message);
     }
 }

@@ -28,6 +28,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Test info class which provides some useful utility methods and information about a <b>custom run test</b>.
+ * 
+ * @see Run
+ */
 public class RunInfo extends AbstractInfo {
 
     private final Method testMethod;
@@ -48,85 +53,111 @@ public class RunInfo extends AbstractInfo {
         this.testMethod = testMethods.get(0);
     }
 
+    /**
+     * Get the associated test method object of this custom run test. This method can only be called if one test method
+     * is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #getTest(String)}.
+     *
+     * @return the associated test method object.
+     * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
+     */
     public Method getTest() {
         checkSingleTest("getTest");
         return testMethod;
     }
 
+
+    /**
+     * Get the associated method object of the test method with the name {@code testName}. If the custom run test only
+     * specifies one test method ({@link Run#test()}), consider using {@link #getTest()}.
+     *
+     * @param testName the test method for which the method object should be returned.
+     * @return the associated test method object with the name {@code testName}.
+     * @throws TestRunException if there is no test method with the name {@code testName}.
+     */
     public Method getTest(String testName) {
         return getMethod(testName);
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method is C1 compiled. This method can only be called if one
+     * test method is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #isTestC1Compiled(String)}.
+     *
+     * @return {@code true} if the associated test method is C1 compiled;
+     *         {@code false} otherwise.
+     * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
+     */
     public boolean isTestC1Compiled() {
         checkSingleTest("isTestC1Compiled");
         return TestFrameworkExecution.isC1Compiled(testMethod);
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method with the name {@code testName} is C1 compiled. If the
+     * custom run test only specifies one test method ({@link Run#test()}), consider using {@link #isTestC1Compiled()}.
+     *
+     * @param testName the name of the test method.
+     * @return {@code true} if the test method with the name {@code testName} is C2 compiled;
+     *         {@code false} otherwise.
+     * @throws TestRunException if there is no test method with the name {@code testName}.
+     */
     public boolean isTestC1Compiled(String testName) {
         return TestFrameworkExecution.isC1Compiled(getMethod(testName));
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method is C2 compiled. This method can only be called if one
+     * test method is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #isTestC2Compiled(String)}.
+     *
+     * @return {@code true} if the associated test method is C2 compiled;
+     *         {@code false} otherwise.
+     * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
+     */
     public boolean isTestC2Compiled() {
         checkSingleTest("isTestC2Compiled");
         return TestFrameworkExecution.isC2Compiled(testMethod);
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method with the name {@code testName} is C2 compiled. If the
+     * custom run test only specifies one test method ({@link Run#test()}), consider using {@link #isTestC2Compiled()}.
+     *
+     * @param testName the name of the test method.
+     * @return {@code true} if the test method with the name {@code testName} is C2 compiled;
+     *         {@code false} otherwise.
+     * @throws TestRunException if there is no test method with the name {@code testName}.
+     */
     public boolean isTestC2Compiled(String testName) {
         return TestFrameworkExecution.isC2Compiled(getMethod(testName));
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method is compiled at {@code compLevel}. This method can only
+     * be called if one test method is specified in the custom run test ({@link Run#test()}).
+     * Otherwise, use {@link #isTestCompiledAtLevel(String, CompLevel)}.
+     *
+     * @param compLevel the compilation level
+     * @return {@code true} if the associated test method is compiled at {@code compLevel};
+     *         {@code false} otherwise.
+     * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
+     */
     public boolean isTestCompiledAtLevel(CompLevel compLevel) {
         checkSingleTest("isTestCompiledAtLevel");
         return TestFrameworkExecution.isCompiledAtLevel(testMethod, compLevel);
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method with the name {@code testName} is compiled at
+     * {@code compLevel}. If thec ustom run test only specifies one test method ({@link Run#test()}),
+     * consider using {@link #isTestCompiledAtLevel(CompLevel)} )}.
+     *
+     * @param testName the name of the test method.
+     * @param compLevel the compilation level.
+     * @return {@code true} if the test method with the name {@code testName} is compiled at {@code compLevel};
+     *         {@code false} otherwise.
+     * @throws TestRunException if there is no test method with the name {@code testName}.
+     */
     public boolean isTestCompiledAtLevel(String testName, CompLevel compLevel) {
         return TestFrameworkExecution.isCompiledAtLevel(getMethod(testName), compLevel);
-    }
-
-    public void assertTestDeoptimizedByC1() {
-        checkSingleTest("assertTestDeoptimizedByC1");
-        TestFrameworkExecution.assertDeoptimizedByC1(testMethod);
-    }
-
-    public void assertTestDeoptimizedByC1(String testName) {
-        TestFrameworkExecution.assertDeoptimizedByC1(getMethod(testName));
-    }
-
-    public void assertTestCompiledByC1() {
-        checkSingleTest("assertTestCompiledByC1");
-        TestFrameworkExecution.assertCompiledByC1(testMethod);
-    }
-
-    public void assertTestCompiledByC1(String testName) {
-        TestFrameworkExecution.assertCompiledByC1(getMethod(testName));
-    }
-
-    public void assertTestDeoptimizedByC2() {
-        checkSingleTest("assertTestDeoptimizedByC2");
-        TestFrameworkExecution.assertDeoptimizedByC2(testMethod);
-    }
-
-    public void assertTestDeoptimizedByC2(String testName) {
-        TestFrameworkExecution.assertDeoptimizedByC2(getMethod(testName));
-    }
-
-    public void assertTestCompiledByC2() {
-        checkSingleTest("assertTestCompiledByC2");
-        TestFrameworkExecution.assertCompiledByC2(testMethod);
-    }
-
-    public void assertTestCompiledByC2(String testName) {
-        TestFrameworkExecution.assertCompiledByC2(getMethod(testName));
-    }
-
-    public void assertTestCompiledAtLevel(CompLevel level) {
-        checkSingleTest("assertTestCompiledAtLevel");
-        TestFrameworkExecution.assertCompiledAtLevel(testMethod, level);
-    }
-
-    public void assertTestCompiledAtLevel(String testName, CompLevel level) {
-        TestFrameworkExecution.assertCompiledAtLevel(getMethod(testName), level);
     }
 
     private void checkSingleTest(String calledMethod) {
@@ -139,7 +170,7 @@ public class RunInfo extends AbstractInfo {
     private Method getMethod(String testName) {
         Method m = testMethods.get(testName);
         if (m == null) {
-            throw new RuntimeException("Could not find @Test \"" + testName + "\" in " + testClass + " being associated with" +
+            throw new TestRunException("Could not find @Test \"" + testName + "\" in " + testClass + " being associated with" +
                                        " corresponding @Run method.");
         }
         return m;

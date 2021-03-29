@@ -39,7 +39,7 @@ import java.lang.annotation.RetentionPolicy;
  *     {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is similar
  *     to simulating {@code -Xcomp}). More information about the warm-up in general can be found in {@link Warmup}</li>
  *     <li><p>After the warm-up, the framework compiles {@code m} at the specified compilation level set by
- *     {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
+ *     {@link #compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
  *     {@link CompLevel#C2}).</li>
  *     <li><p>The framework invokes {@code m} one more time to check the compilation.</li>
  *     <li><p>The framework checks any specified {@link IR} constraints at {@code m}. More information about IR matching

@@ -62,8 +62,8 @@ public class TestRunTests {
         test1(23);
         test2(42);
         if (!info.isWarmUp()) {
-            info.assertTestCompiledByC2("test1");
-            info.assertTestCompiledByC2("test2");
+            TestFramework.assertCompiledByC2(info.getTest("test1"));
+            TestFramework.assertCompiledByC2(info.getTest("test2"));
         }
     }
 
@@ -78,7 +78,7 @@ public class TestRunTests {
     public void run2(RunInfo info) {
         test3(42);
         if (!info.isWarmUp()) {
-            info.assertTestCompiledByC2();
+            TestFramework.assertCompiledByC2(info.getTest());
         }
     }
 
@@ -116,8 +116,8 @@ public class TestRunTests {
         test5(23);
         test6(42);
         if (!info.isWarmUp()) {
-            info.assertTestCompiledByC2("test5");
-            info.assertTestCompiledByC2("test6");
+            TestFramework.assertCompiledByC2(info.getTest("test5"));
+            TestFramework.assertCompiledByC2(info.getTest("test6"));
         }
     }
 

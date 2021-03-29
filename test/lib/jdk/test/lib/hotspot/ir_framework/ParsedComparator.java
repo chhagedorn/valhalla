@@ -28,7 +28,7 @@ import java.util.function.BiPredicate;
 class ParsedComparator<T extends Comparable<T>> {
     private final String strippedString;
     private final BiPredicate<T, T> predicate;
-    private String comparator;
+    private final String comparator;
 
     public ParsedComparator(String strippedString, BiPredicate<T, T> predicate, String comparator) {
         this.strippedString = strippedString;

@@ -28,10 +28,15 @@ import java.util.Map;
 
 /**
  * Compilation levels used by the framework. The compilation levels map to the used levels in HotSpot (apart from the
- * framework specific value {@link CompLevel#SKIP} that cannot be found in HotSpot).
+ * framework specific value {@link #SKIP} that cannot be found in HotSpot).
  *
  * <p>
  * The compilation levels can be specified in the {@link Test}, {@link ForceCompile} and {@link DontCompile} annotation.
+ *
+ *
+ * @see Test
+ * @see ForceCompile
+ * @see DontCompile
  */
 public enum CompLevel {
     /**
@@ -84,15 +89,32 @@ public enum CompLevel {
         this.value = level;
     }
 
+    /**
+     * Get the compilation level as integer value. These will match the levels specified in HotSpot (if available).
+     *
+     * @return the compilation level as integer.
+     */
     public int getValue() {
         return value;
     }
 
+    /**
+     * Get the compilation level enum from the specified integer.
+     *
+     * @param value the compilation level as integer.
+     * @throws TestRunException if {@code value} does not specify a valid compilation level.
+     * @return the compilation level enum for {@code value}.
+     */
     public static CompLevel forValue(int value) {
-        return typesByValue.get(value);
+        CompLevel level = typesByValue.get(value);
+        TestRun.check(level != null, "Invalid compilation level " + value);
+        return level;
     }
 
-    public static boolean overlapping(CompLevel l1, CompLevel l2) {
+    /**
+     * Checks if two compilation levels are overlapping.
+     */
+    static boolean overlapping(CompLevel l1, CompLevel l2) {
         return l1.isC1() == l2.isC1() || (l1 == C2 && l2 == C2);
     }
 

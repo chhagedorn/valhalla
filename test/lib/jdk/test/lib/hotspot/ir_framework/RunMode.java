@@ -23,6 +23,11 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+/**
+ * The run mode for a <b>custom run test</b> specified in {@link Run#mode}.
+ *
+ * @see Run
+ */
 public enum RunMode {
     /**
      * Default mode: First warm up run method, then compile the associated

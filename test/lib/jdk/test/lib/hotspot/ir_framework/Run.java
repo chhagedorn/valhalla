@@ -34,7 +34,7 @@ import java.lang.annotation.RetentionPolicy;
  * the {@code @Run(test = "t")} annotation. These two methods represent a so-called <i>custom run test</i>. The only
  * difference to a <i>base test</i> (see {@link Test}) is that the framework will not invoke the test method {@code t}
  * but instead the run method {@code r} which is then responsible to invoke {@code t} and do any additional verification,
- * (e.g. of the return value). If {@code Run} does not specify {@link RunMode#STANDALONE} as {@link Run#mode()}
+ * (e.g. of the return value). If {@code Run} does not specify {@link RunMode#STANDALONE} as {@link #mode()}
  * property, the framework does the following, similar as for <i>base tests</i>:
  * <ol>
  *     <li><p>The framework warms {@code r} up by invoking it for a predefined number of iterations (default: 2000)
@@ -50,7 +50,7 @@ import java.lang.annotation.RetentionPolicy;
  * </ol>
  *
  * <p>
- *  If {@code Run} specifies {@link RunMode#STANDALONE} as {@link Run#mode()} property, the framework gives complete
+ *  If {@code Run} specifies {@link RunMode#STANDALONE} as {@link #mode()} property, the framework gives complete
  *  control to the run method {@code r}:
  * <ol>
  *     <li><p>The framework invokes the run method {@code r} only one time without any warm-up or compilation of

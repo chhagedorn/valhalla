@@ -32,7 +32,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-// Only used by TestVM
+/**
+ * Prints an encoding of all @Test methods whether an @IR rules should be applied to the dedicated test framework socket.
+ */
 class IREncodingPrinter {
     public static final String START = "##### IRMatchRulesEncoding - used by TestFramework #####";
     public static final String END = "----- END -----";

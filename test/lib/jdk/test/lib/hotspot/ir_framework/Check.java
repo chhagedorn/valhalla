@@ -40,7 +40,7 @@ import java.lang.annotation.RetentionPolicy;
  *     or any number specified by an additional {@link Warmup} annotation at {@code t} or by using
  *     {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is similar
  *     to simulating {@code -Xcomp}). After each invocation of {@code t}, the framework also invokes {@code c} if the
- *     {@code @Check} annotation specifies {@link CheckAt#EACH_INVOCATION} at {@link Check#when()}.</li>
+ *     {@code @Check} annotation specifies {@link CheckAt#EACH_INVOCATION} at {@link #when()}.</li>
  *     <li><p>After the warm-up, the framework compiles {@code t} at the specified compilation level set by
  *     {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
  *     {@link CompLevel#C2}).</li>
@@ -56,7 +56,7 @@ import java.lang.annotation.RetentionPolicy;
  * The following additional constraints must be met for the test method {@code t} and check method {@code c}:
  * <ul>
  *     <li><p>{@code c} must specify the method name {@code t} as property in {@code @Check(test = "t")}
- *     (see {@link Check#test()}. Specifying a non-{@code Test} annotated method or a {@code @Test} method that
+ *     (see {@link #test()}. Specifying a non-{@code Test} annotated method or a {@code @Test} method that
  *     has already been used by another {@code @Check} or {@link Run} method results in a {@link TestFormatException}.
  *     <li><p>{@code c} can specify the following method parameter combinations:
  *     <ul>
@@ -86,7 +86,7 @@ public @interface Check {
     /**
      * The unique associated {@link Test} method for this {@code @Check} annotated check method. The framework will directly
      * invoke the {@code @Check} method after each invocation or only after the compilation of the associated {@code @Test}
-     * method (depending on the value set with {@link Check#when()}).
+     * method (depending on the value set with {@link #when()}).
      * <p>
      * If a non-{@code Test} annotated method is used or a {@code @Test} method that has already been used by another
      * {@code @Check} or {@link Run} method, then a {@link TestFormatException} is thrown.

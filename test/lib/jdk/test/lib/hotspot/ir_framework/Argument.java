@@ -25,14 +25,15 @@ package jdk.test.lib.hotspot.ir_framework;
 
 /**
  * Well-defined argument values that can be used in the {@link Arguments} annotation at a {@link Test} method for a
- * base or a checked test.
+ * <b>base test</b> or a <b>checked test</b>.
+ * 
  * @see Arguments
  * @see Test
  * @see Check
  */
 public enum Argument {
     /**
-     * Provides the default value for any kind of primitive type and objects type if the class provides a default constructor.
+     * Provides the default value for any kind of primitive type and object type if the class provides a default constructor.
      */
     DEFAULT,
     /**

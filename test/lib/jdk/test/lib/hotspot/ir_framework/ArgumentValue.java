@@ -28,14 +28,17 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Random;
 
+/**
+ * This class represents an argument value specified by {@link Argument} in {@link Arguments}.
+ */
 class ArgumentValue {
     private static final Random random = new Random();
 
-    final private Object argumentValue;
-    final private boolean isToggleBoolean;
-    final private boolean isRandomEach;
-    final private boolean isFixedRandom;
-    final private Class<?> randomClass;
+    private final Object argumentValue;
+    private final boolean isToggleBoolean;
+    private final boolean isRandomEach;
+    private final boolean isFixedRandom;
+    private final Class<?> randomClass;
     private boolean previousBoolean;
 
     private ArgumentValue(Object argumentValue, Boolean booleanToggle, boolean isFixedRandom) {

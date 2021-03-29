@@ -23,12 +23,13 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
-public class TestRun {
+class TestRun {
     public static void check(boolean test, String failureMessage) {
         if (!test) {
             throw new TestRunException(failureMessage);
         }
     }
+    
     public static void fail(String failureMessage) {
         throw new TestRunException(failureMessage);
     }

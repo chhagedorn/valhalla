@@ -27,6 +27,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * This class provides default regex strings that can be used in {@link IR} annotations to specify IR constraints.
+ * <p>
+ * There are two types of default regexes:
+ * <ul>
+ *     <li><p>Standalone regexes: Use them directly.
+ *     <li>Composite regexes: They end with {@code _OF} and expect another string in a list in {@link IR#failOn()} and
+ *     {@link IR#counts()}. Do not use them as standalone regex. Doing so will result in a {@link TestFormatException}</li>
+ * </ul>
+ *
+ * @see IR
+ */
 public class IRNode {
     private static final String START = "(\\d+(\\s){2}(";
     private static final String MID = ".*)+(\\s){2}===.*";

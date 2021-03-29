@@ -774,13 +774,12 @@ public class TestFrameworkExecution {
     }
 
     static void assertNotCompiled(Method m) {
-        TestRun.check(!WHITE_BOX.isMethodCompiled(m, false) && !WHITE_BOX.isMethodCompiled(m, true),
-                      m + " should not have been compiled");
+        TestRun.check(!isC1Compiled(m), m + " should not have been compiled by C1");
+        TestRun.check(!isC2Compiled(m), m + " should not have been compiled by C2");
     }
 
     static void assertCompiled(Method m) {
-        TestRun.check(WHITE_BOX.isMethodCompiled(m, false) || WHITE_BOX.isMethodCompiled(m, true),
-                      m + " should have been compiled");
+        TestRun.check(isC1Compiled(m) || isC2Compiled(m), m + " should have been compiled");
     }
 
     private static TriState compiledByC1(Method m) {

@@ -25,6 +25,13 @@ package jdk.test.lib.hotspot.ir_framework;
 
 import java.lang.reflect.Method;
 
+/**
+ * Test info class which provides some useful utility methods and information about a <b>base test</b>
+ * or a <b>checked test</b>.
+ * 
+ * @see Test
+ * @see Check
+ */
 public class TestInfo extends AbstractInfo {
 
     private final Method testMethod;
@@ -34,39 +41,43 @@ public class TestInfo extends AbstractInfo {
         this.testMethod = testMethod;
     }
 
+    /**
+     * Get the associated test method object.
+     *
+     * @return the associated test method object
+     */
     public Method getTest() {
         return testMethod;
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method is C1 compiled.
+     *
+     * @return {@code true} if the test method is C1 compiled;
+     *         {@code false} otherwise.
+     */
     public boolean isC1Compiled() {
         return TestFrameworkExecution.isC1Compiled(testMethod);
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method is C1 compiled.
+     *
+     * @return {@code true} if the test method is C2 compiled;
+     *         {@code false} otherwise.
+     */
     public boolean isC2Compiled() {
         return TestFrameworkExecution.isC2Compiled(testMethod);
     }
 
+    /**
+     * Returns a boolean indicating if the associated test method is compiled at {@code compLevel}.
+     * 
+     * @param compLevel the compilation level
+     * @return {@code true} if the test method is compiled at {@code compLevel};
+     *         {@code false} otherwise.
+     */
     public boolean isCompiledAtLevel(CompLevel compLevel) {
         return TestFrameworkExecution.isCompiledAtLevel(testMethod, compLevel);
-    }
-
-    public void assertDeoptimizedByC1() {
-        TestFrameworkExecution.assertDeoptimizedByC1(testMethod);
-    }
-
-    public void assertCompiledByC1() {
-        TestFrameworkExecution.assertCompiledByC1(testMethod);
-    }
-
-    public void assertDeoptimizedByC2() {
-        TestFrameworkExecution.assertDeoptimizedByC2(testMethod);
-    }
-
-    public void assertCompiledByC2() {
-        TestFrameworkExecution.assertCompiledByC2(testMethod);
-    }
-
-    public void assertCompiledAtLevel(CompLevel level) {
-        TestFrameworkExecution.assertCompiledAtLevel(testMethod, level);
     }
 }

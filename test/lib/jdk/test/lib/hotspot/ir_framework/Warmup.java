@@ -35,6 +35,9 @@ import java.lang.annotation.RetentionPolicy;
  *     the test method.</li>
  * </ul>
  *
+ * @see Test
+ * @see Check
+ * @see Run
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Warmup {

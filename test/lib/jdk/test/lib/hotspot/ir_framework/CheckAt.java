@@ -26,6 +26,7 @@ package jdk.test.lib.hotspot.ir_framework;
 /**
  * Enum used at in the {@link Check} annotation of a checked test. It specifies when the framework will invoke the
  * check method after invoking the associated {@link Test} method.
+ *
  * @see Check
  * @see Test
  */

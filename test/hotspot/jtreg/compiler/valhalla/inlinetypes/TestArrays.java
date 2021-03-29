@@ -794,7 +794,7 @@ public class TestArrays {
     // non escaping allocation with memory phi
     @Test
     @IR(failOn = {ALLOC, ALLOCA, LOOP, LOAD, STORE, TRAP})
-    public long test31(boolean b, boolean deopt) {
+    public long test31(boolean b, boolean deopt, Method m) {
         MyValue2[] src = new MyValue2[1];
         if (b) {
             src[0] = MyValue2.createWithFieldsInline(rI, rD);
@@ -803,7 +803,6 @@ public class TestArrays {
         }
         if (deopt) {
             // uncommon trap
-            Method m = testFramework.getTestMethod("test31");
             TestFramework.deoptimize(m);
         }
         return src[0].hash();
@@ -812,10 +811,10 @@ public class TestArrays {
     @Run(test = "test31")
     public void test31_verifier(RunInfo info) {
         MyValue2 v1 = MyValue2.createWithFieldsInline(rI, rD);
-        long result1 = test31(true, !info.isWarmUp());
+        long result1 = test31(true, !info.isWarmUp(), info.getTest());
         Asserts.assertEQ(result1, v1.hash());
         MyValue2 v2 = MyValue2.createWithFieldsInline(rI + 1, rD + 1);
-        long result2 = test31(false, !info.isWarmUp());
+        long result2 = test31(false, !info.isWarmUp(), info.getTest());
         Asserts.assertEQ(result2, v2.hash());
     }
 

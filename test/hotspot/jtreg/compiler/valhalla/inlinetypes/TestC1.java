@@ -21,16 +21,12 @@
  * questions.
  */
 
-
 package compiler.valhalla.inlinetypes;
-
-import java.util.Arrays;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
 
 /*
  * @test
@@ -42,6 +38,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rD;
  * @compile -XDallowWithFieldOperator TestC1.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestC1
  */
+
 public class TestC1 {
     public static void main(String[] args) {
         final Scenario[] scenarios = {
@@ -88,7 +85,6 @@ public class TestC1 {
         Asserts.assertEQ(r2, 0x1234567812345678L);
     }
 
-    @ForceCompileClassInitializer
     static primitive class SimpleValue2 {
         final int value;
         SimpleValue2(int value) {
@@ -190,7 +186,6 @@ public class TestC1 {
     }
 
     // Test 1st level sub-element access to non-flattened field
-    @ForceCompileClassInitializer
     static primitive class Big {
         long l0,l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13,l14,l15,l16,l17,l18,l19 ;
 
@@ -224,7 +219,6 @@ public class TestC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static primitive class TestValue {
         int i;
         Big big;

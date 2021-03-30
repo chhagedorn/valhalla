@@ -23,19 +23,17 @@
 
 package compiler.valhalla.inlinetypes;
 
+import jdk.internal.misc.Unsafe;
+import jdk.test.lib.Asserts;
+import jdk.test.lib.hotspot.ir_framework.*;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.List;
 
-import jdk.test.lib.Asserts;
-import jdk.internal.misc.Unsafe;
-
-import jdk.test.lib.hotspot.ir_framework.*;
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
-import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 
 /*
  * @test
@@ -48,6 +46,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestIntrinsics
  */
 
+@ForceCompileClassInitializer
 public class TestIntrinsics {
 
     public static void main(String[] args) {

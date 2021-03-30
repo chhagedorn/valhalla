@@ -130,15 +130,22 @@ public class TestFrameworkExecution {
         String testClassName = args[0];
         System.out.println("Framework main(), about to run tests in class " + testClassName);
         Class<?> testClass;
-        try {
-            testClass = Class.forName(testClassName);
-        } catch (Exception e) {
-            throw new TestRunException("Could not find test class " + testClassName, e);
-        }
+        testClass = getClassObject(testClassName, "test");
 
         TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
         framework.addHelperClasses(args);
         framework.start();
+    }
+
+    protected static Class<?> getClassObject(String className, String classType) {
+        Class<?> c;
+        try {
+            c = Class.forName(className);
+        } catch (Exception e) {
+            TestRun.fail("Could not find " + classType + " class", e);
+            return null;
+        }
+        return c;
     }
 
     private void addHelperClasses(String[] args) {
@@ -167,11 +174,7 @@ public class TestFrameworkExecution {
         Class<?>[] helperClasses = new Class<?>[args.length - 1]; // First argument is test class
         for (int i = 1; i < args.length; i++) {
             String helperClassName = args[i];
-            try {
-                helperClasses[i - 1] = Class.forName(helperClassName);
-            } catch (Exception e) {
-                throw new TestRunException("Could not find helper class " + helperClassName, e);
-            }
+            helperClasses[i - 1] = getClassObject(helperClassName, "helper");
         }
         return helperClasses;
     }
@@ -296,7 +299,12 @@ public class TestFrameworkExecution {
             }
             level = restrictCompLevel(anno.value());
             if (level != CompLevel.SKIP) {
-                WHITE_BOX.enqueueInitializerForCompilation(c, level.getValue());
+                // Make sure class is initialized to avoid compilation bailout of <clinit>
+                getClassObject(c.getName(), "nested"); // calls Class.forName() to initialize 'c'
+                TestFormat.checkNoThrow(WHITE_BOX.enqueueInitializerForCompilation(c, level.getValue()),
+                                        "Failed to enqueue <clinit> of " + c + " for compilation. Did you specify "
+                                        + "@ForceCompileClassInitializer without providing a static class initialization? "
+                                        + "Make sure to provide any form of static initialization or remove the annotation.");
             }
         }
     }

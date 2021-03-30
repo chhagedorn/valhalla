@@ -40,6 +40,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rL;
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConventionC1
  */
 
+@ForceCompileClassInitializer
 public class TestCallingConventionC1 {
     static final TestFramework testFramework = InlineTypes.getFramework();
 
@@ -81,7 +82,6 @@ public class TestCallingConventionC1 {
 
     // Helper methods and classes
 
-    @ForceCompileClassInitializer
     static primitive class Point {
         final int x;
         final int y;
@@ -105,7 +105,6 @@ public class TestCallingConventionC1 {
         public int apply_interp(Point p);
     }
 
-    @ForceCompileClassInitializer
     static class Functor implements FunctorInterface {
         @DontCompile
         public int apply_interp(Point p) {
@@ -113,7 +112,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class Functor1 extends Functor {
         @DontCompile
         public int apply_interp(Point p) {
@@ -121,7 +119,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class Functor2 extends Functor {
         @DontCompile
         public int apply_interp(Point p) {
@@ -129,7 +126,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class Functor3 extends Functor {
         @DontCompile
         public int apply_interp(Point p) {
@@ -137,7 +133,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class Functor4 extends Functor {
         @DontCompile
         public int apply_interp(Point p) {
@@ -167,7 +162,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p);
     }
 
-    @ForceCompileClassInitializer
     static class MyImplPojo0 implements Intf {
         int field = 0;
         @DontCompile
@@ -176,7 +170,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)     { return field + a + b + p.x + p.y + 1; }
     }
 
-    @ForceCompileClassInitializer
     static class MyImplPojo1 implements Intf {
         int field = 1000;
 
@@ -186,7 +179,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 20; }
     }
 
-    @ForceCompileClassInitializer
     static class MyImplPojo2 implements Intf {
         int field = 2000;
 
@@ -196,7 +188,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 20; }
     }
 
-    @ForceCompileClassInitializer
     static class MyImplPojo3 implements Intf {
         int field = 0;
         @DontInline // will be compiled with counters
@@ -205,7 +196,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)     { return field + a + b + p.x + p.y + 1; }
     }
 
-    @ForceCompileClassInitializer
     static primitive class MyImplVal1 implements Intf {
         final int field;
         MyImplVal1() {
@@ -220,7 +210,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 300; }
     }
 
-    @ForceCompileClassInitializer
     static primitive class MyImplVal2 implements Intf {
         final int field;
         MyImplVal2() {
@@ -234,7 +223,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 300; }
     }
 
-    @ForceCompileClassInitializer
     static primitive class MyImplVal1X implements Intf {
         final int field;
         MyImplVal1X() {
@@ -248,7 +236,6 @@ public class TestCallingConventionC1 {
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 300; }
     }
 
-    @ForceCompileClassInitializer
     static primitive class MyImplVal2X implements Intf {
         final int field;
         MyImplVal2X() {
@@ -285,7 +272,6 @@ public class TestCallingConventionC1 {
     }
     static FixedPoints fixedPointsField = new FixedPoints();
 
-    @ForceCompileClassInitializer
     static primitive class FloatPoint {
         final float x;
         final float y;
@@ -295,7 +281,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static primitive class DoublePoint {
         final double x;
         final double y;
@@ -307,7 +292,6 @@ public class TestCallingConventionC1 {
     static FloatPoint floatPointField = new FloatPoint(123.456f, 789.012f);
     static DoublePoint doublePointField = new DoublePoint(123.456, 789.012);
 
-    @ForceCompileClassInitializer
     static primitive class EightFloats {
         float f1, f2, f3, f4, f5, f6, f7, f8;
         public EightFloats() {
@@ -323,7 +307,6 @@ public class TestCallingConventionC1 {
     }
     static EightFloats eightFloatsField = new EightFloats();
 
-    @ForceCompileClassInitializer
     static class Number {
         int n;
         Number(int v) {
@@ -339,7 +322,6 @@ public class TestCallingConventionC1 {
         public int func2(RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2);
     }
 
-    @ForceCompileClassInitializer
     static primitive class RefPoint implements RefPoint_Access {
         final Number x;
         final Number y;
@@ -377,7 +359,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class RefPoint_Access_Impl1 implements RefPoint_Access {
         @DontCompile
         public int func1(RefPoint rp2) {
@@ -396,7 +377,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class RefPoint_Access_Impl2 implements RefPoint_Access {
         @DontCompile
         public int func1(RefPoint rp2) {
@@ -432,7 +412,6 @@ public class TestCallingConventionC1 {
 
     // This inline class has too many fields to fit in registers on x64 for
     // InlineTypeReturnedAsFields.
-    @ForceCompileClassInitializer
     static primitive class TooBigToReturnAsFields {
         int a0 = 0;
         int a1 = 1;
@@ -980,7 +959,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static class MyRuntimeException extends RuntimeException {
         MyRuntimeException(String s) {
             super(s);

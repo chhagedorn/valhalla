@@ -43,6 +43,7 @@ import java.util.Arrays;
  * @run driver compiler.valhalla.inlinetypes.TestNullableArrays
  */
 
+@ForceCompileClassInitializer
 public class TestNullableArrays {
     static final TestFramework testFramework = InlineTypes.getFramework();
 

@@ -43,6 +43,8 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConvention
  */
+
+@ForceCompileClassInitializer
 public class TestCallingConvention {
 
     static MethodHandle test32_mh, test33_mh, test37_mh;
@@ -90,7 +92,6 @@ public class TestCallingConvention {
     // Helper methods and classes
 
     // Test calling convention with deep hierarchy of flattened fields
-    @ForceCompileClassInitializer
     final primitive class Test27Value1 {
         final Test27Value2 valueField;
 
@@ -104,7 +105,6 @@ public class TestCallingConvention {
         }
     }
 
-    @ForceCompileClassInitializer
     final primitive class Test27Value2 {
         final Test27Value3 valueField;
 
@@ -118,7 +118,6 @@ public class TestCallingConvention {
         }
     }
 
-    @ForceCompileClassInitializer
     final primitive class Test27Value3 {
         final int x;
 
@@ -132,7 +131,6 @@ public class TestCallingConvention {
         }
     }
 
-    @ForceCompileClassInitializer
     primitive class Test37Value {
         int x = rI;
 
@@ -142,7 +140,6 @@ public class TestCallingConvention {
         }
     }
 
-    @ForceCompileClassInitializer
     primitive class EmptyContainer {
         private MyValueEmpty empty;
 
@@ -157,7 +154,6 @@ public class TestCallingConvention {
         MyValueEmpty getNoInline() { return empty; }
     }
 
-    @ForceCompileClassInitializer
     primitive class MixedContainer {
         public int val;
         private EmptyContainer empty;
@@ -573,7 +569,6 @@ public class TestCallingConvention {
     }
 
     // Test calling a method that has circular register/stack dependencies when unpacking inline type arguments
-    @ForceCompileClassInitializer
     primitive class TestValue23 {
         final double f1;
         TestValue23(double val) {
@@ -870,7 +865,6 @@ public class TestCallingConvention {
         Asserts.assertEQ(res, vt);
     }
 
-    @ForceCompileClassInitializer
     static primitive class LargeValueWithOops {
         // Use all 6 int registers + 50/2 on stack = 29
         Object o1 = null;
@@ -904,7 +898,6 @@ public class TestCallingConvention {
         Object o29 = null;
     }
 
-    @ForceCompileClassInitializer
     static primitive class LargeValueWithoutOops {
         // Use all 6 int registers + 50/2 on stack = 29
         int i1 = 0;

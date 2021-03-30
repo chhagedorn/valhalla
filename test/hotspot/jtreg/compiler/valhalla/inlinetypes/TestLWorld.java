@@ -44,9 +44,10 @@ import test.java.lang.invoke.lib.InstructionHelper;
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
  * @build jdk.experimental.bytecode.BasicClassBuilder test.java.lang.invoke.lib.InstructionHelper
  * @compile InlineTypes.java
- * @run driver compiler.valhalla.inlinetypes.TestLWorld
+ * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestLWorld
  */
 
+@ForceCompileClassInitializer
 public class TestLWorld {
     static final TestFramework testFramework = InlineTypes.getFramework();
 
@@ -111,7 +112,7 @@ public class TestLWorld {
         for (int i = 1; i < num; i++) {
             test.run();
 
-            if (TestFramework.isCompiled(m)) {
+            if (!TestFramework.isCompiled(m)) {
                 TestFramework.compile(m, CompLevel.C2);
             }
         }
@@ -470,7 +471,6 @@ public class TestLWorld {
         Asserts.assertEQ(result, 11*vt.hash() + 2*def.hashPrimitive());
     }
 
-    @ForceCompileClassInitializer
     class MyObject1 implements MyInterface {
         public int x;
 
@@ -1512,7 +1512,6 @@ public class TestLWorld {
     }
 
     // Inline type with some non-flattened fields
-    @ForceCompileClassInitializer
     final primitive class Test51Value {
         final Object objectField1;
         final Object objectField2;
@@ -1939,7 +1938,6 @@ public class TestLWorld {
         return MyValue1.setX(((MyValue1)a), sum);
     }
 
-/* KATYA Test fails because IR fails
     @Test
     @IR(failOn = {ALLOC, STORE})
     public int test70Interface(MyValue1[] array) {
@@ -1955,7 +1953,8 @@ public class TestLWorld {
         int result = test70Interface(testValue1Array);
         Asserts.assertEQ(result, rI * testValue1Array.length);
     }
-*/
+
+
     // Same as test69 but with an Abstract
     @ForceInline
     public MyAbstract test70Abstract_sum(MyAbstract a, MyAbstract b) {
@@ -2003,7 +2002,6 @@ public class TestLWorld {
     }
 
     // Test calling a method on an uninitialized inline type
-    @ForceCompileClassInitializer
     final primitive class Test72Value {
         final int x = 42;
         public int get() {
@@ -2160,7 +2158,6 @@ public class TestLWorld {
     }
 
     // Test flattened field with non-flattenend (but flattenable) inline type field
-    @ForceCompileClassInitializer
     static primitive class Small {
         final int i;
         final Big big; // Too big to be flattened
@@ -2171,7 +2168,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static primitive class Big {
         long l0,l1,l2,l3,l4,l5,l6,l7,l8,l9;
         long l10,l11,l12,l13,l14,l15,l16,l17,l18,l19;
@@ -2275,7 +2271,6 @@ public class TestLWorld {
         }
     }
 
-/* KATYA Test fails because IR fails
     // Tests for the Loop Unswitching optimization
     // Should make 2 copies of the loop, one for non flattened arrays, one for other cases.
     @Test
@@ -2296,7 +2291,7 @@ public class TestLWorld {
                                 () ->  { test84(src, dst);
                                          Asserts.assertTrue(Arrays.equals(src, dst)); });
     }
-*/
+
     @Test
     @IR(applyIf = {"UseG1GC", "true"},
         counts = {COUNTEDLOOP, "= 2", LOAD_UNKNOWN_INLINE, "= 1"})
@@ -2342,7 +2337,6 @@ public class TestLWorld {
                                         Asserts.assertTrue(Arrays.equals(src, dst)); });
     }
 
-/* KATYA Tests fails because IR fails
 
     @Test
     @IR(counts = {COUNTEDLOOP_MAIN, "= 2"})
@@ -2388,7 +2382,7 @@ public class TestLWorld {
                                         Asserts.assertTrue(Arrays.equals(src1, dst1));
                                         Asserts.assertTrue(Arrays.equals(src2, dst2)); });
     }
-*/
+
 
     @Test
     public boolean test89(Object obj) {
@@ -2428,7 +2422,6 @@ public class TestLWorld {
         Asserts.assertFalse(test91(new Object()));
     }
 
-    @ForceCompileClassInitializer
     static primitive class Test92Value {
         final int field;
         public Test92Value() {
@@ -2647,7 +2640,6 @@ public class TestLWorld {
         Asserts.assertEQ(result, 11*vt.hash() + 2*def.hashPrimitive());
     }
 
-    @ForceCompileClassInitializer
     class MyObject2 extends MyAbstract {
         public int x;
 
@@ -2768,12 +2760,10 @@ public class TestLWorld {
         int field = 42;
     }
 
-    @ForceCompileClassInitializer
     class MyObject3 extends NoValueImplementors1 {
 
     }
 
-    @ForceCompileClassInitializer
     class MyObject4 extends NoValueImplementors1 {
 
     }
@@ -2843,7 +2833,6 @@ public class TestLWorld {
 
     }
 
-    @ForceCompileClassInitializer
     class MyObject5 extends NoValueImplementors2 {
 
     }
@@ -2930,7 +2919,6 @@ public class TestLWorld {
                                         Asserts.assertEquals(oFld2, testValue2);  });
     }
 
-/* KATYA, Test fails because IR fails
     @Test
     @IR(applyIf = {"UseG1GC", "true"},
             failOn = {LOAD_UNKNOWN_INLINE, INLINE_ARRAY_NULL_GUARD},
@@ -2963,9 +2951,7 @@ public class TestLWorld {
                                             Asserts.assertEquals(dst2[i], o1);
                                         } });
     }
-*/
 
-/* KATYA TEST CRASHES
 
     // Escape analysis tests
 
@@ -2997,7 +2983,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static class InterfaceBox {
         WrapperInterface content;
 
@@ -3014,7 +2999,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static class ObjectBox {
         Object content;
 
@@ -3031,7 +3015,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static class RefBox {
         LongWrapper.ref content;
 
@@ -3048,7 +3031,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static class InlineBox {
         LongWrapper content;
 
@@ -3061,7 +3043,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static class GenericBox<T> {
         T content;
 
@@ -3260,7 +3241,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static primitive class LongWrapper2 implements WrapperInterface2 {
         private long val;
 
@@ -3273,7 +3253,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static primitive class InlineWrapper {
         WrapperInterface2 content;
 
@@ -3282,7 +3261,6 @@ public class TestLWorld {
         }
     }
 
-    @ForceCompileClassInitializer
     static class InterfaceBox2 {
         WrapperInterface2 content;
 
@@ -3390,12 +3368,10 @@ public class TestLWorld {
         Asserts.assertTrue(res);
     }
 
-    @ForceCompileClassInitializer
     static primitive class EmptyContainer {
         private MyValueEmpty empty = MyValueEmpty.default;
     }
 
-    @ForceCompileClassInitializer
     static primitive class MixedContainer {
         public int val = rI;
         private EmptyContainer empty = EmptyContainer.default;
@@ -3788,7 +3764,6 @@ public class TestLWorld {
         Asserts.assertTrue(test136(true));
     }
 
-    @ForceCompileClassInitializer
     static final primitive class SimpleInlineType {
         final int x;
         public SimpleInlineType(int x) {
@@ -3828,5 +3803,4 @@ public class TestLWorld {
         Asserts.assertTrue(test138(rI, false));
         Asserts.assertTrue(test138(rI, true));
     }
-    KATYA */
 }

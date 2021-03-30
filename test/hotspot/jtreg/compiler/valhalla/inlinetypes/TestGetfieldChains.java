@@ -21,17 +21,10 @@
  * questions.
  */
 
-
 package compiler.valhalla.inlinetypes;
-
-import java.lang.invoke.*;
-import java.lang.reflect.Method;
-import java.nio.file.NoSuchFileException;
-import java.util.Arrays;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
-
 
 /*
  * @test
@@ -42,6 +35,7 @@ import jdk.test.lib.hotspot.ir_framework.*;
  * @compile InlineTypes.java GetfieldChains.jcod
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestGetfieldChains
  */
+
 public class TestGetfieldChains {
 
     public static void main(String[] args) {

@@ -21,19 +21,10 @@
  * questions.
  */
 
-
 package compiler.valhalla.inlinetypes;
-
-import java.lang.invoke.*;
-import java.lang.reflect.Method;
-import java.util.Arrays;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
-import static compiler.valhalla.inlinetypes.InlineTypes.rI;
-import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
-
 
 /*
  * @test
@@ -46,6 +37,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rD;
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestWithfieldC1
  */
 
+@ForceCompileClassInitializer
 public class TestWithfieldC1 {
 
     public static void main(String[] args) {
@@ -84,7 +76,6 @@ public class TestWithfieldC1 {
         }
     }
 
-    @ForceCompileClassInitializer
     static primitive class FooValue {
         public int x = 0, y = 0;
 

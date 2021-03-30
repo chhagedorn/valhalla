@@ -44,6 +44,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestMethodHandles
  */
 
+@ForceCompileClassInitializer
 public class TestMethodHandles {
     static final TestFramework testFramework = InlineTypes.getFramework();
 

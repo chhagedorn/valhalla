@@ -21,6 +21,14 @@
  * questions.
  */
 
+package compiler.valhalla.inlinetypes;
+
+import jdk.test.lib.Asserts;
+import jdk.test.lib.hotspot.ir_framework.*;
+
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+import static compiler.valhalla.inlinetypes.InlineTypes.*;
+
 /*
  * @test
  * @key randomness
@@ -32,14 +40,7 @@
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestBasicFunctionality
  */
 
-package compiler.valhalla.inlinetypes;
-
-import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
-
-import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
-import static compiler.valhalla.inlinetypes.InlineTypes.*;
-
+@ForceCompileClassInitializer
 public class TestBasicFunctionality {
 
     static final TestFramework testFramework = InlineTypes.getFramework();
@@ -593,7 +594,6 @@ public class TestBasicFunctionality {
         Asserts.assertEQ(result, 2 * hash());
     }
 
-    @ForceCompileClassInitializer
     class TestClass27 {
         public MyValue1 v;
     }
@@ -852,13 +852,11 @@ public class TestBasicFunctionality {
     }
 
     // Test correct loading of flattened fields
-    @ForceCompileClassInitializer
     primitive class Test37Value2 {
         final int x = 0;
         final int y = 0;
     }
 
-    @ForceCompileClassInitializer
     primitive class Test37Value1 {
         final double d = 0;
         final float f = 0;
@@ -877,7 +875,6 @@ public class TestBasicFunctionality {
     }
 
     // Test elimination of inline type allocations without a unique CheckCastPP
-    @ForceCompileClassInitializer
     primitive class Test38Value {
         public int i;
         public Test38Value(int i) { this.i = i; }
@@ -905,7 +902,6 @@ public class TestBasicFunctionality {
     }
 
     // Tests split if with inline type Phi users
-    @ForceCompileClassInitializer
     static primitive class Test39Value {
         public int iFld1;
         public int iFld2;

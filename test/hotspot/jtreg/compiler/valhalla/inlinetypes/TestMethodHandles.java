@@ -156,9 +156,9 @@ public class TestMethodHandles {
 
     @Test
     @IR(applyIf = {"InlineTypeReturnedAsFields", "true"},
-            failOn = {ALLOC, STORE, CALL})
+        failOn = {ALLOC, STORE, CALL})
     @IR(applyIf = {"InlineTypeReturnedAsFields", "false"},
-            counts = {ALLOC, "= 1", STORE, "= 14"})
+        counts = {ALLOC, "= 1", STORE, "= 14"})
     public MyValue3 test1() throws Throwable {
         return (MyValue3)test1_mh.invokeExact(this);
     }
@@ -187,11 +187,10 @@ public class TestMethodHandles {
     public void test2_verifier(RunInfo info) throws Throwable {
         if (!info.isWarmUp()) {
             Method helper_m = getClass().getDeclaredMethod("test2_target");
-            if (TestFramework.isCompiled(helper_m)) {
+            if (!TestFramework.isCompiled(helper_m)) {
                 TestFramework.compile(helper_m, CompLevel.C2);
             }
         }
-
         MyValue3 vt = test2();
         test2_vt.verify(vt);
     }
@@ -289,7 +288,7 @@ public class TestMethodHandles {
 
     @Test
     @IR(applyIf = {"InlineTypeReturnedAsFields", "true"},
-            failOn = {ALLOC, ALLOCA, STORE, STORE_INLINE_FIELDS})
+        failOn = {ALLOC, ALLOCA, STORE, STORE_INLINE_FIELDS})
     public MyValue3 test6() throws Throwable {
         return (MyValue3)test6_mh.invokeExact(this);
     }

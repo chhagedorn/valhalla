@@ -2337,7 +2337,6 @@ public class TestLWorld {
                                         Asserts.assertTrue(Arrays.equals(src, dst)); });
     }
 
-
     @Test
     @IR(counts = {COUNTEDLOOP_MAIN, "= 2"})
     public void test87(Object[] src, Object[] dst) {
@@ -2382,7 +2381,6 @@ public class TestLWorld {
                                         Asserts.assertTrue(Arrays.equals(src1, dst1));
                                         Asserts.assertTrue(Arrays.equals(src2, dst2)); });
     }
-
 
     @Test
     public boolean test89(Object obj) {
@@ -3466,7 +3464,7 @@ public class TestLWorld {
     // acmp doesn't need substitutability test when one input is known
     // not to be a value type
     @Test
-    @IR(failOn = {SUBSTITUTABILITY_TEST})
+    @IR(failOn = SUBSTITUTABILITY_TEST)
     public boolean test124(Integer o1, Object o2) {
         return o1 == o2;
     }

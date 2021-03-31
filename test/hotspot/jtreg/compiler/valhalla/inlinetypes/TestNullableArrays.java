@@ -137,10 +137,10 @@ public class TestNullableArrays {
     // Test nullable inline type array creation and initialization
     @Test
     @IR(applyIf = {"FlatArrayElementMaxSize", "= -1"},
-            counts = {ALLOCA, "= 1"})
+        counts = {ALLOCA, "= 1"})
     @IR(applyIf = {"FlatArrayElementMaxSize", "!= -1"},
-            counts = {ALLOCA, "= 1"},
-            failOn = LOAD)
+        counts = {ALLOCA, "= 1"},
+        failOn = LOAD)
     public MyValue1.ref[] test1(int len) {
         MyValue1.ref[] va = new MyValue1.ref[len];
         if (len > 0) {
@@ -325,7 +325,7 @@ public class TestNullableArrays {
 
     // Test that inline type array loaded from field has correct type
     @Test
-    @IR(failOn = {LOOP})
+    @IR(failOn = LOOP)
     public long test9() {
         return test9_va[0].hash();
     }
@@ -1750,7 +1750,7 @@ public class TestNullableArrays {
 
     // Check init store elimination
     @Test
-    @IR(counts = { ALLOCA, "=1"})
+    @IR(counts = {ALLOCA, "= 1"})
     public MyValue1.ref[] test66(MyValue1.ref vt) {
         MyValue1.ref[] va = new MyValue1.ref[1];
         va[0] = vt;
@@ -2655,7 +2655,7 @@ public class TestNullableArrays {
 
     // Test stores to varag arrays
     @Test
-    @IR(failOn = {STORE_UNKNOWN_INLINE})
+    @IR(failOn = STORE_UNKNOWN_INLINE)
     public static void test101(Object val, Object... args) {
         args[0] = val;
     }

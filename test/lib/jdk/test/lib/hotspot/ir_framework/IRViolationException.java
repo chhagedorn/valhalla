@@ -27,9 +27,19 @@ package jdk.test.lib.hotspot.ir_framework;
  * Exception that is thrown if an {@link IR} constraint failed. The exception message contains a detailed list of
  * all failures, including failing method, {@code IR} rule (the first {@code IR} constraint is rule 1) and the
  * specific regex that could not be matched.
+ *
+ * @see IR
+ * @see Test
  */
 public class IRViolationException extends RuntimeException {
-    IRViolationException(String message) {
+    private final String compilations;
+
+    IRViolationException(String message, String compilations) {
         super(message);
+        this.compilations = compilations;
+    }
+
+    String getCompilations() {
+        return compilations;
     }
 }

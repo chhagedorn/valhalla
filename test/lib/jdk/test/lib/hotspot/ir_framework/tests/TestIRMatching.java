@@ -186,6 +186,37 @@ public class TestIRMatching {
         PrintStream ps = new PrintStream(baos);
         PrintStream old = System.out;
         System.setOut(ps);
+
+        try {
+            runWithArguments(CompilationOutputOfFails.class);
+            shouldNotReach();
+        } catch (IRViolationException e) {
+            System.out.flush();
+            String output = baos.toString();
+            baos.reset();
+            Pattern pattern = Pattern.compile(">>> Compilation.*both\\d.*\\RPrintIdeal:(?:(?!PrintOpto|>>> Compilation)[\\S\\s])+PrintOptoAssembly");
+            Matcher matcher = pattern.matcher(output);
+            Asserts.assertEQ(matcher.results().count(), (long)7, "Could not find all both methods: " + output);
+            pattern = Pattern.compile(">>> Compilation.*ideal\\d.*\\RPrintIdeal:(?:(?!>>> Compilation)[\\S\\s])+");
+            matcher = pattern.matcher(output);
+            int count = 0;
+            while (matcher.find()) {
+                String match = matcher.group();
+                Asserts.assertFalse(match.contains("PrintOptoAssembly"), "Cannot contain opto assembly: " + output);
+                count++;
+            }
+            Asserts.assertEQ(count, 7, "Could not find all ideal methods: " + output);
+            pattern = Pattern.compile(">>> Compilation.*opto\\d.*\\RPrintOptoAssembly:(?:(?!>>> Compilation)[\\S\\s])+");
+            matcher = pattern.matcher(output);
+            count = 0;
+            while (matcher.find()) {
+                String match = matcher.group();
+                Asserts.assertFalse(match.contains("PrintIdeal"), "Cannot contain opto assembly: " + output);
+                count++;
+            }
+            Asserts.assertEQ(count, 7, "Could not find all opto methods");
+        }
+
         runWithArguments(FlagComparisons.class, "-XX:SuspendRetryCount=50");
         System.out.flush();
         String output = baos.toString();
@@ -1083,6 +1114,194 @@ class CheckCastArray {
         arrayCopy(mArr, MyClass2[].class);
     }
 }
+
+class CompilationOutputOfFails {
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP + "[\\s\\S]*" + "call")
+    public void both1() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP + "|" + "call")
+    public void both2() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(failOn = "call")
+    public void both3() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.COUNTEDLOOP + "[\\s\\S]*" + "call", "0"})
+    public void both4() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.COUNTEDLOOP + "|" + "call", "1"})
+    public void both5() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.COUNTEDLOOP, "0"})
+    @IR(counts = {"call", "1"})
+    public void both6() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(counts = {"call", "1"})
+    public void both7() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    public void ideal1() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(failOn = IRNode.ALLOC) // not fail
+    public void ideal2() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.COUNTEDLOOP)
+    @IR(counts = {IRNode.ALLOC, "0"}) // not fail
+    public void ideal3() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.COUNTEDLOOP, "2"})
+    public void ideal4() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.ALLOC) // not fail
+    @IR(counts = {IRNode.COUNTEDLOOP, "2"})
+    public void ideal5() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.ALLOC, "0"}) // not fail
+    @IR(counts = {IRNode.COUNTEDLOOP, "2"})
+    public void ideal6() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.COUNTEDLOOP, "5"})
+    @IR(counts = {IRNode.COUNTEDLOOP, "2"})
+    public void ideal7() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = "call")
+    public void opto1() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = "call")
+    @IR(failOn = IRNode.STORE) // not fail
+    public void opto2() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = "call")
+    @IR(counts = {IRNode.COUNTEDLOOP, "1"}) // not fail
+    public void opto3() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {"call", "1"})
+    public void opto4() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(failOn = IRNode.STORE) // not fail
+    @IR(counts = {"call", "1"})
+    public void opto5() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.STORE, "0"}) // not fail
+    @IR(counts = {"call", "1"})
+    public void opto6() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @Test
+    @IR(counts = {"call", "10"})
+    @IR(counts = {"call", "1"})
+    public void opto7() {
+        for (int i = 0; i < 100; i++) {
+            dontInline();
+        }
+    }
+
+    @DontInline
+    private void dontInline() {}
+}
+
 
 // Used only by class Traps
 class NotLoaded {

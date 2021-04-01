@@ -70,10 +70,12 @@ public enum Argument {
     BOOLEAN_TOGGLE_FIRST_TRUE,
     /**
      * Provides a random primitive value on the first test invocation and reuses the same value for all invocation of the test.
+     * Float and Double values are restricted to the range [-10000,10000].
      */
     RANDOM_ONCE,
     /**
      * Provides a different random primitive value on each test invocation.
+     * Float and Double values are restricted to the range [-10000,10000].
      */
     RANDOM_EACH
 }

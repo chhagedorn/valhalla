@@ -31,7 +31,7 @@ public class TestFrameworkException extends RuntimeException {
         super(message);
     }
 
-    TestFrameworkException(String message, Exception e) {
+    TestFrameworkException(String message, Throwable e) {
         super(message, e);
     }
 }

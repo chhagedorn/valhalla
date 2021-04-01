@@ -23,6 +23,9 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+/**
+ * Exception that is thrown if the test VM has thrown any kind of exception (except for {@link TestFormatException}).
+ */
 public class TestVMException extends RuntimeException {
     static final boolean REPORT_STDOUT = Boolean.parseBoolean(System.getProperty("ReportStdout", "false"));
 
@@ -33,11 +36,13 @@ public class TestVMException extends RuntimeException {
         this.vmOutput = vmOutput;
     }
 
+    /**
+     * Get more detailed information about the exception in a pretty format.
+     */
     public String getExceptionInfo() {
         String errorMsg = "Command Line:\n" + vmOutput.getCommandLine() + "\n\n";
         int exitCode = vmOutput.getExitCode();
         String stdErr = vmOutput.getStderr();
-        Scenario scenario = vmOutput.getScenario();
         String hintStdout = "";
         String stdOut = "";
         if (REPORT_STDOUT || TestFramework.VERBOSE || exitCode == 134) {

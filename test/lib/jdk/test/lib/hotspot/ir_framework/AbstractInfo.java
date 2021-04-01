@@ -77,12 +77,12 @@ abstract public class AbstractInfo {
     }
 
     /**
-     * Get a random double value.
+     * Get a random double value in the range of [-10000,10000]
      *
-     * @return a random double value.
+     * @return a random double value in the range of [-10000,10000].
      */
     public static double getRandomDouble() {
-        return random.nextDouble();
+        return random.nextDouble() * 20000 - 10000;
     }
 
     /**

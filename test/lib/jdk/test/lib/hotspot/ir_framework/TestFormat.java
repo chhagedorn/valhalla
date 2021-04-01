@@ -26,6 +26,9 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility class to report a {@link TestFormatException}.
+ */
 class TestFormat {
     private static final List<String> FAILURES = new ArrayList<>();
 

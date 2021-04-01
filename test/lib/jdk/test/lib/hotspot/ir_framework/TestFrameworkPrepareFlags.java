@@ -31,7 +31,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
-
+/**
+ * This class' main method is called from {@link TestFramework} and represents the so-called "flag VM". It uses the
+ * Whitebox to determine the necessary additional flags to run the test VM (e.g. to do IR matching). It returns
+ * the flags over the dedicated TestFramework socket.
+ */
 class TestFrameworkPrepareFlags {
     private static final WhiteBox WHITE_BOX;
 
@@ -39,7 +43,8 @@ class TestFrameworkPrepareFlags {
         try {
             WHITE_BOX = WhiteBox.getWhiteBox();
         } catch (UnsatisfiedLinkError e) {
-            throw new TestFrameworkException("Could not load WhiteBox");
+            TestFramework.fail("Could not load WhiteBox", e);
+            throw e; // Not reached
         }
     }
 
@@ -131,6 +136,8 @@ class TestFrameworkPrepareFlags {
         if (VERIFY_IR) {
             // Add print flags for IR verification
             cmds.addAll(Arrays.asList(getPrintFlags()));
+            cmds.add("-XX:+LogCompilation");
+            cmds.add("-XX:CompileCommand=log," + testClass.getCanonicalName() + "::*");
             addBoolOptionForClass(cmds, testClass, "PrintIdeal");
             addBoolOptionForClass(cmds, testClass, "PrintOptoAssembly");
             // Always trap for exception throwing to not confuse IR verification

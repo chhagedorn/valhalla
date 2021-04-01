@@ -162,7 +162,6 @@ class ArgumentValue {
         }
     }
 
-
     private static ArgumentValue createMin(Class<?> c) {
         Object argument;
         if (c.equals(byte.class)) {
@@ -245,6 +244,7 @@ class ArgumentValue {
     private static boolean isChar(Class<?> c) {
         return c.equals(char.class);
     }
+
     private static boolean isNumber(Class<?> c) {
         return isIntNumber(c) || isFloatNumber(c);
     }
@@ -275,10 +275,10 @@ class ArgumentValue {
             return random.nextLong();
         } else if (c.equals(float.class)) {
             // Get number between 0 and 1000.
-            return random.nextFloat() * 1000;
+            return random.nextFloat() * 20000 - 10000;
         } else if (c.equals(double.class)) {
             // Get number between 0 and 1000.
-            return random.nextDouble() * 1000;
+            return random.nextDouble() * 20000 - 10000;
         } else {
             TestFormat.fail("Cannot generate random value for non-primitive type");
             return null;

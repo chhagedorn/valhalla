@@ -25,6 +25,9 @@ package jdk.test.lib.hotspot.ir_framework;
 
 import java.util.function.BiPredicate;
 
+/**
+ * Utility class to parse a comparator either in the applyIf* or in the counts properties of an @IR rules.
+ */
 class ParsedComparator<T extends Comparable<T>> {
     private final String strippedString;
     private final BiPredicate<T, T> predicate;
@@ -48,6 +51,10 @@ class ParsedComparator<T extends Comparable<T>> {
         return comparator;
     }
 
+    /**
+     * Return parsed comparator object which provides the predicate to perform the test.
+     * Allowed comparators: <, <=, >, =>, =, !=
+     */
     public static <T extends Comparable<T>> ParsedComparator<T> parseComparator(String value) throws CheckedTestFrameworkException {
         BiPredicate<T, T> comparison;
         value = value.trim();

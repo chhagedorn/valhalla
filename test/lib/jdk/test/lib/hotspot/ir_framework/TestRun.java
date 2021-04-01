@@ -23,6 +23,9 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+/**
+ * Utility class to report a {@link TestRunException}.
+ */
 class TestRun {
     public static void check(boolean test, String failureMessage) {
         if (!test) {

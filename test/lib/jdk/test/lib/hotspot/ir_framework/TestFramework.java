@@ -315,6 +315,10 @@ public class TestFramework {
             } catch (TestVMException e) {
                 System.err.println("\n" + e.getExceptionInfo());
                 throw e;
+            } catch (IRViolationException e) {
+                System.out.println("Compilation(s) of failed matche(s):");
+                System.out.println(e.getCompilations());
+                throw e;
             }
         } else {
             startWithScenarios();
@@ -437,7 +441,7 @@ public class TestFramework {
                 start(scenario);
             } catch (TestFormatException e) {
                 // Test format violation is wrong for all the scenarios. Only report once.
-                throw new TestFormatException(e.getMessage());
+                throw e;
             } catch (Exception e) {
                 exceptionMap.put(scenario, e);
             }
@@ -463,9 +467,12 @@ public class TestFramework {
             }
             if (e instanceof IRViolationException) {
                 // For IR violations, only show the actual violations and not the (uninteresting) stack trace.
-                builder.append(e.getMessage());
+                System.out.println((scenario != null ? "Scenario #" + scenario.getIndex() + " - " : "")
+                                   + "Compilation(s) of failed matche(s):");
+                System.out.println(((IRViolationException) e).getCompilations());
+                builder.append(errorMsg).append(e.getMessage());
             } else if (e instanceof TestVMException) {
-                builder.append(errorMsg).append(((TestVMException) e).getExceptionInfo());
+                builder.append(errorMsg).append("\n").append(((TestVMException) e).getExceptionInfo());
             } else {
                 // Print stack trace otherwise
                 StringWriter errors = new StringWriter();
@@ -482,7 +489,7 @@ public class TestFramework {
         StringBuilder builder = new StringBuilder();
         String title = "Scenario #" + scenario.getIndex();
         builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
-        builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n\n");
+        builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n");
         return builder.toString();
     }
 
@@ -594,8 +601,7 @@ public class TestFramework {
         }
         checkTestVMExitCode(output);
         if (VERIFY_IR) {
-            IRMatcher irMatcher = new IRMatcher(lastTestVMOutput, socket.getOutput(), testClass);
-            irMatcher.applyRules();
+            new IRMatcher(output.getHotspotPidFileName(), socket.getOutput(), testClass);
         } else {
             System.out.println("IR Verification disabled either through explicitly setting -DVerify=false or due to " +
                                "not running a debug build, running with -Xint, or other VM flags that make the verification " +
@@ -694,7 +700,7 @@ public class TestFramework {
         throw new TestFrameworkException("Internal Test Framework exception - please file a bug:\n" + failureMessage);
     }
 
-    static void fail(String failureMessage, Exception e) {
+    static void fail(String failureMessage, Throwable e) {
         throw new TestFrameworkException("Internal Test Framework exception - please file a bug:\n" + failureMessage, e);
     }
 }
@@ -706,11 +712,13 @@ class JVMOutput {
     private final Scenario scenario;
     private final OutputAnalyzer oa;
     private final ProcessBuilder process;
+    private final String hotspotPidFileName;
 
     JVMOutput(OutputAnalyzer oa, Scenario scenario, ProcessBuilder process) {
         this.oa = oa;
         this.scenario = scenario;
         this.process = process;
+        this.hotspotPidFileName = String.format("hotspot_pid%d.log", oa.pid());
     }
 
     public Scenario getScenario() {
@@ -735,6 +743,10 @@ class JVMOutput {
 
     public String getStderr() {
         return oa.getStderr();
+    }
+
+    public String getHotspotPidFileName() {
+        return hotspotPidFileName;
     }
 }
 

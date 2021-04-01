@@ -49,7 +49,7 @@ public class TestBadFormat {
         expectTestFormatException(BadIRAnnotations.class);
         expectTestFormatException(BadInnerClassTest.class);
         expectTestFormatException(BadCompileClassInitializer.class, BadCompileClassInitializerHelper1.class,
-                                  BadCompileClassInitializerHelper2.class);
+                                  BadCompileClassInitializerHelper2.class, BadCompileClassInitializerHelper3.class);
     }
 
     private static void expectTestFormatException(Class<?> clazz, Class<?>... helpers) {
@@ -905,6 +905,8 @@ class BadInnerClassTest {
 
 @ForceCompileClassInitializer
 class BadCompileClassInitializer {
+    static int iFld = 3;
+
     @Test
     @ForceCompileClassInitializer
     public void test() {}
@@ -923,6 +925,12 @@ class BadCompileClassInitializerHelper1 {
 @ForceCompileClassInitializer(CompLevel.WAIT_FOR_COMPILATION)
 class BadCompileClassInitializerHelper2 {
 
+}
+
+@ClassFail
+@ForceCompileClassInitializer
+class BadCompileClassInitializerHelper3 {
+    // no <clinit>
 }
 
 class ClassNoDefaultConstructor {

@@ -76,7 +76,7 @@ import java.lang.annotation.RetentionPolicy;
  *         <li><p> Any other combination will result in a {@link TestFormatException}.
  *     </ul>
  *     <li><p>{@code t} and {@code r} must be part of the test class. Using {@code @Run} and ({@code @Test})in nested or
- *     other classes is not allowed.</li> // TODO write test for it
+ *     other classes is not allowed.  TODO write test for it</li>
  *     <li><p>{@code t} and {@code r} cannot specify any helper-method specific compile command annotations
  *     ({@link ForceCompile}, {@link DontCompile}, {@link ForceInline}, {@link DontInline}). </li>
  * </ul>
@@ -85,6 +85,7 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Run {
+
     /**
      * The associated {@link Test} methods (one or more) for for this {@code Run} annotated run method.
      * The framework directly invokes the run method instead of the associated {@code Test} methods.

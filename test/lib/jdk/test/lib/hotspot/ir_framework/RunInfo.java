@@ -34,7 +34,6 @@ import java.util.Map;
  * @see Run
  */
 public class RunInfo extends AbstractInfo {
-
     private final Method testMethod;
     private final Map<String, Method> testMethods;
 

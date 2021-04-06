@@ -33,7 +33,7 @@ import java.util.function.Predicate;
 
 /**
  * This class' main method is called from {@link TestFramework} and represents the so-called "flag VM". It uses the
- * Whitebox to determine the necessary additional flags to run the test VM (e.g. to do IR matching). It returns
+ * Whitebox API to determine the necessary additional flags to run the test VM (e.g. to do IR matching). It returns
  * the flags over the dedicated TestFramework socket.
  */
 class TestFrameworkPrepareFlags {

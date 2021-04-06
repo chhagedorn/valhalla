@@ -33,7 +33,6 @@ import java.lang.reflect.Method;
  * @see Check
  */
 public class TestInfo extends AbstractInfo {
-
     private final Method testMethod;
 
     TestInfo(Method testMethod) {

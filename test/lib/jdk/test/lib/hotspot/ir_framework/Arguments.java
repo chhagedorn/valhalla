@@ -26,6 +26,14 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+/**
+ * This annotation is used to specify well-defined {@link Argument} values for test methods (specifying {@link Test}) when
+ * used as part of a <i>base test</i> or <i>checked test</i>.
+ *
+ * @see Argument
+ * @see Test
+ * @see Check
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Arguments {
     Argument[] value();

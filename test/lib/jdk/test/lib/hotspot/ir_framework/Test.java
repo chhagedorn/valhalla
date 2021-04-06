@@ -30,7 +30,7 @@ import java.lang.annotation.RetentionPolicy;
  * Annotate all methods in your test class which the framework should test with {@code @Test}.
  * <p>
  * Let {@code m} be a test method specifying the {@code @Test} annotation. If {@code m} is neither part of a
- * <b>checked test</b> (an additiona method specifying {@link Check} with (@code @Run(test = "m") nor part of a
+ * <b>checked test</b> (an additional method specifying {@link Check} with (@code @Run(test = "m") nor part of a
  * <b>custom run</b> test (an additional method specifying {@link Run} with (@code @Run(test = "m"))),
  * then {@code m} is a so-called <b>base test</b> and the the framework invokes {@code m} in the following way:
  * <ol>
@@ -53,7 +53,7 @@ import java.lang.annotation.RetentionPolicy;
  *     <li><p>If {@code m} specifies parameters, the framework needs to know how to call {@code m}. Use {@link Arguments}
  *     with {@link Argument} properties for each parameter to use some well-defined parameters. If the method requires
  *     a more specific argument value, use a custom run test (see {@link Run}).</li>
- *     li><p>{@code m} cannot specify {@link AbstractInfo} or any of its subclasses as parameter or return type.</li>
+ *     <li><p>{@code m} cannot specify {@link AbstractInfo} or any of its subclasses as parameter or return type.</li>
  *     <li><p>{@code m} is not inlined by the framework.</li>
  *     <li><p>Verification of the return value of {@code m} can only be done in a checked test (see {@link Check}) or
  *     custom run test (see {@link Run}).</li>
@@ -73,6 +73,7 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Test {
+
     /**
      * Specify at which compilation level the framework should eventually compile the test method after an optional
      * warmup period. The default {@link CompLevel#ANY} will let the framework compile the method at the highest

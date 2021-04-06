@@ -26,7 +26,6 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-// Prevent method inlining during compilation
 /**
  * Prevent inlining of the associated <i>helper</i> method (not specifying {@link Test @Test},
  * {@link Check @Check} or {@link Test @Run}). <i>Non-helper</i> methods are never inlined.

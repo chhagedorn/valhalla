@@ -27,18 +27,105 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+/**
+ * This annotation is used to define a constraint/rule/check on the resulting IR of a test method (method with {@link Test}
+ * annotation). A test method can define multiple {@code {@literal @}IR} rules.
+ * <p>
+ * There are two kinds of checks that can be specified:
+ * <ul>
+ *     <li><p>{@link #failOn()}: Specify a list of (node) regexes that should not be matched on the {@code PrintIdeal} or
+ *     {@code PrintOptoAssembly} output.</li>
+ *     <li><p>{@link #counts()}: Specify a list of ({@code regex,count}) pairs: The (node) {@code regex} should be matched
+ *     for the specified amount in {@code count} on the {@code PrintIdeal} or {@code PrintOptoAssembly} output.</li>
+ * </ul>
+ * An IR rule must specify either or both of these two checks. If one or both of the checks fails, an
+ * {@link IRViolationException} is thrown.
+ * <p>
+ * Sometimes, the shape of an IR is changed by commonly used VM flags in such a way that an IR rule no longer applies.
+ * Generally, the framework does <b>not</b> apply any IR rules when any of the following flags are used:
+ * {@code -Xcomp, -XX:-UseCompiler, -XX:TieredStopAtLevel={1,2,3}, -XX:CompileThreshold=XX, -DStressCC=true}
+ * An IR rule can specify additional preconditions on the remaining flags that must hold when an IR rule is applied.
+ * If the specified preconditions fail, then the framework does not apply the IR rule. These preconditions can be
+ * set with {@link #applyIf()}, {@link #applyIfNot()}, {@link #applyIfAnd()}, or {@link #applyIfOr()}.
+ *
+ * @see Test
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(IRs.class)
 public @interface IR {
-    // Regular expression used to match forbidden IR nodes
-    // in the C2 IR emitted for this test.
+
+    /**
+     * Define a list of (node) regexes. If any of these regexes are matched on the PrintIdeal or PrintOptoAssembly, the
+     * IR rule fails and an {@link IRViolationException} is thrown.
+     */
     String[] failOn() default {};
 
-    // Regular expressions used to match and count IR nodes.
+    /**
+     * Define a list of ((node) regexes,count) string pairs: A regex to be matched on the PrintIdeal or PrintOptoAssembly
+     * is immediately followed by a number specifying how often the regex should be matched. The number can be proceeded
+     * by comparators ({@code =, !=, <, <=, =>, >}) where the equality operator is optional (default if no comparator is
+     * specified).
+     * <p>
+     * If any constraint on the number of regexes cannot be met, the IR rule fails and an
+     * {@link IRViolationException} is thrown.
+     */
     String[] counts() default {};
 
+    /**
+     * Define a single VM flag precondition which <i>must hold</i> when applying the IR rule. If the VM flag precondition
+     * fails, then the IR rule is not applied. This is useful if a commonly used flag alters the IR in such a way that an IR rule
+     * would fail.
+     * <p>
+     * The precondition is a (flag, value) string pair where the flag must be a valid VM flag and the value must conform
+     * with the type of the VM flag. A number based flag value can be proceeded with an additional comparator
+     * ({@code =, !=, <, <=, =>, >}) where the equality operator is optional (default if no comparator is specified).
+     * <p>
+     * This is the inverse of {@link #applyIfNot()}. For multiple preconditions, use {@link #applyIfAnd()} or
+     * {@link #applyIfOr()} depending on the use case.
+     */
     String[] applyIf() default {};
+
+    /**
+     * Define a single VM flag precondition which <i>must <b>not</b> hold</i> when applying the IR rule. If, however,
+     * the VM flag precondition holds, then the IR rule is not applied. This could also be defined as <i>negative</i>
+     * precondition. This is useful if a commonly used flag alters the IR in such a way that an IR rule would fail.
+     * <p>
+     * The precondition is a (flag, value) string pair where the flag must be a valid VM flag and the value must conform
+     * with the type of the VM flag. A number based flag value can be proceeded with an additional comparator
+     * ({@code =, !=, <, <=, =>, >}) where the equality operator is optional (default if no comparator is specified).
+     * <p>
+     * This is the inverse of {@link #applyIf()}. For multiple preconditions, use {@link #applyIfAnd()} or
+     * {@link #applyIfOr()} depending on the use case.
+     */
     String[] applyIfNot() default {};
+
+    /**
+     * Define a list of at least two VM flag precondition which <i><b>all</b> must hold</i> when applying the IR rule.
+     * If the one of the VM flag preconditions does not hold, then the IR rule is not applied. This is useful if
+     * commonly used flags alter the IR in such a way that an IR rule would fail. This can also be defined as conjunction
+     * of preconditions.
+     * <p>
+     * A precondition is a (flag, value) string pair where the flag must be a valid VM flag and the value must conform
+     * with the type of the VM flag. A number based flag value can be proceeded with an additional comparator
+     * ({@code =, !=, <, <=, =>, >}) where the equality operator is optional (default if no comparator is specified).
+     * <p>
+     * Use  {@link #applyIfOr()} for disjunction and for single precondition constraints use {@link #applyIf()} or
+     * {@link #applyIfNot()} depending on the use case.
+     */
     String[] applyIfAnd() default {};
+
+    /**
+     * Define a list of at least two VM flag precondition from which <i><b>at least one</b> must hold</i> when applying
+     * the IR rule. If none of the VM flag preconditions holds, then the IR rule is not applied. This is useful if
+     * commonly used flags alter the IR in such a way that an IR rule would fail. This can also be defined as disjunction
+     * of preconditions.
+     * <p>
+     * A precondition is a (flag, value) string pair where the flag must be a valid VM flag and the value must conform
+     * with the type of the VM flag. A number based flag value can be proceeded with an additional comparator
+     * ({@code =, !=, <, <=, =>, >}) where the equality operator is optional (default if no comparator is specified).
+     * <p>
+     * Use  {@link #applyIfOr()} for conjunction and for single precondition constraints use {@link #applyIf()} or
+     * {@link #applyIfNot()} depending on the use case.
+     */
     String[] applyIfOr() default {};
 }

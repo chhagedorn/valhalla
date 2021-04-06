@@ -35,7 +35,6 @@ import java.util.*;
  * {@link TestFramework#addFlags(String...)} whereas scenario flags will have precedence.
  */
 public class Scenario {
-
     private static final String ADDITIONAL_SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");
     private static final String SCENARIOS = System.getProperty("Scenarios", "");
     private static final List<String> additionalScenarioFlags = new ArrayList<>();

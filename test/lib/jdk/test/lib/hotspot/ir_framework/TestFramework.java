@@ -40,27 +40,75 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Use this framework by using the following JTreg setup in your "some.package.Test"
+ * This class represents the main entry point to the test framework whose main purpose is to perform regex-based checks on
+ * the IR shape emitted by the VM flags {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}. The framework can also
+ * be used for other non-IR matching (and non-compiler) tests by providing easy to use annotations for commonly used
+ * testing patterns and compiler control flags.
+ * <p>
+ * The framework offers various annotations to control how your code should be invoked and being tested. There are
+ * three kinds of tests depending on how much control is needed over the test invocation:
+ * <b>Base tests</b> (see {@link Test}), <b>checked tests</b> (see {@link Check}), and <b>custom run tests</b>
+ * (see {@link Run}). Each type of test needs to define a unique <i>test method</i> that specifies a {@link Test}
+ * annotation which represents the test code that is eventually executed by the test framework. More information about
+ * the usage and how to write different tests can be found in {@link Test}, {@link Check}, and {@link Run}.
+ * <p>
+ * Each test method can specify an arbitrary number of IR rules. This is done by using {@link IR} annotations which
+ * can define regex strings that are matched on the output of {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}.
+ * The matching is done after the test method was (optionally) warmed up and compiled. More information about the usage
+ * and how to write different IR rules can be found at {@link IR}.
+ * <p>
+ * This framework should be used with the following JTreg setup in your Test.java file in package <i>some.package</i>:
+ * <pre>
  * {@literal @}library /test/lib
  * {@literal @}run driver some.package.Test
+ * </pre>
+ * Note that even though the framework uses the Whitebox API internally, it is not required to build and enabel it in the
+ * JTreg test if the test itself is not utilizing any Whitebox features directly.
+ * <p>
+ * To specify additional flags, use {@link #addFlags(String...)} or {@link #addScenarios(Scenario...)} where the latter
+ * can also be used to run different flag combinations (instead of specifying multiple {@code {@literal @}run} entries).
+ * <p>
+ * After annotating your test code with the framework specific annotations, the framework needs to be invoked from the
+ * {@code main()} method of your JTreg test. There are two ways to do so. The first way is by calling the various
+ * {@code run()} methods of {@link TestFramework}. The second way, which gives more control, is to create a new
+ * {@code TestFramework} builder object on which {@link #start()} needs to be eventually called to start the testing.
+ * <p>
+ * The framework is called from the <i>driver VM</i> in which the JTreg test is initially run by specifying {@code
+ * {@literal @}run driver} in the JTreg header. This strips all additionally specified JTreg VM and Java options.
+ * The framework creates a new <i>flag VM</i> with all these flags added again in order to figure out which flags are
+ * required to run the tests specified in the test class (e.g. {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}
+ * for IR matching).
+ * <p>
+ * After the flag VM terminates, it starts a new <i>test VM</i> which performs the execution of the specified
+ * tests in the test class as described in {@link Test}, {@link Check}, and {@link Run}.
+ * <p>
+ * In a last step, once the test VM has terminated without exceptions, IR matching is performed if there are any IR
+ * rules and if no VM flags disable it (e.g. not running with {@code -Xcomp}, see {@link IR} for more details).
+ * The IR regex matching is done on the output of {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly} by parsing
+ * the hotspot_pid file of the test VM. Failing IR rules are reported by throwing a {@link IRViolationException}.
+ *
+ * @see Test
+ * @see Check
+ * @see Run
+ * @see IR
  */
 public class TestFramework {
     static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
     static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
     static final String TEST_VM_FLAGS_DELIMITER = " ";
     static final String TEST_VM_FLAGS_END = "----- END -----";
+
     private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
     private static boolean VERIFY_IR = true; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
+    private final Class<?> testClass;
     private List<Class<?>> helperClasses = null;
     private List<Scenario> scenarios = null;
     private final List<String> flags = new ArrayList<>();
-    private final Class<?> testClass;
-    private TestFrameworkSocket socket;
     private int defaultWarmup = -1;
-    private final HashMap<String, Method> testMethods = new HashMap<>();
+    private TestFrameworkSocket socket;
 
     /*
      * Public interface methods
@@ -76,8 +124,9 @@ public class TestFramework {
     public TestFramework() {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
         this.testClass = walker.getCallerClass();
-        initTestsMap();
-        System.out.println(testClass);
+        if (VERBOSE) {
+            System.out.println("Test class: " + testClass);
+        }
     }
 
     /**
@@ -93,28 +142,8 @@ public class TestFramework {
     public TestFramework(Class<?> testClass) {
         TestRun.check(testClass != null, "Test class cannot be null");
         this.testClass = testClass;
-        initTestsMap();
-    }
-
-    /**
-     * Returns a Method object that matches the specified test method name.
-     *
-     * @param mName the name of the test method
-     * @return the Method object matching the specified name
-     */
-    public Method getTestMethod(String mName) {
-        return testMethods.get(mName);
-    }
-
-    /*
-     * Helper method that gathers all test methods and put them in Hashtable
-     */
-    synchronized private void initTestsMap() {
-        for (Method m : testClass.getDeclaredMethods()) {
-            Test[] testAnnos = m.getAnnotationsByType(Test.class);
-            if (testAnnos.length != 0) {
-                testMethods.put(m.getName(), m);
-            }
+        if (VERBOSE) {
+            System.out.println("Test class: " + testClass);
         }
     }
 
@@ -357,64 +386,137 @@ public class TestFramework {
      * Compile {@code m} at compilation level {@code compLevel}. {@code m} is first enqueued and might not be compiled
      * yet upon returning from this method.
      *
-     * @param m the method to be compiled
+     * @param m the method to be compiled.
      * @param compLevel the (valid) compilation level at which the method should be compiled.
-     * @throws TestRunException if compilation level is {@link CompLevel#SKIP} or {@link CompLevel#WAIT_FOR_COMPILATION}
+     * @throws TestRunException if compilation level is {@link CompLevel#SKIP} or {@link CompLevel#WAIT_FOR_COMPILATION}.
      */
     public static void compile(Method m, CompLevel compLevel) {
         TestFrameworkExecution.compile(m, compLevel);
     }
 
+    /**
+     * Deoptimize {@code m}.
+     *
+     * @param m the method to be deoptimized.
+     */
     public static void deoptimize(Method m) {
         TestFrameworkExecution.deoptimize(m);
     }
 
-    public void deoptimize(String mName) {
-        deoptimize(getTestMethod(mName));
-    }
-
+    /**
+     * Returns a boolean indicating if {@code m} is compiled at any level.
+     *
+     * @param m the method to be checked.
+     * @return {@code true} if {@code m} is compiled at any level;
+     *         {@code false} otherwise.
+     */
     public static boolean isCompiled(Method m) {
         return TestFrameworkExecution.isCompiled(m);
     }
 
+    /**
+     * Returns a boolean indicating if {@code m} is compiled with C1.
+     *
+     * @param m the method to be checked.
+     * @return {@code true} if {@code m} is compiled with C1;
+     *         {@code false} otherwise.
+     */
     public static boolean isC1Compiled(Method m) {
         return TestFrameworkExecution.isC1Compiled(m);
     }
 
+    /**
+     * Returns a boolean indicating if {@code m} is compiled with C2.
+     *
+     * @param m the method to be checked.
+     * @return {@code true} if {@code m} is compiled with C2;
+     *         {@code false} otherwise.
+     */
     public static boolean isC2Compiled(Method m) {
         return TestFrameworkExecution.isC2Compiled(m);
     }
 
+    /**
+     * Returns a boolean indicating if {@code m} is compiled at the specified {@code compLevel}.
+     *
+     * @param m the method to be checked.
+     * @param compLevel the compilation level.
+     * @return {@code true} if {@code m} is compiled at {@code compLevel};
+     *         {@code false} otherwise.
+     */
     public static boolean isCompiledAtLevel(Method m, CompLevel compLevel) {
         return TestFrameworkExecution.isCompiledAtLevel(m, compLevel);
     }
 
-    public static void assertDeoptimizedByC1(Method m) {
-        TestFrameworkExecution.assertDeoptimizedByC1(m);
+    /**
+     * Checks if {@code m} is compiled at any level.
+     *
+     * @param m the method to be checked.
+     * @throws TestRunException if {@code m} is not compiled at any level.
+     */
+    public static void assertCompiled(Method m) {
+        TestFrameworkExecution.assertCompiled(m);
     }
 
-    public static void assertDeoptimizedByC2(Method m) {
-        TestFrameworkExecution.assertDeoptimizedByC2(m);
-    }
-
-    public static void assertCompiledByC1(Method m) {
-        TestFrameworkExecution.assertCompiledByC1(m);
-    }
-
-    public static void assertCompiledByC2(Method m) {
-        TestFrameworkExecution.assertCompiledByC2(m);
-    }
-
-    public static void assertCompiledAtLevel(Method m, CompLevel compLevel) {
-        TestFrameworkExecution.assertCompiledAtLevel(m, compLevel);
-    }
-
+    /**
+     * Checks if {@code m} is not compiled at any level.
+     *
+     * @param m the method to be checked.
+     * @throws TestRunException if {@code m} is compiled at any level.
+     */
     public static void assertNotCompiled(Method m) {
         TestFrameworkExecution.assertNotCompiled(m);
     }
 
-    public static void assertCompiled(Method m) {
-        TestFrameworkExecution.assertCompiled(m);
+    /**
+     * Checks if {@code m} is compiled with C1.
+     *
+     * @param m the method to be checked.
+     * @throws TestRunException if {@code m} is not compiled with C1.
+     */
+    public static void assertCompiledByC1(Method m) {
+        TestFrameworkExecution.assertCompiledByC1(m);
+    }
+
+    /**
+     * Checks if {@code m} is compiled with C2.
+     *
+     * @param m the method to be checked.
+     * @throws TestRunException if {@code m} is not compiled with C2.
+     */
+    public static void assertCompiledByC2(Method m) {
+        TestFrameworkExecution.assertCompiledByC2(m);
+    }
+
+    /**
+     * Checks if {@code m} is compiled with at the specified {@code compLevel}.
+     *
+     * @param m the method to be checked.
+     * @param compLevel the compilation level.
+     * @throws TestRunException if {@code m} is not compiled at {@code compLevel}.
+     */
+    public static void assertCompiledAtLevel(Method m, CompLevel compLevel) {
+        TestFrameworkExecution.assertCompiledAtLevel(m, compLevel);
+    }
+
+    /**
+     * Checks if {@code m} was deoptimized after being C1 compiled.
+     *
+     * @param m the method to be checked.
+     * @throws TestRunException if {@code m} is was not deoptimized after being C1 compiled.
+     */
+    public static void assertDeoptimizedByC1(Method m) {
+        TestFrameworkExecution.assertDeoptimizedByC1(m);
+    }
+
+    /**
+     * Checks if {@code m} was deoptimized after being C2 compiled.
+     *
+     * @param m the method to be checked.
+     * @throws TestRunException if {@code m} is was not deoptimized after being C2 compiled.
+     */
+    public static void assertDeoptimizedByC2(Method m) {
+        TestFrameworkExecution.assertDeoptimizedByC2(m);
     }
 
     /*

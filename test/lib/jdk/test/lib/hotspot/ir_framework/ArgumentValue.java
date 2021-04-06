@@ -256,7 +256,7 @@ class ArgumentValue {
                 || c.equals(long.class);
     }
 
-    public static boolean isFloatNumber(Class<?> c) {
+    private static boolean isFloatNumber(Class<?> c) {
         return c.equals(float.class) || c.equals(double.class);
     }
 

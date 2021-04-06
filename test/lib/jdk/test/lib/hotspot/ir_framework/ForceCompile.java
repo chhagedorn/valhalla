@@ -40,7 +40,8 @@ import java.lang.annotation.RetentionPolicy;
  *     <li><p>{@link CompLevel#SKIP}: Does not apply to {@code @ForceCompile} and results in a
  *     {@link TestFormatException TestFormatException}.</li>
  *     <li><p>{@link CompLevel#WAIT_FOR_COMPILATION}: Does not apply to {@code @ForceCompile} and results in a
- *     {@link TestFormatException TestFormatException}.</li> * </ul>
+ *     {@link TestFormatException TestFormatException}.</li>
+ * </ul>
  * <p>
  *  Using this annotation on <i>non-helper</i> methods results in a {@link TestFormatException TestFormatException}.
  */

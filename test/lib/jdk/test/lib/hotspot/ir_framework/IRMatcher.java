@@ -474,7 +474,6 @@ class IRMatcher {
  * Helper class to store information about a method that needs to be IR matched.
  */
 class IRMethod {
-
     final private Method method;
     final private Integer[] ruleIds;
     final private IR[] irAnnos;

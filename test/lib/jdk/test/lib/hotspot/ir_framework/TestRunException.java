@@ -28,11 +28,12 @@ package jdk.test.lib.hotspot.ir_framework;
  * test class.
  */
 public class TestRunException extends RuntimeException {
-    public TestRunException(String message) {
+
+    TestRunException(String message) {
         super(message);
     }
 
-    public TestRunException(String message, Exception e) {
+    TestRunException(String message, Exception e) {
         super(message, e);
     }
 }

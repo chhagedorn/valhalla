@@ -36,8 +36,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
-public class TestFrameworkExecution {
+/**
+ * This class' main method is called from {@link TestFramework} and represents the so-called "test VM". The class is
+ * the heart of the framework and is responsible for executing all the specified tests in the test class. It uses the
+ * Whitebox API and reflection to achieve this task.
+ */
+class TestFrameworkExecution {
     private static final WhiteBox WHITE_BOX;
 
     static {

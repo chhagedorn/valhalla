@@ -221,7 +221,6 @@ class IREncodingPrinter {
         return booleanValue == actualBooleanFlagValue;
     }
 
-
     private boolean checkLongFlag(String flag, String value, Long actualFlagValue) {
         long actualLongFlagValue = actualFlagValue;
         long longValue;

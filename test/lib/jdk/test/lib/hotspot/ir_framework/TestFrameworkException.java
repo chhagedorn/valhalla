@@ -27,6 +27,7 @@ package jdk.test.lib.hotspot.ir_framework;
  * Exception that is thrown if there is an internal error in the framework. This is most likely a bug in the framework.
  */
 public class TestFrameworkException extends RuntimeException {
+
     TestFrameworkException(String message) {
         super(message);
     }

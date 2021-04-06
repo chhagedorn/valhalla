@@ -69,7 +69,7 @@ import java.lang.annotation.RetentionPolicy;
  *         <li><p> Any other combination will result in a {@link TestFormatException}.
  *     </ul>
  *     <li><p>{@code c} is not compiled nor inlined.
- *     <li><p>{@code c} must be part of the test class. Using {@code @Check} in nested or other classes is not allowed.</li> // TODO write test for it
+ *     <li><p>{@code c} must be part of the test class. Using {@code @Check} in nested or other classes is not allowed. TODO write test for it</li>
  *     <li><p>{@code c} cannot specify any helper-method specific compile command annotations ({@link ForceCompile},
  *     {@link DontCompile}, {@link ForceInline}, {@link DontInline}). </li>
  * </ul>
@@ -83,6 +83,7 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Check {
+
     /**
      * The unique associated {@link Test} method for this {@code @Check} annotated check method. The framework will directly
      * invoke the {@code @Check} method after each invocation or only after the compilation of the associated {@code @Test}

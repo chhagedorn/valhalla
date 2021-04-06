@@ -170,6 +170,13 @@ public class TestCallingConvention {
         EmptyContainer getNoInline() { return empty; }
     }
 
+    private void deoptimize(String name, Class<?>... params) {
+        try {
+            TestFramework.deoptimize(getClass().getDeclaredMethod(name, params));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     // Test interpreter to compiled code with various signatures
     @Test
@@ -366,8 +373,7 @@ public class TestCallingConvention {
     public long test13_interp(MyValue2 v, MyValue1[] va, boolean deopt) {
         if (deopt) {
             // uncommon trap
-            Method m = testFramework.getTestMethod("test13");
-            TestFramework.deoptimize(m);
+            deoptimize("test13", MyValue2.class, MyValue1[].class, boolean.class, long.class);
         }
         return v.hash() + va[0].hash() + va[1].hash();
     }
@@ -393,8 +399,7 @@ public class TestCallingConvention {
     public MyValue2 test14_interp(boolean deopt) {
         if (deopt) {
             // uncommon trap
-            Method m = testFramework.getTestMethod("test14");
-            TestFramework.deoptimize(m);
+            deoptimize("test14", boolean.class);
         }
         return MyValue2.createWithFieldsInline(rI, rD);
     }
@@ -717,8 +722,7 @@ public class TestCallingConvention {
     public MyValue2 test32_interp(boolean deopt) {
         if (deopt) {
             // uncommon trap
-            Method m = testFramework.getTestMethod("test32");
-            TestFramework.deoptimize(m);
+            deoptimize("test32", boolean.class);
         }
         return MyValue2.createWithFieldsInline(rI+32, rD);
     }
@@ -741,8 +745,7 @@ public class TestCallingConvention {
     public Object test33_interp(boolean deopt) {
         if (deopt) {
             // uncommon trap
-            Method m = testFramework.getTestMethod("test33");
-            TestFramework.deoptimize(m);
+            deoptimize("test33", boolean.class);
         }
         return MyValue2.createWithFieldsInline(rI+33, rD);
     }

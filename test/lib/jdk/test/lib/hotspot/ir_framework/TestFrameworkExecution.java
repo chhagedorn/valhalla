@@ -77,21 +77,21 @@ public class TestFrameworkExecution {
 
     // User defined settings
     static final boolean XCOMP = Platform.isComp();
-    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
-    private static final boolean PRINT_TIMES = Boolean.parseBoolean(System.getProperty("PrintTimes", "false"));
+    static final boolean VERBOSE = Boolean.getBoolean("Verbose");
+    private static final boolean PRINT_TIMES = Boolean.getBoolean("PrintTimes");
 
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
-    static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
+    static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
     private static final String TESTLIST = System.getProperty("Test", "");
     private static final String EXCLUDELIST = System.getProperty("Exclude", "");
-    private static final boolean DUMP_REPLAY = Boolean.parseBoolean(System.getProperty("DumpReplay", "false"));
-    private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
+    private static final boolean DUMP_REPLAY = Boolean.getBoolean("DumpReplay");
+    private static final boolean GC_AFTER = Boolean.getBoolean("GCAfter");
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
     // Use separate flag as VERIFY_IR could have been set by user but due to other flags it was disabled by flag VM.
     private static final boolean PRINT_VALID_IR_RULES = Integer.getInteger(TestFrameworkSocket.SERVER_PORT_PROPERTY, -1) != -1;
     protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
     protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
-    private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
+    private static final boolean FLIP_C1_C2 = Boolean.getBoolean("FlipC1C2");
 
     private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
     private final List<AbstractTest> allTests = new ArrayList<>(); // Keep order
@@ -295,12 +295,6 @@ public class TestFrameworkExecution {
                     checkClassAnnotations(ex);
                     try {
                         applyIndependentCompilationCommands(ex);
-
-                        if (STRESS_CC) {
-                            if (getAnnotation(ex, Test.class) != null) {
-                                excludeCompilationRandomly(ex);
-                            }
-                        }
                     } catch (TestFormatException e) {
                         // Failure logged. Continue and report later.
                     }
@@ -345,15 +339,39 @@ public class TestFrameworkExecution {
                                 "@ForceCompileClassInitializer only allowed at classes but not at method " + ex);
     }
 
-    static boolean excludeCompilationRandomly(Executable ex) {
-        // Exclude some methods from compilation with C2 to stress test the calling convention
-        boolean exclude = Utils.getRandomInstance().nextBoolean();
+    /**
+     * Exclude a method from compilation randomly and returns the compilation level on which a compilation is still
+     * possible.
+     */
+    static CompLevel excludeRandomly(Executable ex) {
+        Random random = Utils.getRandomInstance();
+        boolean exclude = random.nextBoolean();
+        CompLevel level = CompLevel.ANY;
         if (exclude) {
-            System.out.println("Excluding from C2 compilation: " + ex);
-            WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C2.getValue(), false);
-            WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C2.getValue(), true);
+            String levelName;
+            switch (random.nextInt() % 3) {
+                case 1 -> {
+                    level = CompLevel.C1;
+                    WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C2.getValue(), false);
+                    WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C2.getValue(), true);
+                    levelName = "C2";
+                }
+                case 2 -> {
+                    level = CompLevel.C2;
+                    WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C1.getValue(), false);
+                    WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.C1.getValue(), true);
+                    levelName = "C1";
+                }
+                default -> {
+                    level = CompLevel.SKIP;
+                    WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.ANY.getValue(), false);
+                    WHITE_BOX.makeMethodNotCompilable(ex, CompLevel.ANY.getValue(), true);
+                    levelName = "C1 and C2";
+                }
+            }
+            System.out.println("Excluding from " + levelName + " compilation: " + ex);
         }
-        return exclude;
+        return level;
     }
 
     private void applyIndependentCompilationCommands(Executable ex) {
@@ -374,6 +392,10 @@ public class TestFrameworkExecution {
                              "Can only specify compilation level C1 (no individual C1 levels), " +
                              "C2 or ANY (no compilation, same as specifying anything) in @DontCompile at " + ex);
             dontCompileAtLevel(ex, compLevel);
+        }
+        if (EXCLUDE_RANDOM && getAnnotation(ex, Test.class) == null && forceCompileAnno == null && dontCompileAnno == null) {
+            // Randomly exclude helper methods from compilation
+            excludeRandomly(ex);
         }
     }
 
@@ -426,12 +448,13 @@ public class TestFrameworkExecution {
             CompLevel level = forceCompileAnno.value();
             TestFormat.check(level != CompLevel.SKIP && level != CompLevel.WAIT_FOR_COMPILATION,
                              "Cannot define compilation level SKIP or WAIT_FOR_COMPILATION in @ForceCompile at " + ex);
-            if (shouldCompile(ex)) {
-                level = restrictCompLevel(forceCompileAnno.value());
-                if (level != CompLevel.SKIP) {
-                    enqueueForCompilation(ex, level);
-                    forceCompileMap.put(ex, level);
-                }
+            level = restrictCompLevel(forceCompileAnno.value());
+            if (EXCLUDE_RANDOM) {
+                level = CompLevel.join(level, excludeRandomly(ex));
+            }
+            if (level != CompLevel.SKIP) {
+                enqueueForCompilation(ex, level);
+                forceCompileMap.put(ex, level);
             }
         }
     }
@@ -445,16 +468,6 @@ public class TestFrameworkExecution {
             WHITE_BOX.enqueueMethodForCompilation(ex, compLevel.getValue());
         } else {
             System.out.println("Skipped compilation on level " + requestedCompLevel + " due to VM flags not allowing it.");
-        }
-    }
-
-    static boolean shouldCompile(Executable ex) {
-        if (!TestFrameworkExecution.USE_COMPILER) {
-            return false;
-        } else if (TestFrameworkExecution.STRESS_CC) {
-            return !TestFrameworkExecution.excludeCompilationRandomly(ex);
-        } else {
-            return true;
         }
     }
 
@@ -493,6 +506,9 @@ public class TestFrameworkExecution {
         CompLevel compLevel = restrictCompLevel(testAnno.compLevel());
         if (FLIP_C1_C2) {
             compLevel = flipCompLevel(compLevel);
+        }
+        if (EXCLUDE_RANDOM) {
+            compLevel = CompLevel.join(compLevel, excludeRandomly(m));
         }
         DeclaredTest test = new DeclaredTest(m, ArgumentValue.getArguments(m), compLevel, warmupIterations);
         declaredTests.put(m, test);
@@ -838,7 +854,7 @@ public class TestFrameworkExecution {
 
     private static TriState compiledAtLevel(Method m, CompLevel level) {
         if (!USE_COMPILER || XCOMP || TEST_C1 ||
-            (STRESS_CC && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
+            (EXCLUDE_RANDOM && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
             return TriState.Maybe;
         }
         if (WHITE_BOX.isMethodCompiled(m, false)) {
@@ -965,6 +981,10 @@ abstract class AbstractTest {
     AbstractTest(int warmupIterations, boolean skip) {
         this.warmupIterations = warmupIterations;
         this.skip = skip;
+    }
+
+    protected boolean shouldCompile(DeclaredTest test) {
+        return test.getCompLevel() != CompLevel.SKIP;
     }
 
     abstract String getName();
@@ -1127,13 +1147,13 @@ class BaseTest extends AbstractTest {
     private final boolean shouldCompile;
     private final boolean waitForCompilation;
 
-    public BaseTest(DeclaredTest test, boolean excludedByUser) {
-        super(test.getWarmupIterations(), excludedByUser ? excludedByUser : test.getCompLevel() == CompLevel.SKIP);
+    public BaseTest(DeclaredTest test, boolean skip) {
+        super(test.getWarmupIterations(), skip);
         this.test = test;
         this.testMethod = test.getTestMethod();
         this.testInfo = new TestInfo(testMethod);
         this.invocationTarget = createInvocationTarget(testMethod);
-        this.shouldCompile = TestFrameworkExecution.shouldCompile(testMethod);
+        this.shouldCompile = shouldCompile(test);
         this.waitForCompilation = isWaitForCompilation(test);
     }
 
@@ -1252,10 +1272,9 @@ class CustomRunTest extends AbstractTest {
     private final List<DeclaredTest> tests;
     private final RunInfo runInfo;
 
-    public CustomRunTest(Method runMethod, Warmup warmUpAnno, Run runSpecification, List<DeclaredTest> tests, boolean excludedByUser) {
+    public CustomRunTest(Method runMethod, Warmup warmUpAnno, Run runSpecification, List<DeclaredTest> tests, boolean skip) {
         // Make sure we can also call non-public or public methods in package private classes
-        super(warmUpAnno != null ? warmUpAnno.value() : TestFrameworkExecution.WARMUP_ITERATIONS,
-              excludedByUser ? excludedByUser : tests.stream().anyMatch(t -> t.getCompLevel() == CompLevel.SKIP));
+        super(warmUpAnno != null ? warmUpAnno.value() : TestFrameworkExecution.WARMUP_ITERATIONS, skip);
         TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + runMethod);
         runMethod.setAccessible(true);
         this.runMethod = runMethod;
@@ -1311,7 +1330,7 @@ class CustomRunTest extends AbstractTest {
 
     private void compileSingleTest() {
         DeclaredTest test = tests.get(0);
-        if (TestFrameworkExecution.shouldCompile(test.getTestMethod())) {
+        if (shouldCompile(test)) {
             if (isWaitForCompilation(test)) {
                 waitForCompilation(test);
             } else {
@@ -1325,7 +1344,7 @@ class CustomRunTest extends AbstractTest {
         boolean anyCompileMethod = false;
         ExecutorService executor = Executors.newFixedThreadPool(tests.size());
         for (DeclaredTest test : tests) {
-            if (TestFrameworkExecution.shouldCompile(test.getTestMethod())) {
+            if (shouldCompile(test)) {
                 if (isWaitForCompilation(test)) {
                     anyWaitForCompilation = true;
                     executor.execute(() -> waitForCompilation(test));

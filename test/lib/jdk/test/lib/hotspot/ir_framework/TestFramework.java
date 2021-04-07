@@ -93,13 +93,14 @@ import java.util.stream.Collectors;
  * @see IR
  */
 public class TestFramework {
-    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
+    static final boolean VERBOSE = Boolean.getBoolean("Verbose");
     static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
     static final String TEST_VM_FLAGS_DELIMITER = " ";
     static final String TEST_VM_FLAGS_END = "----- END -----";
 
     private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
-    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
+    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.getBoolean("PreferCommandLineFlags");
+    private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
     private boolean shouldVerifyIR = true; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
@@ -770,7 +771,7 @@ public class TestFramework {
 
     private void checkTestVMExitCode(JVMOutput vmOutput) {
         final int exitCode = vmOutput.getExitCode();
-        if (VERBOSE && exitCode == 0) {
+        if (EXCLUDE_RANDOM || (VERBOSE && exitCode == 0)) {
             System.out.println("--- OUTPUT TestFramework test VM ---");
             System.out.println(vmOutput.getOutput());
         }

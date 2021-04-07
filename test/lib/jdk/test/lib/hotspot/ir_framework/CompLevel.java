@@ -28,7 +28,7 @@ import java.util.Map;
 
 /**
  * Compilation levels used by the framework. The compilation levels map to the used levels in HotSpot (apart from the
- * framework specific value {@link #SKIP} that cannot be found in HotSpot).
+ * framework specific values {@link #SKIP} and {@link #WAIT_FOR_COMPILATION} that cannot be found in HotSpot).
  *
  * <p>
  * The compilation levels can be specified in the {@link Test}, {@link ForceCompile} and {@link DontCompile} annotation.
@@ -48,7 +48,7 @@ public enum CompLevel {
      */
     WAIT_FOR_COMPILATION(-4),
     /**
-     * Can only be used at {@link Test#compLevel()}. Skip a {@link Test @Test} completely.
+     * Can only be used at {@link Test#compLevel()}. Skip a compilation of the {@link Test @Test} method completely.
      */
     SKIP(-3),
     /**
@@ -117,6 +117,15 @@ public enum CompLevel {
      */
     static boolean overlapping(CompLevel l1, CompLevel l2) {
         return l1.isC1() == l2.isC1() || (l1 == C2 && l2 == C2);
+    }
+
+    static CompLevel join(CompLevel l1, CompLevel l2) {
+        return switch (l1) {
+            case ANY -> l2;
+            case C1, C1_LIMITED_PROFILE, C1_FULL_PROFILE -> l2.isC1() || l2 == ANY ? C1 : SKIP;
+            case C2 -> l2 == C2 || l2 == ANY ? C2 : SKIP;
+            default -> SKIP;
+        };
     }
 
     private boolean isC1() {

@@ -54,14 +54,14 @@ class TestFrameworkPrepareFlags {
 
     // User defined settings
     static final boolean XCOMP = Platform.isComp();
-    static final boolean VERBOSE = Boolean.parseBoolean(System.getProperty("Verbose", "false"));
+    static final boolean VERBOSE = Boolean.getBoolean("Verbose");
 
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
-    static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
+    static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
     private static final boolean REQUESTED_VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
-    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !STRESS_CC && !TEST_C1
+    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !EXCLUDE_RANDOM && !TEST_C1
                                        && Platform.isDebugBuild() && !Platform.isInt();
-    private static final boolean VERIFY_VM = Boolean.parseBoolean(System.getProperty("VerifyVM", "false")) && Platform.isDebugBuild();
+    private static final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
 
     private static String[] getDefaultFlags() {
         return new String[] {"-XX:-BackgroundCompilation", "-XX:CompileCommand=quiet"};

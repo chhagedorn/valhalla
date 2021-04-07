@@ -70,7 +70,7 @@ import java.util.stream.Collectors;
  * <p>
  * After annotating your test code with the framework specific annotations, the framework needs to be invoked from the
  * {@code main()} method of your JTreg test. There are two ways to do so. The first way is by calling the various
- * {@code run()} methods of {@link TestFramework}. The second way, which gives more control, is to create a new
+ * {@code runXX()} methods of {@link TestFramework}. The second way, which gives more control, is to create a new
  * {@code TestFramework} builder object on which {@link #start()} needs to be eventually called to start the testing.
  * <p>
  * The framework is called from the <i>driver VM</i> in which the JTreg test is initially run by specifying {@code
@@ -100,7 +100,7 @@ public class TestFramework {
 
     private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.parseBoolean(System.getProperty("PreferCommandLineFlags", "false"));
-    private static boolean VERIFY_IR = true; // Should we perform IR matching?
+    private boolean shouldVerifyIR = true; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
     private final Class<?> testClass;
@@ -680,7 +680,7 @@ public class TestFramework {
 
     private void runTestVM(List<String> additionalFlags, Scenario scenario) {
         List<String> cmds = prepareTestVMFlags(additionalFlags);
-        if (VERIFY_IR) {
+        if (shouldVerifyIR) {
             // We only need the socket if we are doing IR verification.
             socket.start();
         }
@@ -702,7 +702,7 @@ public class TestFramework {
             scenario.setTestVMOutput(lastTestVMOutput);
         }
         checkTestVMExitCode(output);
-        if (VERIFY_IR) {
+        if (shouldVerifyIR) {
             new IRMatcher(output.getHotspotPidFileName(), socket.getOutput(), testClass);
         } else {
             System.out.println("IR Verification disabled either through explicitly setting -DVerify=false or due to " +
@@ -737,7 +737,7 @@ public class TestFramework {
         }
 
 
-            if (VERIFY_IR) {
+            if (shouldVerifyIR) {
             // Add server property flag that enables test VM to print encoding for IR verification last.
             cmds.add(socket.getPortPropertyFlag());
         }
@@ -764,11 +764,11 @@ public class TestFramework {
         }
         Matcher matcher = pattern.matcher(flags);
         check(matcher.find(), "Invalid flag encoding emitted by flag VM");
-        VERIFY_IR = Boolean.parseBoolean(matcher.group(2));
+        shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
         return new ArrayList<>(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
     }
 
-    private static void checkTestVMExitCode(JVMOutput vmOutput) {
+    private void checkTestVMExitCode(JVMOutput vmOutput) {
         final int exitCode = vmOutput.getExitCode();
         if (VERBOSE && exitCode == 0) {
             System.out.println("--- OUTPUT TestFramework test VM ---");
@@ -780,13 +780,17 @@ public class TestFramework {
         }
     }
 
-    private static void throwTestVMException(JVMOutput vmOutput) {
+    private void throwTestVMException(JVMOutput vmOutput) {
         String stdErr = vmOutput.getStderr();
         if (stdErr.contains("TestFormat.reportIfAnyFailures")) {
             Pattern pattern = Pattern.compile("Violations \\(\\d+\\)[\\s\\S]*(?=/============/)");
             Matcher matcher = pattern.matcher(stdErr);
             TestFramework.check(matcher.find(), "Must find violation matches");
             throw new TestFormatException("\n\n" + matcher.group());
+        } else if (stdErr.contains("NoTestsRunException")) {
+            shouldVerifyIR = false;
+            throw new NoTestsRunException(">>> No tests run either due to empty set specified with -DTest and/or -DExclude"
+                                          + " or due to explicitly skipping tests with @Test(compLevel = CompLevel.SKIP)");
         } else {
             throw new TestVMException(vmOutput);
         }

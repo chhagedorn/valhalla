@@ -41,7 +41,7 @@ import java.util.stream.Stream;
  * the heart of the framework and is responsible for executing all the specified tests in the test class. It uses the
  * Whitebox API and reflection to achieve this task.
  */
-class TestFrameworkExecution {
+public class TestFrameworkExecution {
     private static final WhiteBox WHITE_BOX;
 
     static {
@@ -64,6 +64,13 @@ class TestFrameworkExecution {
         }
     }
 
+    /**
+     * The default number of warm-up iterations used to warm up a {@link Test} annotated test method.
+     * Use {@code -DWarmup=XY} to specify a different default value. An individual warm-up can also be
+     * set by specifying a {@link Warmup} iteration for a test.
+     */
+    public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "2000"));
+
     private static final boolean TIERED_COMPILATION = (Boolean)WHITE_BOX.getVMFlag("TieredCompilation");
     private static final CompLevel TIERED_COMPILATION_STOP_AT_LEVEL = CompLevel.forValue(((Long)WHITE_BOX.getVMFlag("TieredStopAtLevel")).intValue());
     static final boolean TEST_C1 = TIERED_COMPILATION && TIERED_COMPILATION_STOP_AT_LEVEL.getValue() < CompLevel.C2.getValue();
@@ -75,9 +82,8 @@ class TestFrameworkExecution {
 
     static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
     static final boolean STRESS_CC = Boolean.parseBoolean(System.getProperty("StressCC", "false"));
-    private static final String TESTLIST = System.getProperty("Testlist", "");
+    private static final String TESTLIST = System.getProperty("Test", "");
     private static final String EXCLUDELIST = System.getProperty("Exclude", "");
-    public static final int WARMUP_ITERATIONS = Integer.parseInt(System.getProperty("Warmup", "2000"));
     private static final boolean DUMP_REPLAY = Boolean.parseBoolean(System.getProperty("DumpReplay", "false"));
     private static final boolean GC_AFTER = Boolean.parseBoolean(System.getProperty("GCAfter", "false"));
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
@@ -88,7 +94,7 @@ class TestFrameworkExecution {
     private static final boolean FLIP_C1_C2 = Boolean.parseBoolean(System.getProperty("FlipC1C2", "false"));
 
     private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
-    private final LinkedHashMap<Method, AbstractTest> allTests = new LinkedHashMap<>(); // Keep order
+    private final List<AbstractTest> allTests = new ArrayList<>(); // Keep order
     private final HashMap<String, Method> testMethodMap = new HashMap<>();
     private final List<String> excludeList;
     private final List<String> testList;
@@ -227,6 +233,9 @@ class TestFrameworkExecution {
 
         // All remaining tests are simple base tests without check or specific way to run them.
         addBaseTests();
+        if (PRINT_VALID_IR_RULES) {
+            irMatchRulePrinter.emit();
+        }
         TestFormat.reportIfAnyFailures();
         declaredTests.clear();
         testMethodMap.clear();
@@ -238,12 +247,30 @@ class TestFrameworkExecution {
                 try {
                     Arguments argumentsAnno = getAnnotation(m, Arguments.class);
                     TestFormat.check(argumentsAnno != null || m.getParameterCount() == 0, "Missing @Arguments annotation to define arguments of " + m);
-                    allTests.put(m, new BaseTest(test));
+                    BaseTest baseTest = new BaseTest(test, shouldExcludeTest(m.getName()));
+                    allTests.add(baseTest);
+                    if (PRINT_VALID_IR_RULES) {
+                       irMatchRulePrinter.emitRuleEncoding(m, baseTest.isSkipped());
+                    }
                 } catch (TestFormatException e) {
                     // Failure logged. Continue and report later.
                 }
             }
         });
+    }
+
+    /**
+     * Check if user wants to exclude this test by checking the -DTest and -DExclude lists.
+     */
+    private boolean shouldExcludeTest(String testName) {
+        boolean hasTestList = testList != null;
+        boolean hasExcludeList = excludeList != null;
+        if (hasTestList) {
+            return !testList.contains(testName) || (hasExcludeList && excludeList.contains(testName));
+        } else if (hasExcludeList) {
+            return excludeList.contains(testName);
+        }
+        return false;
     }
 
     private void addReplay() {
@@ -432,23 +459,11 @@ class TestFrameworkExecution {
     }
 
     private void setupTests() {
-        boolean hasTestList = testList != null;
-        boolean hasExcludeList = excludeList != null;
         for (Method m : testClass.getDeclaredMethods()) {
             Test testAnno = getAnnotation(m, Test.class);
             try {
                 if (testAnno != null) {
-                    if (hasTestList) {
-                        if (testList.contains(m.getName()) && (!hasExcludeList || !excludeList.contains(m.getName()))) {
-                            addTest(m);
-                        }
-                    } else if (hasExcludeList) {
-                        if (!excludeList.contains(m.getName())) {
-                            addTest(m);
-                        }
-                    } else {
-                        addTest(m);
-                    }
+                    addDeclaredTest(m);
                 } else {
                     TestFormat.checkNoThrow(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
                     TestFormat.checkNoThrow(!m.isAnnotationPresent(Warmup.class) || getAnnotation(m, Run.class) != null,
@@ -459,12 +474,9 @@ class TestFrameworkExecution {
             }
         }
         TestFormat.checkNoThrow(!declaredTests.isEmpty(), "Did not specify any @Test methods in " + testClass);
-        if (PRINT_VALID_IR_RULES) {
-            irMatchRulePrinter.emit();
-        }
     }
 
-    private void addTest(Method m) {
+    private void addDeclaredTest(Method m) {
         Test testAnno = getAnnotation(m, Test.class);
         checkTestAnnotations(m, testAnno);
         Warmup warmup = getAnnotation(m, Warmup.class);
@@ -472,10 +484,6 @@ class TestFrameworkExecution {
         if (warmup != null) {
             warmupIterations = warmup.value();
             TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + m);
-        }
-
-        if (PRINT_VALID_IR_RULES) {
-            irMatchRulePrinter.emitRuleEncoding(m, testAnno.compLevel());
         }
 
         if (!XCOMP) {
@@ -580,8 +588,11 @@ class TestFrameworkExecution {
         dontCompileMethod(m);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter);
-        allTests.put(testMethod, checkedTest);
+        CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter, shouldExcludeTest(m.getName()));
+        allTests.add(checkedTest);
+        if (PRINT_VALID_IR_RULES) {
+            irMatchRulePrinter.emitRuleEncoding(m, checkedTest.isSkipped());
+        }
     }
 
     private void checkCheckedTest(Method m, Check checkAnno, Run runAnno, Method testMethod, DeclaredTest test) {
@@ -637,8 +648,11 @@ class TestFrameworkExecution {
         dontCompileMethod(m);
         // Don't inline run methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        CustomRunTest customRunTest = new CustomRunTest(m, getAnnotation(m, Warmup.class), runAnno, tests);
-        allTests.put(m, customRunTest);
+        CustomRunTest customRunTest = new CustomRunTest(m, getAnnotation(m, Warmup.class), runAnno, tests, shouldExcludeTest(m.getName()));
+        allTests.add(customRunTest);
+        if (PRINT_VALID_IR_RULES) {
+            tests.forEach(test -> irMatchRulePrinter.emitRuleEncoding(test.getTestMethod(), customRunTest.isSkipped()));
+        }
     }
 
     private void checkCustomRunTest(Method m, String testName, Method testMethod, DeclaredTest test, RunMode runMode) {
@@ -701,14 +715,21 @@ class TestFrameworkExecution {
     private void runTests() {
         TreeMap<Long, String> durations = (PRINT_TIMES || VERBOSE) ? new TreeMap<>() : null;
         long startTime = System.nanoTime();
-        Collection<AbstractTest> testCollection = allTests.values();
+        List<AbstractTest> testList;
+        if (testFilterPresent()) {
+            testList = allTests.stream().filter(test -> !test.isSkipped()).collect(Collectors.toList());
+            if (testList.isEmpty()) {
+                throw new NoTestsRunException();
+            }
+        } else {
+            testList = allTests;
+        }
+
         if (SHUFFLE_TESTS) {
             // Execute tests in random order (execution sequence affects profiling)
-            ArrayList<AbstractTest> shuffledList = new ArrayList<>(allTests.values());
-            Collections.shuffle(shuffledList);
-            testCollection = shuffledList;
+            Collections.shuffle(testList);
         }
-        for (AbstractTest test : testCollection) {
+        for (AbstractTest test : testList) {
             test.run();
             if (PRINT_TIMES || VERBOSE) {
                 long endTime = System.nanoTime();
@@ -731,6 +752,10 @@ class TestFrameworkExecution {
                 System.out.format("%-10s%15d ns\n", entry.getValue() + ":", entry.getKey());
             }
         }
+    }
+
+    private boolean testFilterPresent() {
+        return testList != null || excludeList != null;
     }
 
     enum TriState {
@@ -935,12 +960,18 @@ abstract class AbstractTest {
     protected static final boolean VERIFY_OOPS = (Boolean)WHITE_BOX.getVMFlag("VerifyOops");
 
     protected final int warmupIterations;
+    protected final boolean skip;
 
-    AbstractTest(int warmupIterations) {
+    AbstractTest(int warmupIterations, boolean skip) {
         this.warmupIterations = warmupIterations;
+        this.skip = skip;
     }
 
     abstract String getName();
+
+    public boolean isSkipped() {
+        return skip;
+    }
 
     protected static boolean isWaitForCompilation(DeclaredTest test) {
         return test.getCompLevel() == CompLevel.WAIT_FOR_COMPILATION;
@@ -968,21 +999,20 @@ abstract class AbstractTest {
      * Run the associated test
      */
     public void run() {
-        if (!onRunStart()) {
-            // Skip this test if set fails.
+        if (skip) {
             return;
         }
+        onRunStart();
         for (int i = 0; i < warmupIterations; i++) {
             invokeTest();
         }
-
         onWarmupFinished();
         compileTest();
         // Always run method.
         invokeTest();
     }
 
-    abstract boolean onRunStart();
+    abstract void onRunStart();
 
     abstract void invokeTest();
 
@@ -993,10 +1023,10 @@ abstract class AbstractTest {
     protected void compileMethod(DeclaredTest test) {
         final Method testMethod = test.getTestMethod();
         TestRun.check(WHITE_BOX.isMethodCompilable(testMethod, test.getCompLevel().getValue(), false),
-                      "Method" + testMethod + " not compilable at level " + test.getCompLevel()
+                      "Method " + testMethod + " not compilable at level " + test.getCompLevel()
                       + ". Did you use compileonly without including all @Test methods?");
         TestRun.check(WHITE_BOX.isMethodCompilable(testMethod),
-                      "Method" + testMethod + " not compilable at level " + test.getCompLevel()
+                      "Method " + testMethod + " not compilable at level " + test.getCompLevel()
                       + ". Did you use compileonly without including all @Test methods?");
         if (TestFramework.VERBOSE) {
             System.out.println("Compile method " + testMethod + " after warm-up...");
@@ -1097,8 +1127,8 @@ class BaseTest extends AbstractTest {
     private final boolean shouldCompile;
     private final boolean waitForCompilation;
 
-    public BaseTest(DeclaredTest test) {
-        super(test.getWarmupIterations());
+    public BaseTest(DeclaredTest test, boolean excludedByUser) {
+        super(test.getWarmupIterations(), excludedByUser ? excludedByUser : test.getCompLevel() == CompLevel.SKIP);
         this.test = test;
         this.testMethod = test.getTestMethod();
         this.testInfo = new TestInfo(testMethod);
@@ -1113,16 +1143,11 @@ class BaseTest extends AbstractTest {
     }
 
     @Override
-    protected boolean onRunStart() {
-        if (test.getCompLevel() == CompLevel.SKIP) {
-            // Exclude test if compilation level is SKIP either set through test or by not matching the current VM flags.
-            return false;
-        }
+    protected void onRunStart() {
         if (TestFrameworkExecution.VERBOSE) {
             System.out.println("Starting " + getName());
         }
         test.printFixedRandomArguments();
-        return true;
     }
 
     @Override
@@ -1176,8 +1201,8 @@ class CheckedTest extends BaseTest {
         NONE, RETURN_ONLY, TEST_INFO_ONLY, BOTH
     }
 
-    public CheckedTest(DeclaredTest test, Method checkMethod, Check checkSpecification, Parameter parameter) {
-        super(test);
+    public CheckedTest(DeclaredTest test, Method checkMethod, Check checkSpecification, Parameter parameter, boolean excludedByUser) {
+        super(test, excludedByUser);
         // Make sure we can also call non-public or public methods in package private classes
         checkMethod.setAccessible(true);
         this.checkMethod = checkMethod;
@@ -1227,9 +1252,10 @@ class CustomRunTest extends AbstractTest {
     private final List<DeclaredTest> tests;
     private final RunInfo runInfo;
 
-    public CustomRunTest(Method runMethod, Warmup warmUpAnno, Run runSpecification, List<DeclaredTest> tests) {
+    public CustomRunTest(Method runMethod, Warmup warmUpAnno, Run runSpecification, List<DeclaredTest> tests, boolean excludedByUser) {
         // Make sure we can also call non-public or public methods in package private classes
-        super(warmUpAnno != null ? warmUpAnno.value() : TestFrameworkExecution.WARMUP_ITERATIONS);
+        super(warmUpAnno != null ? warmUpAnno.value() : TestFrameworkExecution.WARMUP_ITERATIONS,
+              excludedByUser ? excludedByUser : tests.stream().anyMatch(t -> t.getCompLevel() == CompLevel.SKIP));
         TestFormat.checkNoThrow(warmupIterations >= 0, "Cannot have negative value for @Warmup at " + runMethod);
         runMethod.setAccessible(true);
         this.runMethod = runMethod;
@@ -1244,16 +1270,10 @@ class CustomRunTest extends AbstractTest {
     }
 
     @Override
-    protected boolean onRunStart() {
-        if (tests.stream().anyMatch(t -> t.getCompLevel() == CompLevel.SKIP)) {
-            // Exclude test if any compilation level is SKIP either set through test or by not matching the current VM flags.
-            return false;
-        }
-
+    protected void onRunStart() {
         if (TestFrameworkExecution.VERBOSE) {
             System.out.println("Starting " + getName());
         }
-        return true;
     }
 
     @Override
@@ -1263,11 +1283,9 @@ class CustomRunTest extends AbstractTest {
 
     @Override
     public void run() {
-        if (!onRunStart()) {
-            // Skip this test if set fails.
+        if (skip) {
             return;
         }
-
         switch (mode) {
             case STANDALONE -> {
                 runInfo.setWarmUpFinished();

@@ -51,8 +51,8 @@ public class TestBasics {
             int value = executed[i];
             if (value != TestFrameworkExecution.WARMUP_ITERATIONS + 1) {
                 // Warmups + 1 C2 compiled invocation
-                throw new RuntimeException("Test " + i + "  was executed " + value + " times stead of "
-                        + TestFrameworkExecution.WARMUP_ITERATIONS + 1 + " times." );
+                throw new RuntimeException("Test " + i + "  was executed " + value + " times instead stead of "
+                        + (TestFrameworkExecution.WARMUP_ITERATIONS + 1) + " times." );
             }
         }
 

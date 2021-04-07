@@ -47,8 +47,6 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 @ForceCompileClassInitializer
 public class TestCallingConvention {
 
-    static MethodHandle test32_mh, test33_mh, test37_mh;
-
     static {
         try {
             Class<?> clazz = TestCallingConvention.class;
@@ -90,85 +88,6 @@ public class TestCallingConvention {
     }
 
     // Helper methods and classes
-
-    // Test calling convention with deep hierarchy of flattened fields
-    final primitive class Test27Value1 {
-        final Test27Value2 valueField;
-
-        private Test27Value1(Test27Value2 val2) {
-            valueField = val2;
-        }
-
-        @DontInline
-        public int test(Test27Value1 val1) {
-            return valueField.test(valueField) + val1.valueField.test(valueField);
-        }
-    }
-
-    final primitive class Test27Value2 {
-        final Test27Value3 valueField;
-
-        private Test27Value2(Test27Value3 val3) {
-            valueField = val3;
-        }
-
-        @DontInline
-        public int test(Test27Value2 val2) {
-            return valueField.test(valueField) + val2.valueField.test(valueField);
-        }
-    }
-
-    final primitive class Test27Value3 {
-        final int x;
-
-        private Test27Value3(int x) {
-            this.x = x;
-        }
-
-        @DontInline
-        public int test(Test27Value3 val3) {
-            return x + val3.x;
-        }
-    }
-
-    primitive class Test37Value {
-        int x = rI;
-
-        @DontInline
-        public int test() {
-            return x;
-        }
-    }
-
-    primitive class EmptyContainer {
-        private MyValueEmpty empty;
-
-        EmptyContainer(MyValueEmpty empty) {
-            this.empty = empty;
-        }
-
-        @ForceInline
-        MyValueEmpty getInline() { return empty; }
-
-        @DontInline
-        MyValueEmpty getNoInline() { return empty; }
-    }
-
-    primitive class MixedContainer {
-        public int val;
-        private EmptyContainer empty;
-
-        MixedContainer(int val, EmptyContainer empty) {
-            this.val = val;
-            this.empty = empty;
-        }
-
-        @ForceInline
-        EmptyContainer getInline() { return empty; }
-
-        @DontInline
-        EmptyContainer getNoInline() { return empty; }
-    }
 
     private void deoptimize(String name, Class<?>... params) {
         try {
@@ -645,6 +564,46 @@ public class TestCallingConvention {
         Asserts.assertEQ(vt.hash(), MyValue2.createWithFieldsInline(rI, rD).hash());
     }
 
+    // Test calling convention with deep hierarchy of flattened fields
+    final primitive class Test27Value1 {
+        final Test27Value2 valueField;
+
+        private Test27Value1(Test27Value2 val2) {
+            valueField = val2;
+        }
+
+        @DontInline
+        public int test(Test27Value1 val1) {
+            return valueField.test(valueField) + val1.valueField.test(valueField);
+        }
+    }
+
+    final primitive class Test27Value2 {
+        final Test27Value3 valueField;
+
+        private Test27Value2(Test27Value3 val3) {
+            valueField = val3;
+        }
+
+        @DontInline
+        public int test(Test27Value2 val2) {
+            return valueField.test(valueField) + val2.valueField.test(valueField);
+        }
+    }
+
+    final primitive class Test27Value3 {
+        final int x;
+
+        private Test27Value3(int x) {
+            this.x = x;
+        }
+
+        @DontInline
+        public int test(Test27Value3 val3) {
+            return x + val3.x;
+        }
+    }
+
     @Test
     public int test27(Test27Value1 val) {
         return val.test(val);
@@ -717,6 +676,7 @@ public class TestCallingConvention {
 
     // Test deoptimization at call return with inline type returned in registers.
     // Same as test14, except the interpreted method is called via a MethodHandle.
+    static MethodHandle test32_mh;
 
     @DontCompile
     public MyValue2 test32_interp(boolean deopt) {
@@ -740,6 +700,7 @@ public class TestCallingConvention {
     }
 
     // Same as test32, except the return type is not flattenable.
+    static MethodHandle test33_mh;
 
     @DontCompile
     public Object test33_interp(boolean deopt) {
@@ -841,6 +802,17 @@ public class TestCallingConvention {
     }
 
     // Test method resolution with scalarized inline type receiver at invokespecial
+    static final MethodHandle test37_mh;
+
+    primitive class Test37Value {
+        int x = rI;
+
+        @DontInline
+        public int test() {
+            return x;
+        }
+    }
+
     @Test
     public int test37(Test37Value vt) throws Throwable {
         // Generates invokespecial call of Test37Value::test
@@ -984,6 +956,36 @@ public class TestCallingConvention {
     }
 
     // More empty inline type tests with containers
+
+    static primitive class EmptyContainer {
+        private MyValueEmpty empty;
+
+        EmptyContainer(MyValueEmpty empty) {
+            this.empty = empty;
+        }
+
+        @ForceInline
+        MyValueEmpty getInline() { return empty; }
+
+        @DontInline
+        MyValueEmpty getNoInline() { return empty; }
+    }
+
+    static primitive class MixedContainer {
+        public int val;
+        private EmptyContainer empty;
+
+        MixedContainer(int val, EmptyContainer empty) {
+            this.val = val;
+            this.empty = empty;
+        }
+
+        @ForceInline
+        EmptyContainer getInline() { return empty; }
+
+        @DontInline
+        EmptyContainer getNoInline() { return empty; }
+    }
 
     // Empty inline type return
     @Test

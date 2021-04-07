@@ -72,66 +72,6 @@ public class TestNullableArrays {
         return MyValue1.createWithFieldsInline(x, y).hash();
     }
 
-    static void verify(Object[] src, Object[] dst) {
-        for (int i = 0; i < src.length; ++i) {
-            if (src[i] != null) {
-                Asserts.assertEQ(((MyInterface)src[i]).hash(), ((MyInterface)dst[i]).hash());
-            } else {
-                Asserts.assertEQ(dst[i], null);
-            }
-        }
-    }
-
-    static void verify(MyValue1.ref[] src, MyValue1.ref[] dst) {
-        for (int i = 0; i < src.length; ++i) {
-            if (src[i] != null) {
-                Asserts.assertEQ(src[i].hash(), dst[i].hash());
-            } else {
-                Asserts.assertEQ(dst[i], null);
-            }
-        }
-    }
-
-    static void verify(MyValue1.ref[] src, Object[] dst) {
-        for (int i = 0; i < src.length; ++i) {
-            if (src[i] != null) {
-                Asserts.assertEQ(src[i].hash(), ((MyInterface)dst[i]).hash());
-            } else {
-                Asserts.assertEQ(dst[i], null);
-            }
-        }
-    }
-
-    static void verify(MyValue2.ref[] src, MyValue2.ref[] dst) {
-        for (int i = 0; i < src.length; ++i) {
-            if (src[i] != null) {
-                Asserts.assertEQ(src[i].hash(), dst[i].hash());
-            } else {
-                Asserts.assertEQ(dst[i], null);
-            }
-        }
-    }
-
-    static void verify(MyValue2.ref[] src, Object[] dst) {
-        for (int i = 0; i < src.length; ++i) {
-            if (src[i] != null) {
-                Asserts.assertEQ(src[i].hash(), ((MyInterface)dst[i]).hash());
-            } else {
-                Asserts.assertEQ(dst[i], null);
-            }
-        }
-    }
-
-    static boolean compile_and_run_again_if_deoptimized(RunInfo info) {
-        if (!info.isWarmUp()) {
-            Method m = info.getTest();
-            if (TestFramework.isCompiled(m)) {
-                TestFramework.compile(m, CompLevel.C2);
-            }
-        }
-        return false;
-    }
-
     private static final MyValue1 testValue1 = MyValue1.createWithFieldsInline(rI, rL);
 
     // Test nullable inline type array creation and initialization
@@ -1108,6 +1048,66 @@ public class TestNullableArrays {
             Object[] result = test34(true);
             verify(test34_orig, result);
         }
+    }
+
+    static void verify(Object[] src, Object[] dst) {
+        for (int i = 0; i < src.length; ++i) {
+            if (src[i] != null) {
+                Asserts.assertEQ(((MyInterface)src[i]).hash(), ((MyInterface)dst[i]).hash());
+            } else {
+                Asserts.assertEQ(dst[i], null);
+            }
+        }
+    }
+
+    static void verify(MyValue1.ref[] src, MyValue1.ref[] dst) {
+        for (int i = 0; i < src.length; ++i) {
+            if (src[i] != null) {
+                Asserts.assertEQ(src[i].hash(), dst[i].hash());
+            } else {
+                Asserts.assertEQ(dst[i], null);
+            }
+        }
+    }
+
+    static void verify(MyValue1.ref[] src, Object[] dst) {
+        for (int i = 0; i < src.length; ++i) {
+            if (src[i] != null) {
+                Asserts.assertEQ(src[i].hash(), ((MyInterface)dst[i]).hash());
+            } else {
+                Asserts.assertEQ(dst[i], null);
+            }
+        }
+    }
+
+    static void verify(MyValue2.ref[] src, MyValue2.ref[] dst) {
+        for (int i = 0; i < src.length; ++i) {
+            if (src[i] != null) {
+                Asserts.assertEQ(src[i].hash(), dst[i].hash());
+            } else {
+                Asserts.assertEQ(dst[i], null);
+            }
+        }
+    }
+
+    static void verify(MyValue2.ref[] src, Object[] dst) {
+        for (int i = 0; i < src.length; ++i) {
+            if (src[i] != null) {
+                Asserts.assertEQ(src[i].hash(), ((MyInterface)dst[i]).hash());
+            } else {
+                Asserts.assertEQ(dst[i], null);
+            }
+        }
+    }
+
+    static boolean compile_and_run_again_if_deoptimized(RunInfo info) {
+        if (!info.isWarmUp()) {
+            Method m = info.getTest();
+            if (TestFramework.isCompiled(m)) {
+                TestFramework.compile(m, CompLevel.C2);
+            }
+        }
+        return false;
     }
 
     // arraycopy() of inline type array of unknown size

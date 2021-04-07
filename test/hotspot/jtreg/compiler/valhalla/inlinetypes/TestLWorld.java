@@ -72,50 +72,8 @@ public class TestLWorld {
     private static final MyValue1 testValue1 = MyValue1.createWithFieldsInline(rI, rL);
     private static final MyValue2 testValue2 = MyValue2.createWithFieldsInline(rI, rD);
 
-    Object objectField1 = null;
-    Object objectField2 = null;
-    Object objectField3 = null;
-    Object objectField4 = null;
-    Object objectField5 = null;
-    Object objectField6 = null;
-
-    MyValue1 valueField1 = testValue1;
-    MyValue1 valueField2 = testValue1;
-    MyValue1.ref valueField3 = testValue1;
-    MyValue1 valueField4;
-    MyValue1.ref valueField5;
-
-    static MyValue1.ref staticValueField1 = testValue1;
-    static MyValue1 staticValueField2 = testValue1;
-    static MyValue1 staticValueField3;
-    static MyValue1.ref staticValueField4;
-
-    private static final MyValue1[] testValue1Array = new MyValue1[] {testValue1,
-            testValue1,
-            testValue1};
-
-    private static final MyValue1[][] testValue1Array2 = new MyValue1[][] {testValue1Array,
-            testValue1Array,
-            testValue1Array};
-
-    private static final MyValue2[] testValue2Array = new MyValue2[] {testValue2,
-            testValue2,
-            testValue2};
-
-    private static final Integer[] testIntegerArray = new Integer[42];
-
     protected long hash() {
         return testValue1.hash();
-    }
-
-    private void rerun_and_recompile_for(Method m, int num, Runnable test) {
-        for (int i = 1; i < num; i++) {
-            test.run();
-
-            if (!TestFramework.isCompiled(m)) {
-                TestFramework.compile(m, CompLevel.C2);
-            }
-        }
     }
 
     // Test passing an inline type as an Object
@@ -155,6 +113,23 @@ public class TestLWorld {
     }
 
     // Test storing/loading inline types to/from Object and inline type fields
+    Object objectField1 = null;
+    Object objectField2 = null;
+    Object objectField3 = null;
+    Object objectField4 = null;
+    Object objectField5 = null;
+    Object objectField6 = null;
+
+    MyValue1 valueField1 = testValue1;
+    MyValue1 valueField2 = testValue1;
+    MyValue1.ref valueField3 = testValue1;
+    MyValue1 valueField4;
+    MyValue1.ref valueField5;
+
+    static MyValue1.ref staticValueField1 = testValue1;
+    static MyValue1 staticValueField2 = testValue1;
+    static MyValue1 staticValueField3;
+    static MyValue1.ref staticValueField4;
 
     @DontInline
     public Object readValueField5() {
@@ -269,7 +244,6 @@ public class TestLWorld {
     }
 
     // Test inline types in object variables that are live at safepoint
-
     @Test
     @IR(failOn = {ALLOC, STORE, LOOP})
     public long test5(MyValue1 arg, boolean deopt, Method m) {
@@ -547,7 +521,6 @@ public class TestLWorld {
     }
 
     // Test inline types in interface variables that are live at safepoint
-
     @Test
     @IR(failOn = {ALLOC, STORE, LOOP})
     public long test15(MyValue1 arg, boolean deopt, Method m) {
@@ -653,6 +626,20 @@ public class TestLWorld {
     }
 
     // Array tests
+
+    private static final MyValue1[] testValue1Array = new MyValue1[] {testValue1,
+                                                                      testValue1,
+                                                                      testValue1};
+
+    private static final MyValue1[][] testValue1Array2 = new MyValue1[][] {testValue1Array,
+                                                                           testValue1Array,
+                                                                           testValue1Array};
+
+    private static final MyValue2[] testValue2Array = new MyValue2[] {testValue2,
+                                                                      testValue2,
+                                                                      testValue2};
+
+    private static final Integer[] testIntegerArray = new Integer[42];
 
     // Test load from (flattened) inline type array disguised as object array
     @Test()
@@ -1954,7 +1941,6 @@ public class TestLWorld {
         Asserts.assertEQ(result, rI * testValue1Array.length);
     }
 
-
     // Same as test69 but with an Abstract
     @ForceInline
     public MyAbstract test70Abstract_sum(MyAbstract a, MyAbstract b) {
@@ -2267,6 +2253,16 @@ public class TestLWorld {
                 throw new RuntimeException("No ArrayStoreException thrown");
             } catch (NullPointerException e) {
                 // Expected
+            }
+        }
+    }
+
+    private void rerun_and_recompile_for(Method m, int num, Runnable test) {
+        for (int i = 1; i < num; i++) {
+            test.run();
+
+            if (!TestFramework.isCompiled(m)) {
+                TestFramework.compile(m, CompLevel.C2);
             }
         }
     }
@@ -2950,7 +2946,6 @@ public class TestLWorld {
                                         } });
     }
 
-
     // Escape analysis tests
 
     static interface WrapperInterface {
@@ -3108,7 +3103,6 @@ public class TestLWorld {
         return res;
     }
 
-
     @Run(test = "test110")
     @Warmup(10000) // Make sure interface calls are inlined
     public void test110_verifier() {
@@ -3223,7 +3217,6 @@ public class TestLWorld {
         long res = test113_sharp();
         Asserts.assertEquals(res, 5*rL);
     }
-
 
     static interface WrapperInterface2 {
         public long value();

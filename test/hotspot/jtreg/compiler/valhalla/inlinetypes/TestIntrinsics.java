@@ -552,7 +552,6 @@ public class TestIntrinsics {
         }
     }
 
-
     // getValue to retrieve flattened field from inline type
     @Test
     @IR(failOn = CALL_Unsafe)

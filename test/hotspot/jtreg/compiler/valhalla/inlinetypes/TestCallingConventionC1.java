@@ -503,7 +503,6 @@ public class TestCallingConventionC1 {
         }
     }
 
-
     // C1 passes inline type to interpreter (megamorphic: itable)
     @Test(compLevel = CompLevel.C1)
     public int test4(FunctorInterface fi) {

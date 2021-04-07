@@ -112,7 +112,7 @@ class TestFrameworkPrepareFlags {
 
 //        // TODO: Only for debugging
 //        if (cmds.get(0).startsWith("-agentlib")) {
-//            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=n,server=y");
+//            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=y,server=y");
 //        }
 
 

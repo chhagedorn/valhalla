@@ -34,6 +34,14 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/*
+ * @test
+ * @summary Test IR matcher with different default IR node regexes. Use -DPrintIREncoding.
+ *          Normally, the framework should be called with driver.
+ * @library /test/lib
+ * @run main/othervm -DPrintIREncoding=true jdk.test.lib.hotspot.ir_framework.tests.TestIRMatching
+ */
+
 public class TestIRMatching {
 
     public static void main(String[] args) {

@@ -29,6 +29,16 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+/*
+ * @test
+ * @summary Test basics of the framework. This test runs directly the test VM which normally does not happen.
+ * @library /test/lib
+ * @build sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -Xbootclasspath/a:. -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   jdk.test.lib.hotspot.ir_framework.tests.TestBasics
+ */
+
 public class TestBasics {
     private static boolean wasExecuted = false;
     private boolean lastToggleBoolean = true;

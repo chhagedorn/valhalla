@@ -28,6 +28,13 @@ import jdk.test.lib.hotspot.ir_framework.*;
 
 import java.util.Arrays;
 
+/*
+ * @test
+ * @summary Test different custom run tests.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestRunTests
+ */
+
 public class TestRunTests {
 
     public static void main(String[] args) {

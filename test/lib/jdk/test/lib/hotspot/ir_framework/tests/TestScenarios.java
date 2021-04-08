@@ -26,6 +26,13 @@ package jdk.test.lib.hotspot.ir_framework.tests;
 import jdk.test.lib.hotspot.ir_framework.*;
 import jdk.test.lib.Asserts;
 
+/*
+ * @test
+ * @summary Test scenarios with the framework.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestScenarios
+ */
+
 public class TestScenarios {
     public static void main(String[] args) {
         Scenario sDefault = new Scenario(0);

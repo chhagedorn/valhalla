@@ -24,7 +24,13 @@
 package jdk.test.lib.hotspot.ir_framework.tests;
 
 import jdk.test.lib.hotspot.ir_framework.*;
-import jdk.test.lib.hotspot.ir_framework.examples.Sandbox;
+
+/*
+ * @test
+ * @summary Test different access modifiers an make sure, the framework can access all methods.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestAccessModifiers
+ */
 
 public class TestAccessModifiers {
     public static void main(String[] args) {

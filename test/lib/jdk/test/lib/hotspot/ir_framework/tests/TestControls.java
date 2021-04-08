@@ -31,7 +31,17 @@ import java.lang.reflect.Method;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// Run with -Xbatch
+/*
+ * @test
+ * @summary Test if compilation control annotaions are handled correctly in the framework.
+ *          This test runs directly the test VM which normally does not happen.
+ * @library /test/lib
+ * @build sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -Xbootclasspath/a:. -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   jdk.test.lib.hotspot.ir_framework.tests.TestControls
+ */
+
 public class TestControls {
     static int[] executed = new int[15];
     static boolean wasExecuted = false;

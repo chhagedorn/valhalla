@@ -28,9 +28,19 @@ import jdk.test.lib.Asserts;
 
 import java.lang.reflect.Method;
 
-// Requires C1 and C2 enabled
+/*
+ * @test
+ * @summary Test if compilation levels are used correctly in the framework.
+ *          This test runs directly the test VM which normally does not happen.
+ * @library /test/lib
+ * @build sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run main/othervm -Xbootclasspath/a:. -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   jdk.test.lib.hotspot.ir_framework.tests.TestCompLevels
+ */
+
 public class TestCompLevels {
-    static int[] testExecuted = new int[4];
+    static int[] testExecuted = new int[5];
 
     public static void main(String[] args) throws Exception {
         Method runTestsOnSameVM = TestFrameworkExecution.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
@@ -44,11 +54,14 @@ public class TestCompLevels {
                                                    + TestFrameworkExecution.WARMUP_ITERATIONS + 1 + " times." );
             }
         }
-        Scenario s = new Scenario(1, "-XX:-TieredCompilation");
-        TestFramework.runWithScenarios(TestNoTiered.class, s);
-        s = new Scenario(2, "-XX:TieredStopAtLevel=1");
-        TestFramework.runWithScenarios(TestStopAtLevel1.class, s);
-        Asserts.assertTrue(s.getTestVMOutput().contains("TestStopAtLevel1=34"));
+        TestFramework framework = new TestFramework(TestNoTiered.class);
+        framework.setDefaultWarmup(10).addFlags("-XX:-TieredCompilation").start();
+        framework = new TestFramework(TestNoTiered.class);
+        framework.setDefaultWarmup(10).addScenarios(new Scenario(0, "-XX:-TieredCompilation")).start();
+        framework = new TestFramework(TestStopAtLevel1.class);
+        framework.setDefaultWarmup(10).addFlags("-XX:TieredStopAtLevel=1").start();
+        framework = new TestFramework(TestStopAtLevel1.class);
+        framework.setDefaultWarmup(10).addScenarios(new Scenario(0, "-XX:TieredStopAtLevel=1")).start();
     }
 
     @Test(compLevel = CompLevel.C1)
@@ -90,53 +103,119 @@ public class TestCompLevels {
     public void checkTestC2(TestInfo info) {
         TestFramework.assertCompiledAtLevel(info.getTest(), CompLevel.C2);
     }
+
+    @Test(compLevel = CompLevel.SKIP)
+    public void testSkip() {
+        testExecuted[4]++; // Executed by eventually not compiled by framework
+    }
 }
 
 class TestNoTiered {
     @Test(compLevel = CompLevel.C1)
-    public void notExecuted() {
-        throw new RuntimeException("Should not be executed");
+    public void level1() {
+    }
+
+    @Check(test = "level1")
+    public void check1(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never compiled without C1
     }
 
     @Test(compLevel = CompLevel.C1_LIMITED_PROFILE)
-    public void notExecuted1() {
-        throw new RuntimeException("Should not be executed");
+    public void level2() {
+    }
+
+    @Check(test = "level2")
+    public void check2(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never compiled without C1
     }
 
     @Test(compLevel = CompLevel.C1_FULL_PROFILE)
-    public void notExecuted2() {
-        throw new RuntimeException("Should not be executed");
+    public void level3() {
+    }
+
+    @Check(test = "level3")
+    public void check3(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never compiled without C1
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    public void level4() {
+    }
+
+    @Check(test = "level4")
+    public void check4(TestInfo info) {
+        if (info.isWarmUp()) {
+            TestFramework.assertNotCompiled(info.getTest()); // Never compiled without C1
+        } else {
+            if (TestFramework.isC1Compiled(info.getTest())) {
+                throw new RuntimeException("Cannot be compiled with C1"); // Never compiled without C1
+            }
+            TestFramework.assertCompiledByC2(info.getTest());
+        }
     }
 
     @Test(compLevel = CompLevel.SKIP)
-    public void notExecuted3() {
-        throw new RuntimeException("Should not be executed");
+    public void skip() {
+    }
+
+    @Check(test = "skip")
+    public void checkSkip(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never compiled
     }
 }
 
 class TestStopAtLevel1 {
-    @Test(compLevel = CompLevel.C2)
-    public void notExecuted() {
-        throw new RuntimeException("Should not be executed");
-    }
-
-    @Test(compLevel = CompLevel.C1_LIMITED_PROFILE)
-    public void notExecuted1() {
-        throw new RuntimeException("Should not be executed");
-    }
-
-    @Test(compLevel = CompLevel.C1_FULL_PROFILE)
-    public void notExecuted2() {
-        throw new RuntimeException("Should not be executed");
-    }
-
     @Test(compLevel = CompLevel.C1)
-    public int executed() {
+    public int level1() {
         return 34;
     }
 
-    @Check(test = "executed", when = CheckAt.COMPILED)
-    public void checkExecuted(int result) {
-        System.out.println("TestStopAtLevel1=" + result);
+    @Check(test = "level1")
+    public void check1(int result, TestInfo info) {
+        if (info.isWarmUp()) {
+            TestFramework.assertNotCompiled(info.getTest()); // Not compiled yet
+        } else {
+            TestFramework.assertCompiledByC1(info.getTest());
+            if (TestFramework.isC2Compiled(info.getTest())) {
+                throw new RuntimeException("Cannot be compiled by C2");
+            }
+            System.out.println("TestStopAtLevel1=" + result);
+        }
+    }
+
+    @Test(compLevel = CompLevel.C1_LIMITED_PROFILE)
+    public void level2() {
+    }
+
+    @Check(test = "level2")
+    public void check2(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never with level 2
+    }
+
+    @Test(compLevel = CompLevel.C1_FULL_PROFILE)
+    public void level3() {
+    }
+
+    @Check(test = "level3")
+    public void check3(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never with level 3
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    public void level4() {
+    }
+
+    @Check(test = "level4")
+    public void check4(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never with level 4
+    }
+
+    @Test(compLevel = CompLevel.SKIP)
+    public void skip() {
+    }
+
+    @Check(test = "skip")
+    public void checkSkip(TestInfo info) {
+        TestFramework.assertNotCompiled(info.getTest()); // Never compiled
     }
 }

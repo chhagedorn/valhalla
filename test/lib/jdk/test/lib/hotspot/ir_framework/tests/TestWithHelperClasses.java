@@ -26,6 +26,13 @@ package jdk.test.lib.hotspot.ir_framework.tests;
 import jdk.test.lib.hotspot.ir_framework.*;
 import jdk.test.lib.Asserts;
 
+/*
+ * @test
+ * @summary Test the framework with helper classes.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestWithHelperClasses
+ */
+
 public class TestWithHelperClasses {
 
     public static void main(String[] args) {

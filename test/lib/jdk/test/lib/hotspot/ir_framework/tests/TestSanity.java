@@ -27,6 +27,13 @@ import jdk.test.lib.hotspot.ir_framework.Scenario;
 import jdk.test.lib.hotspot.ir_framework.Test;
 import jdk.test.lib.hotspot.ir_framework.TestFramework;
 
+/*
+ * @test
+ * @summary Sanity test the different ways to start the test framework.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestSanity
+ */
+
 public class TestSanity {
 
     public static void main(String[] args) {

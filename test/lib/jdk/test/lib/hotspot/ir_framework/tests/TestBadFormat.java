@@ -35,6 +35,13 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/*
+ * @test
+ * @summary Test test format violations.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestBadFormat
+ */
+
 public class TestBadFormat {
 
     public static void main(String[] args) {

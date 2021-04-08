@@ -47,7 +47,13 @@ public class Scenario {
 
     static {
         if (!SCENARIOS.isEmpty()) {
-            Arrays.stream(SCENARIOS.split("\\s*,\\s*")).map(Integer::getInteger).forEachOrdered(enabledScenarios::add);
+            System.out.println(Arrays.toString(SCENARIOS.split("\\s*,\\s*")));
+            try {
+                Arrays.stream(SCENARIOS.split("\\s*,\\s*")).map(Integer::parseInt).forEachOrdered(enabledScenarios::add);
+            } catch (NumberFormatException e) {
+                TestRun.fail("Provided a scenario index in the -DScenario comma-separated list which is not " +
+                             "a number: " + SCENARIOS);
+            }
         }
 
         if (!ADDITIONAL_SCENARIO_FLAGS.isEmpty()) {

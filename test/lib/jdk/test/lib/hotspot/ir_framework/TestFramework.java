@@ -790,8 +790,7 @@ public class TestFramework {
             throw new TestFormatException("\n\n" + matcher.group());
         } else if (stdErr.contains("NoTestsRunException")) {
             shouldVerifyIR = false;
-            throw new NoTestsRunException(">>> No tests run either due to empty set specified with -DTest and/or -DExclude"
-                                          + " or due to explicitly skipping tests with @Test(compLevel = CompLevel.SKIP)");
+            throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude");
         } else {
             throw new TestVMException(vmOutput);
         }

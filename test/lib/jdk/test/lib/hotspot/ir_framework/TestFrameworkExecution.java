@@ -445,16 +445,19 @@ public class TestFrameworkExecution {
     private void applyForceCompileCommand(Executable ex) {
         ForceCompile forceCompileAnno = getAnnotation(ex, ForceCompile.class);
         if (forceCompileAnno != null) {
-            CompLevel level = forceCompileAnno.value();
-            TestFormat.check(level != CompLevel.SKIP && level != CompLevel.WAIT_FOR_COMPILATION,
+            CompLevel complevel = forceCompileAnno.value();
+            TestFormat.check(complevel != CompLevel.SKIP && complevel != CompLevel.WAIT_FOR_COMPILATION,
                              "Cannot define compilation level SKIP or WAIT_FOR_COMPILATION in @ForceCompile at " + ex);
-            level = restrictCompLevel(forceCompileAnno.value());
+            complevel = restrictCompLevel(forceCompileAnno.value());
             if (EXCLUDE_RANDOM) {
-                level = CompLevel.join(level, excludeRandomly(ex));
+                complevel = CompLevel.join(complevel, excludeRandomly(ex));
             }
-            if (level != CompLevel.SKIP) {
-                enqueueForCompilation(ex, level);
-                forceCompileMap.put(ex, level);
+            if (FLIP_C1_C2) {
+                complevel = flipCompLevel(complevel);
+            }
+            if (complevel != CompLevel.SKIP) {
+                enqueueForCompilation(ex, complevel);
+                forceCompileMap.put(ex, complevel);
             }
         }
     }

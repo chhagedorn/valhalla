@@ -114,6 +114,7 @@ public class TestFramework {
                     "TLAB",
                     // The following substrings are only part of one VM flag (= exact match)
                     "CreateCoredumpOnCrash",
+                    "UnlockDiagnosticVMOptions",
                     "BackgroundCompilation",
                     "Xbatch",
                     "TieredCompilation",
@@ -121,7 +122,8 @@ public class TestFramework {
                     "UseParallelGC",
                     "UseG1GC",
                     "UseZGC",
-                    "UseShenandoahGC"
+                    "UseShenandoahGC",
+                    "UseNewCode"
             )
     );
 

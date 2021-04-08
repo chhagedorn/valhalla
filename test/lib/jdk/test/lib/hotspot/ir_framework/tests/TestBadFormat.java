@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 
 /*
  * @test
+ * @requires vm.compiler2.enabled
  * @summary Test test format violations.
  * @library /test/lib
  * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestBadFormat

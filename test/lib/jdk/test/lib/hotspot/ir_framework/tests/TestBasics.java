@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 
 /*
  * @test
+ * @requires vm.compiler2.enabled
  * @summary Test basics of the framework. This test runs directly the test VM which normally does not happen.
  * @library /test/lib
  * @build sun.hotspot.WhiteBox

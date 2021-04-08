@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 
 /*
  * @test
+ * @requires vm.debug == true & vm.compMode != "Xint" & vm.compiler2.enabled
  * @summary Test if compilation control annotaions are handled correctly in the framework.
  *          This test runs directly the test VM which normally does not happen.
  * @library /test/lib

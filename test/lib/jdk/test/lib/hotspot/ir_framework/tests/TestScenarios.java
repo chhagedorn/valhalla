@@ -28,6 +28,7 @@ import jdk.test.lib.Asserts;
 
 /*
  * @test
+ * @requires vm.compMode != "Xint" & vm.compiler2.enabled
  * @summary Test scenarios with the framework.
  * @library /test/lib
  * @run driver jdk.test.lib.hotspot.ir_framework.tests.TestScenarios

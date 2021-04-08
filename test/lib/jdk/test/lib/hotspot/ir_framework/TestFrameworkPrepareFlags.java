@@ -61,20 +61,10 @@ class TestFrameworkPrepareFlags {
     private static final boolean REQUESTED_VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
     private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !EXCLUDE_RANDOM && !TEST_C1
                                        && Platform.isDebugBuild() && !Platform.isInt();
-    private static final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
 
-    private static String[] getDefaultFlags() {
-        return new String[] {"-XX:-BackgroundCompilation", "-XX:CompileCommand=quiet"};
-    }
 
     private static String[] getPrintFlags() {
         return new String[] {"-XX:+PrintCompilation", "-XX:+UnlockDiagnosticVMOptions"};
-    }
-
-    private static String[] getVerifyFlags() {
-        return new String[] {
-                "-XX:+UnlockDiagnosticVMOptions", "-XX:+VerifyOops", "-XX:+VerifyStack", "-XX:+VerifyLastFrame", "-XX:+VerifyBeforeGC",
-                "-XX:+VerifyAfterGC", "-XX:+VerifyDuringGC", "-XX:+VerifyAdapterSharing"};
     }
 
     public static void main(String[] args) {
@@ -102,12 +92,6 @@ class TestFrameworkPrepareFlags {
 
     private static ArrayList<String> prepareTestVmFlags(Class<?> testClass) {
         ArrayList<String> cmds = new ArrayList<>();
-
-        if (VERIFY_VM) {
-            cmds.addAll(Arrays.asList(getVerifyFlags()));
-        }
-
-        cmds.addAll(Arrays.asList(getDefaultFlags()));
         setupIrVerificationFlags(testClass, cmds);
 
 //        // TODO: Only for debugging

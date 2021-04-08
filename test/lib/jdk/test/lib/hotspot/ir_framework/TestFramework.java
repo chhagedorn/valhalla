@@ -23,6 +23,7 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
@@ -93,6 +94,37 @@ import java.util.stream.Collectors;
  * @see IR
  */
 public class TestFramework {
+    /**
+     * JTreg can define additional VM (-Dtest.vm.opts) and Javaoption (-Dtest.java.opts) flags. IR verification is only
+     * performed when all these additional JTreg flags (does not include additionally added framework and scenario flags
+     * by user code) are whitelisted.
+     *
+     * A flag is whitelisted if it is a property flag (starting with -D), -ea, -esa, or if the flag name contains any of
+     * the entries of this list as a substring.
+     */
+    private static final Set<String> jtregWhitelistFlags = new HashSet<>(
+            Arrays.asList(
+                    // The following substrings are part of more than one VM flag
+                    "RAM",
+                    "G1",
+                    "Heap",
+                    "Trace",
+                    "Print",
+                    "Verify",
+                    "TLAB",
+                    // The following substrings are only part of one VM flag (= exact match)
+                    "CreateCoredumpOnCrash",
+                    "BackgroundCompilation",
+                    "Xbatch",
+                    "TieredCompilation",
+                    "UseSerialGC",
+                    "UseParallelGC",
+                    "UseG1GC",
+                    "UseZGC",
+                    "UseShenandoahGC"
+            )
+    );
+
     static final boolean VERBOSE = Boolean.getBoolean("Verbose");
     static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
     static final String TEST_VM_FLAGS_DELIMITER = " ";
@@ -101,6 +133,8 @@ public class TestFramework {
     private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.getBoolean("PreferCommandLineFlags");
     private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
+    private static final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
+    private static boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
     private boolean shouldVerifyIR = true; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
@@ -146,6 +180,23 @@ public class TestFramework {
         if (VERBOSE) {
             System.out.println("Test class: " + testClass);
         }
+    }
+
+    /**
+     * Default flags that are added used for the test VM.
+     */
+    private static String[] getDefaultFlags() {
+        return new String[] {"-XX:-BackgroundCompilation", "-XX:CompileCommand=quiet"};
+    }
+
+    /**
+     * Additional verification flags that are used if -DVerifyVM=true is with a debug build.
+     */
+    private static String[] getVerifyFlags() {
+        return new String[] {
+                "-XX:+UnlockDiagnosticVMOptions", "-XX:+VerifyOops", "-XX:+VerifyStack", "-XX:+VerifyLastFrame",
+                "-XX:+VerifyBeforeGC", "-XX:+VerifyAfterGC", "-XX:+VerifyDuringGC", "-XX:+VerifyAdapterSharing"
+        };
     }
 
     /**
@@ -339,6 +390,15 @@ public class TestFramework {
      */
     public void start() {
         installWhiteBox();
+        if (VERIFY_IR) {
+            // No IR verification is done if additional non-whitelisted JTreg VM or Javaoptions flag is specified.
+            VERIFY_IR = onlyWhitelistedJTregVMAndJavaOptsFlags();
+            if (!VERIFY_IR) {
+                System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions " +
+                                   "flag(s).\n");
+            }
+        }
+
         if (scenarios == null) {
             try {
                 start(null);
@@ -346,7 +406,7 @@ public class TestFramework {
                 System.err.println("\n" + e.getExceptionInfo());
                 throw e;
             } catch (IRViolationException e) {
-                System.out.println("Compilation(s) of failed matche(s):");
+                System.out.println("Compilation(s) of failed match(es):");
                 System.out.println(e.getCompilations());
                 throw e;
             }
@@ -617,8 +677,14 @@ public class TestFramework {
                 System.out.println("Scenario #" + scenario.getIndex() + scenarioFlagsString + ":");
                 additionalFlags.addAll(scenarioFlags);
             }
-            System.out.println("Run Flag VM:");
-            runFlagVM(additionalFlags);
+            socket.start();
+            if (VERIFY_IR) {
+                System.out.println("Run Flag VM:");
+                runFlagVM(additionalFlags);
+            } else {
+                shouldVerifyIR = false;
+                System.out.println("Skip Flag VM due to not performing IR verification.");
+            }
 
             String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
             System.out.println("Run Test VM" + flagsString + ":");
@@ -629,9 +695,22 @@ public class TestFramework {
         }
     }
 
+    private boolean onlyWhitelistedJTregVMAndJavaOptsFlags() {
+        List<String> flags = Arrays.stream(Utils.getTestJavaOpts())
+                                   .map(s -> s.replaceFirst("-XX:[+|-]?|-(?=[^D|^e])", ""))
+                                   .collect(Collectors.toList());
+        for (String flag : flags) {
+            // Property flags (prefix -D), -ea and -esa are whitelisted.
+            if (!flag.startsWith("-D") && !flag.startsWith("-e") && jtregWhitelistFlags.stream().noneMatch(flag::contains)) {
+                // Found VM flag that is not whitelisted
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void runFlagVM(List<String> additionalFlags) {
         ArrayList<String> cmds = prepareFlagVMFlags(additionalFlags);
-        socket.start();
         OutputAnalyzer oa;
         try {
             // Run "flag" VM with White Box access to determine the test VM flags and if IR verification should be done.
@@ -706,8 +785,9 @@ public class TestFramework {
         if (shouldVerifyIR) {
             new IRMatcher(output.getHotspotPidFileName(), socket.getOutput(), testClass);
         } else {
-            System.out.println("IR Verification disabled either through explicitly setting -DVerify=false or due to " +
-                               "not running a debug build, running with -Xint, or other VM flags that make the verification " +
+            System.out.println("IR verification disabled either through explicitly setting -DVerify=false, due to " +
+                               "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag, " +
+                               "running with -Xint, or running the test VM with other VM flags that make the verification " +
                                "inaccurate or impossible (e.g. using -XX:CompileThreshold, running with C1 only etc.).");
         }
     }
@@ -737,8 +817,7 @@ public class TestFramework {
             cmds.add("-DWarmup=" + defaultWarmup);
         }
 
-
-            if (shouldVerifyIR) {
+        if (shouldVerifyIR) {
             // Add server property flag that enables test VM to print encoding for IR verification last.
             cmds.add(socket.getPortPropertyFlag());
         }
@@ -758,15 +837,26 @@ public class TestFramework {
     private List<String> getTestVMFlags() {
         String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DShouldDoIRVerification=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
         Pattern pattern = Pattern.compile(patternString);
-        String flags = socket.getOutput();
-        if (VERBOSE) {
-            System.out.println("Read sent data from flag VM from socket:");
-            System.out.println(flags);
+        List<String> flagList = new ArrayList<>();
+
+        if (VERIFY_VM) {
+            flagList.addAll(Arrays.asList(getVerifyFlags()));
         }
-        Matcher matcher = pattern.matcher(flags);
-        check(matcher.find(), "Invalid flag encoding emitted by flag VM");
-        shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
-        return new ArrayList<>(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
+
+        flagList.addAll(Arrays.asList(getDefaultFlags()));
+
+        if (VERIFY_IR) {
+            String flags = socket.getOutput();
+            if (VERBOSE) {
+                System.out.println("Read sent data from flag VM from socket:");
+                System.out.println(flags);
+            }
+            Matcher matcher = pattern.matcher(flags);
+            check(matcher.find(), "Invalid flag encoding emitted by flag VM");
+            shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
+            flagList.addAll(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
+        }
+        return flagList;
     }
 
     private void checkTestVMExitCode(JVMOutput vmOutput) {

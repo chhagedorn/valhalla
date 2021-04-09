@@ -23,6 +23,8 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+import jdk.test.lib.hotspot.ir_framework.examples.CheckedTestExample;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -79,7 +81,9 @@ import java.lang.annotation.RetentionPolicy;
  * complex or varying arguments and/or the {@code t} must be invoked differently in subsequent invocations, use a
  * <i>custom run test</i> (see {@link Run}).
  *
- * TODO: Add references to examples
+ * <p>
+ * Examples on how to write checked tests can be found in {@link jdk.test.lib.hotspot.ir_framework.examples.CheckedTestExample}
+ * and also as part of the internal testing in the package {@link jdk.test.lib.hotspot.ir_framework.tests}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Check {

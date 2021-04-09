@@ -58,12 +58,22 @@ abstract public class AbstractInfo {
         return toggleBool;
     }
 
+
+    /**
+     * Get a random boolean.
+     *
+     * @return a random boolean
+     */
+    public boolean getRandomBoolean() {
+        return random.nextBoolean();
+    }
+    
     /**
      * Get a random integer.
      *
      * @return a random integer
      */
-    public static int getRandomInt() {
+    public int getRandomInt() {
         return random.nextInt();
     }
 
@@ -72,7 +82,7 @@ abstract public class AbstractInfo {
      *
      * @return a random long value.
      */
-    public static long getRandomLong() {
+    public long getRandomLong() {
         return random.nextLong();
     }
 
@@ -81,7 +91,7 @@ abstract public class AbstractInfo {
      *
      * @return a random double value in the range of [-10000,10000].
      */
-    public static double getRandomDouble() {
+    public double getRandomDouble() {
         return random.nextDouble() * 20000 - 10000;
     }
 

@@ -49,19 +49,17 @@ class TestFrameworkPrepareFlags {
     }
 
     private static final boolean TIERED_COMPILATION = (Boolean)WHITE_BOX.getVMFlag("TieredCompilation");
-    private static final CompLevel TIERED_COMPILATION_STOP_AT_LEVEL = CompLevel.forValue(((Long)WHITE_BOX.getVMFlag("TieredStopAtLevel")).intValue());
-    static final boolean TEST_C1 = TIERED_COMPILATION && TIERED_COMPILATION_STOP_AT_LEVEL.getValue() < CompLevel.C2.getValue();
+    private static final CompLevel TIERED_COMPILATION_STOP_AT_LEVEL =
+            CompLevel.forValue(((Long)WHITE_BOX.getVMFlag("TieredStopAtLevel")).intValue());
+    private static final boolean TEST_C1 = TIERED_COMPILATION
+                                           && TIERED_COMPILATION_STOP_AT_LEVEL.getValue() < CompLevel.C2.getValue();
 
-    // User defined settings
-    static final boolean XCOMP = Platform.isComp();
-    static final boolean VERBOSE = Boolean.getBoolean("Verbose");
-
-    static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
-    static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
+    private static final boolean VERBOSE = Boolean.getBoolean("Verbose");
+    private static final boolean USE_COMPILER = WHITE_BOX.getBooleanVMFlag("UseCompiler");
+    private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
+    private static final boolean FLIP_C1_C2 = Boolean.getBoolean("FlipC1C2");
     private static final boolean REQUESTED_VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
-    private static boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !XCOMP && !EXCLUDE_RANDOM && !TEST_C1
-                                       && Platform.isDebugBuild() && !Platform.isInt();
-
+    private static final boolean VERIFY_IR = REQUESTED_VERIFY_IR && USE_COMPILER && !EXCLUDE_RANDOM && !FLIP_C1_C2 && !TEST_C1;
 
     private static String[] getPrintFlags() {
         return new String[] {"-XX:+PrintCompilation", "-XX:+UnlockDiagnosticVMOptions"};
@@ -91,32 +89,11 @@ class TestFrameworkPrepareFlags {
     }
 
     private static ArrayList<String> prepareTestVmFlags(Class<?> testClass) {
-        ArrayList<String> cmds = new ArrayList<>();
-        setupIrVerificationFlags(testClass, cmds);
-
-//        // TODO: Only for debugging
-//        if (cmds.get(0).startsWith("-agentlib")) {
-//            cmds.set(0, "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=y,server=y");
-//        }
-
-
-        return cmds;
+        return setupIrVerificationFlags(testClass);
     }
 
-    private static void setupIrVerificationFlags(Class<?> testClass, ArrayList<String> cmds) {
-        Predicate<String> matchCompileThreshold = flag -> flag.startsWith("-XX:CompileThreshold");
-        if (VERIFY_IR && (cmds.stream().anyMatch(matchCompileThreshold)
-                          || Arrays.stream(InputArguments.getVmInputArgs()).anyMatch(matchCompileThreshold))) {
-            // Disable IR verification if non-default CompileThreshold is set
-            if (VERBOSE) {
-                System.out.println("Disabled IR verification due to CompileThreshold flag");
-            }
-            VERIFY_IR = false;
-        } else if (!VERIFY_IR && REQUESTED_VERIFY_IR) {
-            System.out.println("IR Verification disabled either due to not running a debug build, running with -Xint, or other " +
-                               "VM flags that make the verification inaccurate or impossible (e.g. running with C1 only).");
-        }
-
+    private static ArrayList<String> setupIrVerificationFlags(Class<?> testClass) {
+        ArrayList<String> cmds = new ArrayList<>();
         if (VERIFY_IR) {
             // Add print flags for IR verification
             cmds.addAll(Arrays.asList(getPrintFlags()));
@@ -130,6 +107,7 @@ class TestFrameworkPrepareFlags {
         } else {
             cmds.add("-DShouldDoIRVerification=false");
         }
+        return cmds;
     }
 
     private static void addBoolOptionForClass(ArrayList<String> cmds, Class<?> testClass, String option) {

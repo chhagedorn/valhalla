@@ -69,7 +69,9 @@ import java.lang.annotation.RetentionPolicy;
  *     {@link DontCompile}, {@link ForceInline}, {@link DontInline}). </li>
  * </ul>
  *
- * TODO: Add references to examples.
+ * <p>
+ * Examples on how to write base tests can be found in {@link jdk.test.lib.hotspot.ir_framework.examples.BaseTestExample}
+ * and also as part of the internal testing in the package {@link jdk.test.lib.hotspot.ir_framework.tests}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Test {

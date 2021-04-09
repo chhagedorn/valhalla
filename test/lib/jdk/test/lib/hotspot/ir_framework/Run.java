@@ -38,15 +38,15 @@ import java.lang.annotation.RetentionPolicy;
  * property, the framework does the following, similar as for <i>base tests</i>:
  * <ol>
  *     <li><p>The framework warms {@code r} up by invoking it for a predefined number of iterations (default: 2000)
- *     or any number specified by an additional {@link Warmup} annotation at the run method {@code r} or by using
- *     {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is similar
- *     to simulating {@code -Xcomp}). More information about the warm-up in general can be found in {@link Warmup}</li>
+ *            or any number specified by an additional {@link Warmup} annotation at the run method {@code r} or by using
+ *     {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is similar to
+ *            simulating {@code -Xcomp}). More information about the warm-up in general can be found in {@link Warmup}</li>
  *     <li><p>After the warm-up, the framework compiles the test method {@code t} at the specified compilation level set by
- *     {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
- *     {@link CompLevel#C2}).</li>
+ *            {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
+ *            {@link CompLevel#C2}).</li>
  *     <li><p>The framework invokes the run method {@code r} one more time to check the compilation.</li>
  *     <li><p>The framework checks any specified {@link IR} constraints at the test method {@code t}.
- *     More information about IR matching can be found in {@link IR}.</li>
+ *            More information about IR matching can be found in {@link IR}.</li>
  * </ol>
  *
  * <p>
@@ -54,10 +54,10 @@ import java.lang.annotation.RetentionPolicy;
  *  control to the run method {@code r}:
  * <ol>
  *     <li><p>The framework invokes the run method {@code r} only one time without any warm-up or compilation of
- *     {@code t} ({@link Warmup} is not allowed at {@code r} in this case).</li>
+ *            {@code t} ({@link Warmup} is not allowed at {@code r} in this case).</li>
  *     <li><p>After this single invocation, the framework directly checks any specified {@link IR} constraints at the test
- *     method {@code t}. The run method {@code r} needs to make sure to reliably trigger a C2 compilation. Otherwise,
- *     IR matching will fail. More information about IR matching can be found in {@link IR}.</li>
+ *            method {@code t}. The run method {@code r} needs to make sure to reliably trigger a C2 compilation. Otherwise,
+ *            IR matching will fail. More information about IR matching can be found in {@link IR}.</li>
  * </ol> *
  *
  * <p>
@@ -67,21 +67,23 @@ import java.lang.annotation.RetentionPolicy;
  *     <li><p>{@code t} is not inlined.
  *     <li><p>{@code r} is not compiled nor inlined.
  *     <li><p>{@code r} is responsible to invoke {@code t} in any way (once, multiple times or even skipping on some
- *     invocations of {@code r}).
+ *                      invocations of {@code r}).
  *     <li><p>{@code r} can specify the following method parameter combinations:
  *     <ul>
  *         <li><p>void</li>
  *         <li><p>1st parameter: {@link RunInfo} which provides some methods to check various things, including
- *         information about {@code t}.</li>
+ *                information about {@code t}.</li>
  *         <li><p> Any other combination will result in a {@link TestFormatException}.
  *     </ul>
- *     <li><p>{@code t} and {@code r} must be part of the test class. Using {@code @Run} and ({@code @Test})in nested or
- *     other classes is not allowed.  TODO write test for it</li>
+ *     <li><p>{@code t} and {@code r} must be part of the test class. Using {@code @Run} and {@code @Test} in nested or
+ *             other classes is not allowed.</li>
  *     <li><p>{@code t} and {@code r} cannot specify any helper-method specific compile command annotations
  *     ({@link ForceCompile}, {@link DontCompile}, {@link ForceInline}, {@link DontInline}). </li>
  * </ul>
  *
- * TODO: Add references to examples
+ * <p>
+ * Examples on how to write custom run tests can be found in {@link jdk.test.lib.hotspot.ir_framework.examples.CustomRunTestExample}
+ * and also as part of the internal testing in the package {@link jdk.test.lib.hotspot.ir_framework.tests}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Run {

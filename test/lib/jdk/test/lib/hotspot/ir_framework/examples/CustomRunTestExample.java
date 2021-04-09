@@ -21,6 +21,10 @@
  * questions.
  */
 
+package jdk.test.lib.hotspot.ir_framework.examples;
+
+import jdk.test.lib.hotspot.ir_framework.*;
+
 /*
  * @test
  * @summary Example test to use the new test framework.
@@ -28,38 +32,53 @@
  * @run driver jdk.test.lib.hotspot.ir_framework.examples.RunExample
  */
 
-package jdk.test.lib.hotspot.ir_framework.examples;
-
-import jdk.test.lib.hotspot.ir_framework.*;
-
-public class RunExample {
+/**
+ * If there is no warm-up specified, the Test Framework will do the following:
+ * <ol>
+ *     <li><p>Invoke @Run method {#link TestFrameworkExecution#WARMUP_ITERATIONS} many times. Note that the @Run method
+ *            is responsible to invoke the @Test methods to warm it up properly. This is not done by the framework. Not
+ *            invoking a @Test method will result in an -Xcomp like compilation of the method as there is no profile
+ *            information for it. The @Run method can do any arbitrary argument setup and return value verification and
+ *            can invoke the @Test methods multiple times in a single invocation of the @Run method or even skip some
+ *            test invocations.
+ *     <li><p>After the warm-up, the @Test methods are compiled (there can be multiple @Test methods).</li>
+ *     <li><p>Invoke the @Run method once again.</li>
+ * </ol>
+ * <p>
+ *
+ * Configurable things for custom run tests:
+ * <ul>
+ *     <li><p>At @Test methods:</li>
+ *     <ul>
+ *         <li><p>@IR: Arbitrary number of @IR rules.</li>
+ *         <li><p>No @Warmup, this must be set at @Run method.</li>
+ *         <li><p>No @Arguments, the arguments are set by @Run method.</li>
+ *     </ul>
+ *     <li><p>At @Run method:</li>
+ *     <ul>
+ *         <li><p>@Warmup: Change warm-up iterations of @Run method (defined by default by 
+ *                         TestFrameworkExecution.WARMUP_ITERATIONS)
+ *         <li><p>{@link Run#test}: Specify any number of @Test methods. They cannot be shared with other @Check or 
+ *                                  @Run methods.
+ *         <li><p>{@link Run#mode}: Choose between normal invocation as described above or {@link RunMode#STANDALONE}. 
+ *                                  STANDALONE only invokes the @Run method once without warm-up or a compilation by the 
+ *                                  Test Framework. The only thing done by the framework is the verification of any @IR 
+ *                                  rules afterwards. The STANDALONE @Run method needs to make sure that a C2 compilation
+ *                                  is reliably triggered if there are any @IR rules.
+ *         <li><p>No @IR annotations</li>
+ *     </ul>
+ * </ul>
+ * 
+ * @see Run
+ * @see Test
+ * @see RunMode
+ * @see TestFramework
+ */
+public class CustomRunTestExample {
 
     public static void main(String[] args) {
         TestFramework.run(); // equivalent to TestFramework.run(TestSimpleTest.class)
     }
-
-    /*
-     * If there is no warm up specified the Test Framework will do the following:
-     * - Invoke @Run method TestFrameworkExecution.WARMUP_ITERATIONS many times. Note that the @Run method is responsible
-     *   to invoke the @Test methods. This is not done by the framework. The @Run method can do any arbitrary argument setup
-     *   and return value verification.
-     * - After the warm-up, the @Test methods are compiled (there can be multiple @Test methods).
-     * - Invoke @Run method once again.
-     */
-
-    /*
-     * Configurable things for custom run tests:
-     * - At @Test method:
-     *   - @IR: Arbitrary number of @IR rules.
-     *   - No @Warmup, this must be set at @Run method.
-     *   - No @Arguments, these are set by @Run method.
-     * - At @Run method:
-     *   - @Warmup: Change warm-up iterations of @Run method (defined by default by TestFrameworkExecution.WARMUP_ITERATIONS)
-     *   - test: Specify any number of @Test methods. They cannot be shared with other @Check or @Run methods.
-     *   - mode: Choose between normal invocation as described above or STANDALONE. STANDALONE only invokes the @Run
-     *           method once without warmup or a compilation by the Test Framework.
-     *   - No @IR annotations
-     */
 
     @Test
     public int test(int x) {
@@ -81,12 +100,15 @@ public class RunExample {
         return x;
     }
 
-    // This version of @Run passes the RunInfo object as an argument. No other argument combinations are allowed.
+    // This version of @Run passes the RunInfo object as an argument. No other arguments and combiniations are allowed.
     @Run(test = "test2")
     public void runWithRunInfo(RunInfo info) {
-        int returnValue = test(34);
-        if (returnValue != 34) {
-            throw new RuntimeException("Must match");
+        // We could also skip some invocations. This might have an influence on possible @IR rules, need to be careful.
+        if (info.getRandomBoolean()) {
+            int returnValue = test(34);
+            if (returnValue != 34) {
+                throw new RuntimeException("Must match");
+            }
         }
     }
 
@@ -110,8 +132,8 @@ public class RunExample {
         return x;
     }
 
-    // This version of @Run is only invoked once by the Test Framework. There is no warm up and no compilation done
-    // by the Test Framework
+    // This version of @Run is only invoked once by the Test Framework. There is no warm-up and no compilation done
+    // by the Test Framework. The only thing done by the framework is @IR rule verification.
     @Run(test = "test4", mode = RunMode.STANDALONE)
     public void runOnlyOnce() {
         int returnValue = test4(34);

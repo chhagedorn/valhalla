@@ -47,6 +47,9 @@ import java.lang.annotation.RetentionPolicy;
  * An IR rule can specify additional preconditions on the remaining flags that must hold when an IR rule is applied.
  * If the specified preconditions fail, then the framework does not apply the IR rule. These preconditions can be
  * set with {@link #applyIf()}, {@link #applyIfNot()}, {@link #applyIfAnd()}, or {@link #applyIfOr()}.
+ * <p>
+ * Examples on how to write tests with IR rules can be found in {@link jdk.test.lib.hotspot.ir_framework.examples.IRExample}
+ * and also as part of the internal testing in {@link jdk.test.lib.hotspot.ir_framework.tests.TestIRMatching}.
  *
  * @see Test
  */

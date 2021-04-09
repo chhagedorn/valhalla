@@ -50,11 +50,17 @@ public class TestWithHelperClasses {
         }
 
         try {
-            TestFramework.runWithHelperClasses(BadHelperClasses.class, BadHelper.class);
+            TestFramework.runWithHelperClasses(BadHelperClass.class, BadHelper.class);
             shouldNotReach();
         } catch (TestFormatException e) {
             Asserts.assertTrue(e.getMessage().contains("Cannot use @Test annotation in helper class"));
+            Asserts.assertTrue(e.getMessage().contains("Cannot use @Check annotation in helper class"));
+            Asserts.assertTrue(e.getMessage().contains("Cannot use @Run annotation in helper class"));
             Asserts.assertTrue(e.getMessage().contains("noTestInHelper"));
+            Asserts.assertTrue(e.getMessage().contains("test2"));
+            Asserts.assertTrue(e.getMessage().contains("check2"));
+            Asserts.assertTrue(e.getMessage().contains("test3"));
+            Asserts.assertTrue(e.getMessage().contains("run3"));
         }
 
         try {
@@ -124,12 +130,25 @@ class Helper2 {
     }
 }
 
-class BadHelperClasses {
+class BadHelperClass {
     @Test
-    public void test() {}
-}
+    public void test1() {}
+ }
+
 
 class BadHelper {
     @Test
     public void noTestInHelper() {}
+
+    @Test
+    public void test2() {}
+
+    @Check(test = "test2")
+    public void check2() {}
+
+    @Test
+    public void test3() {}
+
+    @Run(test = "test3")
+    public void run3() {}
 }

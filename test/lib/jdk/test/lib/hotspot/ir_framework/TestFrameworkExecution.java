@@ -206,23 +206,27 @@ public class TestFrameworkExecution {
     }
 
     private void checkHelperClass(Class<?> clazz) {
-        checkTestAnnotationInnerClass(clazz, "helper");
+        checkAnnotationsInClass(clazz, "helper");
         for (Class<?> c : clazz.getDeclaredClasses()) {
-            checkTestAnnotationInnerClass(c, "nested (and helper)");
+            checkAnnotationsInClass(c, "nested (and helper)");
         }
     }
 
-    private void checkTestAnnotationInnerClass(Class<?> c, String clazzType) {
+    private void checkAnnotationsInClass(Class<?> c, String clazzType) {
         Method[] methods = c.getDeclaredMethods();
         for (Method m : methods) {
             TestFormat.checkNoThrow(getAnnotation(m, Test.class) == null,
                                     "Cannot use @Test annotation in " + clazzType + " " + c + " at " + m);
+            TestFormat.checkNoThrow(getAnnotation(m, Run.class) == null,
+                                    "Cannot use @Run annotation in " + clazzType + " " + c + " at " + m);
+            TestFormat.checkNoThrow(getAnnotation(m, Check.class) == null,
+                                    "Cannot use @Check annotation in " + clazzType + " " + c + " at " + m);
         }
     }
 
     private void parseTests() {
         for (Class<?> clazz : testClass.getDeclaredClasses()) {
-            checkTestAnnotationInnerClass(clazz, "inner");
+            checkAnnotationsInClass(clazz, "inner");
         }
         addReplay();
         // Make sure to first parse tests and make them non-inlineable and only then process compile commands.

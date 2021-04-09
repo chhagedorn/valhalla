@@ -20,44 +20,57 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-/*
- * @test
- * @summary Example test to use the new test framework.
- * @library /test/lib
- * @run driver jdk.test.lib.hotspot.ir_framework.examples.CheckExample
- */
  
 package jdk.test.lib.hotspot.ir_framework.examples;
 
 import jdk.test.lib.hotspot.ir_framework.*;
 
-public class CheckExample {
+/*
+ * @test
+ * @summary Example test to use the new test framework.
+ * @library /test/lib
+ * @run driver jdk.test.lib.hotspot.ir_framework.examples.CheckedTestExample
+ */
+
+/**
+ * If there is no non-default warm-up specified, the Test Framework will do the following:
+ * <ol>
+ *     <li><p>Invoke @Test method {@link TestFrameworkExecution#WARMUP_ITERATIONS} many times.</li>
+ *     <li><p>By default, after each invocation, the @Check method of the @Test method is invoked. This can be disabled
+ *            by using {@link CheckAt#COMPILED}</li>
+ *     <li><p>After the warm-up, the @Test method is compiled.</li>
+ *     <li><p>Invoke @Test method once again and then always invoke the @Check method once again.</li>
+ * </ol>
+ * <p>
+ *     
+ * Configurable things for checked tests:
+ * <ul>
+ *     <li><p>At @Test method:</li>
+ *     <ul>
+ *         <li><p>@Warmup: Change warm-up iterations of test (defined by default by TestFrameworkExecution.WARMUP_ITERATIONS)</li>
+ *         <li><p>@Arguments: If a @Test method specifies arguments, you need to provide arguments by using @Arguments
+ *                            such that the framework knows how to call the method. If you need more complex values, use a
+ *                            custom run test with @Run.</li>
+ *         <li><p>@IR: Arbitrary number of @IR rules.</li>
+ *     </ul>
+ *     <li><p>At @Check method:</li>
+ *     <ul>
+ *         <li><p>{@link Check#when}: When should the @Check method be invoked.</li>
+ *         <li><p>No @IR annotations.</li>
+ *     </ul>
+ * </ul>
+ *
+ * @see Check
+ * @see Test
+ * @see Arguments
+ * @see Warmup
+ * @see TestFramework
+ */
+public class CheckedTestExample {
 
     public static void main(String[] args) {
         TestFramework.run(); // equivalent to TestFramework.run(TestSimpleTest.class)
     }
-
-    /*
-     * If there is no warm up specified the Test Framework will do the following:
-     * - Invoke @Test method TestFrameworkExecution.WARMUP_ITERATIONS many times.
-     * - By default, after each invocation, the @Check method of the @Test method is invoked. This can be disabled by
-     *   using CheckAt.COMPILED.
-     * - After the warmup, the @Test method.
-     * - Invoke @Test method once again and then always the @Check method once.
-     */
-
-    /*
-     * Configurable things for checked tests:
-     * - At @Test method:
-     *   - @Warmup: Change warm-up iterations of test (defined by default by TestFrameworkExecution.WARMUP_ITERATIONS)
-     *   - @Arguments: If a @Test method specifies arguments, you need to provide arguments by using @Arguments such
-     *                 that the framework knows how to call the method. If you need more complex values, use @Run.
-     *   - @IR: Arbitrary number of @IR rules.
-     * - At @Check method:
-     *   - when: When should the @Check method be invoked.
-     *   - No @IR annotations.
-     */
 
     @Test
     @Arguments(Argument.DEFAULT) // As with normal tests, you need to tell the framework what the argument is.
@@ -96,6 +109,9 @@ public class CheckExample {
     @Check(test = "test3")
     public void checkWithTestInfo(TestInfo info) {
         // Do some checks after an invocation. Additional queries with TestInfo.
+        if (!info.isWarmUp()) {
+            // ...
+        }
     }
 
     @Test
@@ -103,17 +119,19 @@ public class CheckExample {
         return 42;
     }
 
-    // This version of @Check passes a TestInfo object to the check which contains some additional information about the test
-    // and additionally the return value. The order of the arguments is important. The return value must come first and then
-    // the TestInfo parameter. Any other combination of different arguments are forbidden to specify for @Check methods.
+    // This version of @Check passes the return value and a TestInfo object to the check which contains some additional
+    // information about the test. The order of the arguments is important. The return value must come first and the
+    // the TestInfo parameter second. Any other combination or use of different arguments are forbidden for @Check methods.
     @Check(test = "test4")
     public void checkWithReturnAndTestInfo(int returnValue, TestInfo info) {
         // Do some checks after an invocation. Additional queries with TestInfo.
         if (returnValue != 42) {
             throw new RuntimeException("Must match");
         }
+        if (!info.isWarmUp()) {
+            // ...
+        }
     }
-
 
     @Test
     public int test5() {
@@ -122,8 +140,9 @@ public class CheckExample {
 
     // Check method for test5() is only invoked once warmup is finished and test() has been compiled by the Test Framework.
     @Check(test = "test5", when = CheckAt.COMPILED) // Specify the @Test method for which this method is a check.
-    public void checkAfterCompiled() {
+    public void checkAfterCompiled(TestInfo info) {
         // Do some checks after compilation.
+        TestFramework.assertCompiled(info.getTest()); // Test is compiled by framework after warm-up.
     }
 
 }

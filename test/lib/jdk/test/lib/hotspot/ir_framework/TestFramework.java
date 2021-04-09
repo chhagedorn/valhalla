@@ -392,14 +392,7 @@ public class TestFramework {
      */
     public void start() {
         installWhiteBox();
-        if (VERIFY_IR) {
-            // No IR verification is done if additional non-whitelisted JTreg VM or Javaoptions flag is specified.
-            VERIFY_IR = onlyWhitelistedJTregVMAndJavaOptsFlags();
-            if (!VERIFY_IR) {
-                System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions " +
-                                   "flag(s).\n");
-            }
-        }
+        maybeDisableIRVerification();
 
         if (scenarios == null) {
             try {
@@ -586,11 +579,34 @@ public class TestFramework {
      * End of public interface methods
      */
 
+    /**
+     * Used to move Whitebox class to the right folder in the JTreg test
+     */
     private void installWhiteBox() {
         try {
             ClassFileInstaller.main(WhiteBox.class.getName());
         } catch (Exception e) {
             throw new Error("failed to install whitebox classes", e);
+        }
+    }
+
+    /**
+     * Disable IR verification in certain cases.
+     */
+    private void maybeDisableIRVerification() {
+        if (VERIFY_IR) {
+            VERIFY_IR = Platform.isDebugBuild() && !Platform.isInt() && !Platform.isComp();
+            if (!VERIFY_IR) {
+                System.out.println("IR verification disabled due to not running a debug build (required for PrintIdeal" +
+                                   "and PrintOptoAssembly), running with -Xint, or -Xcomp (use warm-up of 0 instead)");
+                return;
+            }
+
+            // No IR verification is done if additional non-whitelisted JTreg VM or Javaoptions flag is specified.
+            VERIFY_IR = onlyWhitelistedJTregVMAndJavaOptsFlags();
+            if (!VERIFY_IR) {
+                System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions flag(s).\n");
+            }
         }
     }
 
@@ -788,9 +804,9 @@ public class TestFramework {
             new IRMatcher(output.getHotspotPidFileName(), socket.getOutput(), testClass);
         } else {
             System.out.println("IR verification disabled either through explicitly setting -DVerify=false, due to " +
-                               "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag, " +
-                               "running with -Xint, or running the test VM with other VM flags that make the verification " +
-                               "inaccurate or impossible (e.g. using -XX:CompileThreshold, running with C1 only etc.).");
+                               "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag like -Xint " +
+                               "-Xint, or running the test VM with other VM flags added by user code that make the " +
+                               "IR verification impossible (e.g. -Xint, -XX:TieredStopAtLevel=3, etc.).");
         }
     }
 
@@ -882,7 +898,9 @@ public class TestFramework {
             throw new TestFormatException("\n\n" + matcher.group());
         } else if (stdErr.contains("NoTestsRunException")) {
             shouldVerifyIR = false;
-            throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude");
+            throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude. " +
+                                          "Make sure to provide to add at least one @Test of a base of checked test " +
+                                          "or a @Run method of a custom run test");
         } else {
             throw new TestVMException(vmOutput);
         }

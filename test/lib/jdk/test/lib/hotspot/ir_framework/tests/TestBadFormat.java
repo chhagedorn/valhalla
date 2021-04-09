@@ -901,13 +901,37 @@ class BadInnerClassTest {
 
     class InnerClass {
         @Test
-        public void noTestInInnerClass() {}
+        public void noTestInInnerClass1() {}
+
+        @Test
+        public void noTestInInnerClass2() {}
+
+        @Check(test = "noTestInInnerClass2")
+        public void checkNoTestInInnerClass2() {}
+
+        @Test
+        public void noTestInInnerClass3() {}
+
+        @Run(test = "noTestInInnerClass3")
+        public void checkNoTestInInnerClass3() {}
     }
 
 
     static class StaticInnerClass {
         @Test
-        public void noTestInInnerClass() {}
+        public void noTestInInnerStaticClass1() {}
+
+        @Test
+        public void noTestInStaticInnerClass2() {}
+
+        @Check(test = "noTestInStaticInnerClass2")
+        public void checkNoTestInStaticInnerClass2() {}
+
+        @Test
+        public void noTestInStaticInnerClass3() {}
+
+        @Run(test = "noTestInStaticInnerClass3")
+        public void checkNoTestInStaticInnerClass3() {}
     }
 }
 

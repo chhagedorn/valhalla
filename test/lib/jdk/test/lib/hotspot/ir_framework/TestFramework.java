@@ -804,7 +804,7 @@ public class TestFramework {
             new IRMatcher(output.getHotspotPidFileName(), socket.getOutput(), testClass);
         } else {
             System.out.println("IR verification disabled either through explicitly setting -DVerify=false, due to " +
-                               "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag like -Xint " +
+                               "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag like " +
                                "-Xint, or running the test VM with other VM flags added by user code that make the " +
                                "IR verification impossible (e.g. -Xint, -XX:TieredStopAtLevel=3, etc.).");
         }
@@ -899,8 +899,7 @@ public class TestFramework {
         } else if (stdErr.contains("NoTestsRunException")) {
             shouldVerifyIR = false;
             throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude. " +
-                                          "Make sure to provide to add at least one @Test of a base of checked test " +
-                                          "or a @Run method of a custom run test");
+                                          "Make sure to define a set of at least one @Test method");
         } else {
             throw new TestVMException(vmOutput);
         }

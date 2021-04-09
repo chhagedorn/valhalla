@@ -34,10 +34,12 @@ import java.lang.reflect.Method;
  */
 public class TestInfo extends AbstractInfo {
     private final Method testMethod;
+    private final boolean compilationSkipped;
 
-    TestInfo(Method testMethod) {
-        super(testMethod.getDeclaringClass());
-        this.testMethod = testMethod;
+    TestInfo(DeclaredTest test) {
+        super(test.getTestMethod().getDeclaringClass());
+        this.testMethod = test.getTestMethod();
+        this.compilationSkipped = test.getCompLevel() == CompLevel.SKIP;
     }
 
     /**
@@ -47,6 +49,17 @@ public class TestInfo extends AbstractInfo {
      */
     public Method getTest() {
         return testMethod;
+    }
+
+    /**
+     * Return a boolean indicating if the framework skipped a compilation after the warm-up due to VM flags not
+     * allowing a compilation on the requested level in {@link Test#compLevel()}
+     *
+     * @return {@code true} if the framework compiled the test;
+     *         {@code false} otherwise
+     */
+    public boolean isCompilationSkipped() {
+        return compilationSkipped;
     }
 
     /**

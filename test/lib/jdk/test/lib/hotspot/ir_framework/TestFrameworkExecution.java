@@ -611,7 +611,7 @@ public class TestFrameworkExecution {
         dontCompileMethod(m);
         // Don't inline check methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter, shouldExcludeTest(m.getName()));
+        CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter, shouldExcludeTest(testMethod.getName()));
         allTests.add(checkedTest);
         if (PRINT_VALID_IR_RULES) {
             irMatchRulePrinter.emitRuleEncoding(m, checkedTest.isSkipped());
@@ -654,6 +654,7 @@ public class TestFrameworkExecution {
     private void addCustomRunTest(Method m, Run runAnno) {
         checkRunMethod(m, runAnno);
         List<DeclaredTest> tests = new ArrayList<>();
+        boolean shouldExcludeTest = true;
         for (String testName : runAnno.test()) {
             try {
                 Method testMethod = testMethodMap.get(testName);
@@ -661,6 +662,8 @@ public class TestFrameworkExecution {
                 checkCustomRunTest(m, testName, testMethod, test, runAnno.mode());
                 test.setAttachedMethod(m);
                 tests.add(test);
+                // Only exclude custom run test if all test methods excluded
+                shouldExcludeTest &= shouldExcludeTest(testMethod.getName());
             } catch (TestFormatException e) {
                 // Logged, continue.
             }
@@ -671,7 +674,7 @@ public class TestFrameworkExecution {
         dontCompileMethod(m);
         // Don't inline run methods
         WHITE_BOX.testSetDontInlineMethod(m, true);
-        CustomRunTest customRunTest = new CustomRunTest(m, getAnnotation(m, Warmup.class), runAnno, tests, shouldExcludeTest(m.getName()));
+        CustomRunTest customRunTest = new CustomRunTest(m, getAnnotation(m, Warmup.class), runAnno, tests, shouldExcludeTest);
         allTests.add(customRunTest);
         if (PRINT_VALID_IR_RULES) {
             tests.forEach(test -> irMatchRulePrinter.emitRuleEncoding(test.getTestMethod(), customRunTest.isSkipped()));
@@ -739,7 +742,8 @@ public class TestFrameworkExecution {
         TreeMap<Long, String> durations = (PRINT_TIMES || VERBOSE) ? new TreeMap<>() : null;
         long startTime = System.nanoTime();
         List<AbstractTest> testList;
-        if (testFilterPresent()) {
+        boolean testFilterPresent = testFilterPresent();
+        if (testFilterPresent) {
             testList = allTests.stream().filter(test -> !test.isSkipped()).collect(Collectors.toList());
             if (testList.isEmpty()) {
                 throw new NoTestsRunException();
@@ -753,6 +757,10 @@ public class TestFrameworkExecution {
             Collections.shuffle(testList);
         }
         for (AbstractTest test : testList) {
+            if (testFilterPresent) {
+                System.out.print("Run ");
+                test.print();
+            }
             test.run();
             if (PRINT_TIMES || VERBOSE) {
                 long endTime = System.nanoTime();
@@ -884,98 +892,6 @@ public class TestFrameworkExecution {
 }
 
 
-class DeclaredTest {
-    private final Method testMethod;
-    private final ArgumentValue[] arguments;
-    private final int warmupIterations;
-    private final CompLevel compLevel;
-    private Method attachedMethod;
-
-    public DeclaredTest(Method testMethod, ArgumentValue[] arguments, CompLevel compLevel, int warmupIterations) {
-        // Make sure we can also call non-public or public methods in package private classes
-        testMethod.setAccessible(true);
-        this.testMethod = testMethod;
-        this.compLevel = compLevel;
-        this.arguments = arguments;
-        this.warmupIterations = warmupIterations;
-        this.attachedMethod = null;
-    }
-
-    public Method getTestMethod() {
-        return testMethod;
-    }
-
-    public CompLevel getCompLevel() {
-        return compLevel;
-    }
-
-    public int getWarmupIterations() {
-        return warmupIterations;
-    }
-
-    public boolean hasArguments() {
-        return arguments != null;
-    }
-
-    public Object[] getArguments() {
-        return Arrays.stream(arguments).map(ArgumentValue::getArgument).toArray();
-    }
-
-    public void setAttachedMethod(Method m) {
-        attachedMethod = m;
-    }
-
-    public Method getAttachedMethod() {
-        return attachedMethod;
-    }
-
-    public void printFixedRandomArguments() {
-        if (hasArguments()) {
-            boolean hasRandomArgs = false;
-            StringBuilder builder = new StringBuilder("Fixed random arguments for method ").append(testMethod).append(": ");
-            for (int i = 0; i < arguments.length; i++) {
-                ArgumentValue argument = arguments[i];
-                if (argument.isFixedRandom()) {
-                    hasRandomArgs = true;
-                    Object argumentVal = argument.getArgument();
-                    String argumentValString = argumentVal.toString();
-                    if (argumentVal instanceof Character) {
-                        argumentValString += " (" + (int)(Character)argumentVal + ")";
-                    }
-                    builder.append("arg ").append(i).append(": ").append(argumentValString).append(", ");
-                }
-            }
-            if (hasRandomArgs) {
-                // Drop the last comma and space.
-                builder.setLength(builder.length() - 2);
-                System.out.println(builder.toString());
-            }
-        }
-    }
-
-    public String getArgumentsString() {
-        if (hasArguments()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 0; i < arguments.length; i++) {
-                builder.append("arg ").append(i).append(": ").append(arguments[i].getArgument()).append(", ");
-            }
-            builder.setLength(builder.length() - 2);
-            return builder.toString();
-        } else {
-            return "<void>";
-        }
-    }
-
-    public Object invoke(Object obj, Object... args) {
-        try {
-            return testMethod.invoke(obj, args);
-        } catch (Exception e) {
-            throw new TestRunException("There was an error while invoking @Test method " + testMethod, e);
-        }
-    }
-}
-
-
 abstract class AbstractTest {
     protected static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
     protected static final int TEST_COMPILATION_TIMEOUT = Integer.parseInt(System.getProperty("TestCompilationTimeout", "10000"));
@@ -990,6 +906,8 @@ abstract class AbstractTest {
         this.skip = skip;
     }
 
+    abstract void print();
+    
     protected boolean shouldCompile(DeclaredTest test) {
         return test.getCompLevel() != CompLevel.SKIP;
     }
@@ -1158,10 +1076,15 @@ class BaseTest extends AbstractTest {
         super(test.getWarmupIterations(), skip);
         this.test = test;
         this.testMethod = test.getTestMethod();
-        this.testInfo = new TestInfo(testMethod);
+        this.testInfo = new TestInfo(test);
         this.invocationTarget = createInvocationTarget(testMethod);
         this.shouldCompile = shouldCompile(test);
         this.waitForCompilation = isWaitForCompilation(test);
+    }
+
+    @Override
+    void print() {
+        System.out.println("Base Test: " + testMethod.getName());
     }
 
     @Override
@@ -1245,6 +1168,11 @@ class CheckedTest extends BaseTest {
     }
 
     @Override
+    void print() {
+        System.out.println("Checked Test - @Test: " + testMethod.getName());
+    }
+
+    @Override
     public String getName() {
         return checkMethod.getName();
     }
@@ -1288,10 +1216,17 @@ class CustomRunTest extends AbstractTest {
         this.runInvocationTarget = createInvocationTarget(runMethod);
         this.mode = runSpecification.mode();
         this.tests = tests;
+        this.runInfo = new RunInfo(tests);
+    }
+
+    @Override
+    void print() {
+        System.out.print("Custom Run Test - @Test");
         if (tests.size() == 1) {
-            this.runInfo = new RunInfo(tests.get(0).getTestMethod());
+            System.out.println(": " + tests.get(0).getTestMethod().getName());
         } else {
-            this.runInfo = new RunInfo(tests.stream().map(DeclaredTest::getTestMethod).collect(Collectors.toList()));
+            System.out.println("s: {" + tests.stream().map(t -> t.getTestMethod().getName())
+                                             .collect(Collectors.joining(",")) + "}");
         }
     }
 

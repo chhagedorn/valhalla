@@ -2480,10 +2480,11 @@ public class TestLWorld {
                     } catch (ClassCastException cce) {
                     }
                 }
-                boolean compiled = TestFramework.isC2Compiled(m);
-                Asserts.assertTrue(compiled || (j != extra-1));
-                if (!compiled) {
-                    TestFramework.compile(m, CompLevel.C2);
+                boolean compiled = TestFramework.isCompiled(m);
+                boolean compilationSkipped = info.isCompilationSkipped();
+                Asserts.assertTrue(compilationSkipped || compiled || (j != extra-1));
+                if (!compilationSkipped && !compiled) {
+                    TestFramework.compile(m, CompLevel.ANY);
                 }
             }
         }

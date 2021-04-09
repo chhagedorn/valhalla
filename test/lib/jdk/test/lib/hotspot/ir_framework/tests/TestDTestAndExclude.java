@@ -43,22 +43,33 @@ public class TestDTestAndExclude {
             run("good1,good2", "bad1", "good");
             run("good1,bad1", "bad1", "good");
             run("good1,bad1", "bad1,good", "good");
-            run("bad1,good1", "", "badrun");
-            run("bad1,good1", "good1", "badrun");
-            run("bad1,good1", "asdf", "badrun");
+            run("good3,bad2", "bad1,bad2", "good");
+            run("goodMulti1,goodMulti2", "", "good");
+            run("bad1,good1", "", "bad1");
+            run("bad1,good1", "good1", "bad1");
+            run("bad1,good1", "asdf", "bad1");
+            run("bad2,good1", "", "runBadSingle");
+            run("bad2", "runBadSingle", "runBadSingle");
+            run("badMulti1,badMulti2", "", "runBadMulti");
+            run("badMulti1", "", "runBadMulti");
+            run("badMulti1", "badMulti2", "runBadMulti");
+            run("badMulti2", "badMulti1", "runBadMulti");
+            run("runBadSingle", "", "empty");
+            run("runBadMulti", "", "empty");
             run("asdf", "", "empty");
-            run("", "good1,good2,bad1", "empty");
+            run("", "good1,good2,good3,bad1,bad2,goodMulti1,goodMulti2,badMulti1,badMulti2", "empty");
+            run("asdf", "good1,good2,good3,bad1,bad2,goodMulti1,goodMulti2,badMulti1,badMulti2", "empty");
             run("bad1", "bad1", "empty");
             run("good1", "asdf,good,good1", "empty");
         } else {
             switch (args[0]) {
                 case "good" -> TestFramework.run();
-                case "badrun" -> {
+                case "bad1", "runBadMulti", "runBadSingle" -> {
                     try {
                         TestFramework.run();
                         throw new RuntimeException("should not reach");
                     } catch (TestVMException e) {
-                        Asserts.assertTrue(e.getExceptionInfo().contains("expected bad1 exception"));
+                        Asserts.assertTrue(e.getExceptionInfo().contains("expected " + args[0] + " exception"));
                     }
                 }
                 case "empty" -> {
@@ -78,6 +89,7 @@ public class TestDTestAndExclude {
      * Create a VM and simulate as if it was a driver VM spawned by JTreg that has -DTest/DExclude set as VM or Javaopts
      */
     protected static void run(String dTest, String dExclude, String arg) throws Exception {
+        System.out.println("Run -DTest=" + dTest + " -DExclude=" + dExclude + " arg=" + arg);
         OutputAnalyzer oa;
         ProcessBuilder process = ProcessTools.createJavaProcessBuilder(
                 "-Dtest.class.path=" + Utils.TEST_CLASS_PATH, "-Dtest.jdk=" + Utils.TEST_JDK,
@@ -88,16 +100,59 @@ public class TestDTestAndExclude {
     }
 
     @Test
-    public void good1() {
-    }
+    public void good1() { }
 
     @Test
-    public void good2() {
-    }
+    public void good2() { }
+
+    @Check(test = "good2")
+    public void check2() {}
 
     @Test
     public void bad1() {
         throw new RuntimeException("expected bad1 exception");
+    }
+
+    @Test
+    public void good3() {}
+
+    @Test
+    public void goodMulti1() {}
+
+    @Test
+    public void goodMulti2() {}
+
+    @Run(test = "good3")
+    public void runGoodSingle() {
+        good3();
+    }
+
+    @Run(test = {"goodMulti1", "goodMulti2"})
+    public void runGoodMulti() {
+        goodMulti1();
+        goodMulti2();
+    }
+
+    @Test
+    public void bad2() {
+    }
+
+    @Test
+    public void badMulti1() {
+    }
+
+    @Test
+    public void badMulti2() {
+    }
+
+    @Run(test = "bad2")
+    public void runBadSingle() {
+        throw new RuntimeException("expected runBadSingle exception");
+    }
+
+    @Run(test = {"badMulti1", "badMulti2"})
+    public void runBadMulti() {
+        throw new RuntimeException("expected runBadMulti exception");
     }
 }
 

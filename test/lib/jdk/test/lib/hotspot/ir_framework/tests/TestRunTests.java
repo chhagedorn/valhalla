@@ -48,6 +48,11 @@ public class TestRunTests {
             Arrays.stream(matches).forEach(m -> Asserts.assertTrue(e.getMessage().contains(m)));
             Asserts.assertEQ(e.getMessage().split("STANDALONE mode", -1).length - 1, 2);
         }
+        TestFramework.runWithFlags(SkipCompilation.class, "-XX:-UseCompiler");
+        TestFramework.runWithFlags(SkipCompilation.class, "-Xint");
+        TestFramework.runWithFlags(SkipC2Compilation.class, "-XX:TieredStopAtLevel=1");
+        TestFramework.runWithFlags(SkipC2Compilation.class, "-XX:TieredStopAtLevel=2");
+        TestFramework.runWithFlags(SkipC2Compilation.class, "-XX:TieredStopAtLevel=3");
     }
     public int iFld;
 
@@ -69,6 +74,7 @@ public class TestRunTests {
     public void run(RunInfo info) {
         test1(23);
         test2(42);
+        Asserts.assertTrue(info.isC2CompilationEnabled());
         if (!info.isWarmUp()) {
             TestFramework.assertCompiledByC2(info.getTest("test1"));
             TestFramework.assertCompiledByC2(info.getTest("test2"));
@@ -84,9 +90,34 @@ public class TestRunTests {
 
     @Run(test = "test3")
     public void run2(RunInfo info) {
+        Asserts.assertTrue(info.isC2CompilationEnabled());
         test3(42);
         if (!info.isWarmUp()) {
             TestFramework.assertCompiledByC2(info.getTest());
+            try {
+                info.getTest("test2");
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
+            try {
+                info.isTestC1Compiled("test2");
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
+            try {
+                info.isTestC2Compiled("test2");
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
+            try {
+                info.isTestCompiledAtLevel("test2", CompLevel.C2);
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
         }
     }
 
@@ -126,6 +157,30 @@ public class TestRunTests {
         if (!info.isWarmUp()) {
             TestFramework.assertCompiledByC2(info.getTest("test5"));
             TestFramework.assertCompiledByC2(info.getTest("test6"));
+            try {
+                info.getTest();
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
+            try {
+                info.isTestC1Compiled();
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
+            try {
+                info.isTestC2Compiled();
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
+            try {
+                info.isTestCompiledAtLevel(CompLevel.C2);
+                throw new RuntimeException("should not reach");
+            } catch (TestRunException e) {
+                // Excepted, do not call this method for single associated test.
+            }
         }
     }
 
@@ -199,5 +254,150 @@ class BadStandalone {
 
     @Run(test = "test2", mode = RunMode.STANDALONE)
     public void run2(RunInfo info) {
+    }
+}
+
+// Run with TieredStopAt=[1,3]. IR verification is skipped.
+class SkipC2Compilation {
+
+    int iFld;
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void testC2() {
+        iFld = 34;
+    }
+
+    @Check(test = "testC2")
+    public void checkC2(TestInfo info) {
+        Asserts.assertFalse(info.isC2CompilationEnabled());
+        Asserts.assertTrue(info.isCompilationSkipped());
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void test2C2() {
+        iFld = 34;
+    }
+
+
+    @Run(test = "test2C2")
+    public void run2C2(RunInfo info) {
+        Asserts.assertFalse(info.isC2CompilationEnabled());
+        Asserts.assertTrue(info.isCompilationSkipped());
+        test2C2();
+        Asserts.assertTrue(info.isCompilationSkipped());
+        try {
+            info.isCompilationSkipped("test2C2");
+            throw new RuntimeException("should not reach");
+        } catch (TestRunException e) {
+            // Excepted, do not call this method for single associated test.
+        }
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void test3C2() {
+        iFld = 34;
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void test4C2() {
+        iFld = 34;
+    }
+
+
+    @Test // Level any
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void testAny() {
+        iFld = 34;
+    }
+
+    @Run(test = {"test3C2", "test4C2", "testAny"})
+    public void runMulti(RunInfo info) {
+        Asserts.assertFalse(info.isC2CompilationEnabled());
+        if (!info.isWarmUp()) {
+            TestFramework.assertCompiledByC1(info.getTest("testAny"));
+        }
+        Asserts.assertTrue(info.isCompilationSkipped("test3C2"));
+        Asserts.assertTrue(info.isCompilationSkipped("test4C2"));
+        Asserts.assertFalse(info.isCompilationSkipped("testAny"));
+        test2C2();
+        Asserts.assertTrue(info.isCompilationSkipped("test3C2"));
+        Asserts.assertTrue(info.isCompilationSkipped("test4C2"));
+        Asserts.assertFalse(info.isCompilationSkipped("testAny"));
+        try {
+            info.isCompilationSkipped();
+            throw new RuntimeException("should not reach");
+        } catch (TestRunException e) {
+            // Excepted, do not call this method for multiple associated tests.
+        }
+    }
+}
+
+// Run with -Xint and -XX:-Compiler. IR verification is skipped.
+class SkipCompilation {
+    int iFld;
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void testC2() {
+        iFld = 34;
+    }
+
+    @Check(test = "testC2")
+    public void checkC2(TestInfo info) {
+        Asserts.assertTrue(info.isCompilationSkipped());
+        Asserts.assertFalse(info.isC2CompilationEnabled());
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void test2C2() {
+        iFld = 34;
+    }
+
+
+    @Run(test = "test2C2")
+    public void run2C2(RunInfo info) {
+        Asserts.assertFalse(info.isC2CompilationEnabled());
+        Asserts.assertTrue(info.isCompilationSkipped());
+        test2C2();
+        Asserts.assertTrue(info.isCompilationSkipped());
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void test3C2() {
+        iFld = 34;
+    }
+
+    @Test(compLevel = CompLevel.C2)
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void test4C2() {
+        iFld = 34;
+    }
+
+
+    @Test // Level any
+    @IR(failOn = IRNode.STORE) // Would fail but not evaluated.
+    public void testAny() {
+        iFld = 34;
+    }
+
+    @Run(test = {"test3C2", "test4C2", "testAny"})
+    public void runMulti(RunInfo info) {
+        Asserts.assertFalse(info.isC2CompilationEnabled());
+        if (!info.isWarmUp()) {
+            TestFramework.assertNotCompiled(info.getTest("testAny"));
+            TestFramework.assertNotCompiled(info.getTest("test3C2"));
+            TestFramework.assertNotCompiled(info.getTest("test4C2"));
+        }
+        Asserts.assertTrue(info.isCompilationSkipped("test3C2"));
+        Asserts.assertTrue(info.isCompilationSkipped("test4C2"));
+        Asserts.assertTrue(info.isCompilationSkipped("testAny"));
+        test2C2();
+        Asserts.assertTrue(info.isCompilationSkipped("test3C2"));
+        Asserts.assertTrue(info.isCompilationSkipped("test4C2"));
+        Asserts.assertTrue(info.isCompilationSkipped("testAny"));
     }
 }

@@ -138,14 +138,13 @@ abstract public class AbstractInfo {
     }
 
     /**
-     * Returns a boolean indicating if the test VM runs with flags that only allow C1 compilations:
-     * {@code -XX:+TieredCompilation -XX:TieredStopAtLevel={1,2,3}}
+     * Returns a boolean indicating if the test VM runs with flags that allow C2 compilations.
      *
-     * @return {@code true} if only C1 compilations are allowed;
-     *         {@code false} otherwise.
+     * @return {@code true} if C2 compilations are allowed;
+     *         {@code false} otherwise (run with {@code -XX:TieredStopAtLevel={1,2,3}, -XX:-Com}.
      */
-    public boolean isC1Test() {
-        return TestFrameworkExecution.TEST_C1;
+    public boolean isC2CompilationEnabled() {
+        return TestFrameworkExecution.USE_COMPILER && !TestFrameworkExecution.TEST_C1;
     }
 
     /**

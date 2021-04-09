@@ -66,17 +66,21 @@ class TestFrameworkPrepareFlags {
     }
 
     public static void main(String[] args) {
-        String testClassName = args[0];
-        if (VERBOSE) {
-            System.out.println("TestFrameworkPrepareFlags main() called. Prepare test VM flags to run class " + testClassName);
-        }
-        Class<?> testClass;
         try {
-            testClass = Class.forName(testClassName);
-        } catch (Exception e) {
-            throw new TestRunException("Could not find test class " + testClassName, e);
+            String testClassName = args[0];
+            if (VERBOSE) {
+                System.out.println("TestFrameworkPrepareFlags main() called. Prepare test VM flags to run class " + testClassName);
+            }
+            Class<?> testClass;
+            try {
+                testClass = Class.forName(testClassName);
+            } catch (Exception e) {
+                throw new TestRunException("Could not find test class " + testClassName, e);
+            }
+            emitTestVMFlags(prepareTestVmFlags(testClass));
+        } finally {
+            TestFrameworkSocket.closeClientSocket();
         }
-        emitTestVMFlags(prepareTestVmFlags(testClass));
     }
 
     /**

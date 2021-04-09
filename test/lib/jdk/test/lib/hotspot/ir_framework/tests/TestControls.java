@@ -280,7 +280,7 @@ public class TestControls {
     @Run(test = "testCompilation")
     @Warmup(0)
     public void runTestCompilation(RunInfo info) {
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 100000; i++) {
             dontCompileAny();
             dontCompileC1();
             dontCompileC2(i, i % 2 == 0);

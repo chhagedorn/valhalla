@@ -128,6 +128,8 @@ public class TestFramework {
     );
 
     static final boolean VERBOSE = Boolean.getBoolean("Verbose");
+    static final boolean TESTLIST = !System.getProperty("Test", "").isEmpty();
+    static final boolean EXCLUDELIST = !System.getProperty("Exclude", "").isEmpty();
     static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
     static final String TEST_VM_FLAGS_DELIMITER = " ";
     static final String TEST_VM_FLAGS_END = "----- END -----";
@@ -137,6 +139,7 @@ public class TestFramework {
     private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
     private static final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
     private static boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
+    private static final boolean REPORT_STDOUT = Boolean.getBoolean("ReportStdout");
     private boolean shouldVerifyIR = true; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
@@ -146,6 +149,7 @@ public class TestFramework {
     private final List<String> flags = new ArrayList<>();
     private int defaultWarmup = -1;
     private TestFrameworkSocket socket;
+    private Scenario scenario;
 
     /*
      * Public interface methods
@@ -403,6 +407,7 @@ public class TestFramework {
             } catch (IRViolationException e) {
                 System.out.println("Compilation(s) of failed match(es):");
                 System.out.println(e.getCompilations());
+                System.err.println("\n" + e.getExceptionInfo());
                 throw e;
             }
         } else {
@@ -647,11 +652,12 @@ public class TestFramework {
                 errorMsg = getScenarioTitleAndFlags(scenario);
             }
             if (e instanceof IRViolationException) {
+                IRViolationException irException = (IRViolationException) e;
                 // For IR violations, only show the actual violations and not the (uninteresting) stack trace.
                 System.out.println((scenario != null ? "Scenario #" + scenario.getIndex() + " - " : "")
                                    + "Compilation(s) of failed matche(s):");
-                System.out.println(((IRViolationException) e).getCompilations());
-                builder.append(errorMsg).append(e.getMessage());
+                System.out.println(irException.getCompilations());
+                builder.append(errorMsg).append("\n").append(irException.getExceptionInfo()).append(e.getMessage());
             } else if (e instanceof TestVMException) {
                 builder.append(errorMsg).append("\n").append(((TestVMException) e).getExceptionInfo());
             } else {
@@ -663,6 +669,9 @@ public class TestFramework {
             builder.append("\n");
         }
         System.err.println(builder.toString());
+        if (!VERBOSE && !REPORT_STDOUT && !TESTLIST && !EXCLUDELIST) {
+            System.err.println(JVMOutput.getRerunHint());
+        }
         TestRun.fail(failedScenarios + ". Please check stderr for more information.");
     }
 
@@ -686,6 +695,7 @@ public class TestFramework {
             return;
         }
         socket = TestFrameworkSocket.getSocket();
+        this.scenario = scenario;
         try {
             // Use TestFramework flags and scenario flags for new VMs.
             List<String> additionalFlags = new ArrayList<>(flags);
@@ -706,7 +716,7 @@ public class TestFramework {
 
             String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
             System.out.println("Run Test VM" + flagsString + ":");
-            runTestVM(additionalFlags, scenario);
+            runTestVM(additionalFlags);
         } finally {
             System.out.println();
             socket.close();
@@ -745,6 +755,7 @@ public class TestFramework {
      */
     private ArrayList<String> prepareFlagVMFlags(List<String> additionalFlags) {
         ArrayList<String> cmds = new ArrayList<>();
+//        cmds.add( "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=y,server=y");
         cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
         // Set java.library.path so JNI tests which rely on jtreg nativepath setting work
         cmds.add("-Djava.library.path=" + Utils.TEST_NATIVE_PATH);
@@ -776,12 +787,9 @@ public class TestFramework {
         }
     }
 
-    private void runTestVM(List<String> additionalFlags, Scenario scenario) {
+    private void runTestVM(List<String> additionalFlags) {
         List<String> cmds = prepareTestVMFlags(additionalFlags);
-        if (shouldVerifyIR) {
-            // We only need the socket if we are doing IR verification.
-            socket.start();
-        }
+        socket.start();
 
         OutputAnalyzer oa;
         ProcessBuilder process = ProcessTools.createJavaProcessBuilder(cmds);
@@ -799,14 +807,20 @@ public class TestFramework {
         if (scenario != null) {
             scenario.setTestVMOutput(lastTestVMOutput);
         }
+        String socketOutput = socket.getOutputPrintStdout();
         checkTestVMExitCode(output);
         if (shouldVerifyIR) {
-            new IRMatcher(output.getHotspotPidFileName(), socket.getOutput(), testClass);
+            try {
+                new IRMatcher(output.getHotspotPidFileName(), socketOutput, testClass);
+            } catch (IRViolationException e) {
+                e.setExceptionInfo(output.getExceptionInfo(scenario != null));
+                throw e;
+            }
         } else {
             System.out.println("IR verification disabled either through explicitly setting -DVerify=false, due to " +
                                "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag like " +
                                "-Xint, or running the test VM with other VM flags added by user code that make the " +
-                               "IR verification impossible (e.g. -Xint, -XX:TieredStopAtLevel=3, etc.).");
+                               "IR verification impossible (e.g. -XX:-UseCompile, -XX:TieredStopAtLevel=[1,2,3], etc.).");
         }
     }
 
@@ -835,10 +849,8 @@ public class TestFramework {
             cmds.add("-DWarmup=" + defaultWarmup);
         }
 
-        if (shouldVerifyIR) {
-            // Add server property flag that enables test VM to print encoding for IR verification last.
-            cmds.add(socket.getPortPropertyFlag());
-        }
+        // Add server property flag that enables test VM to print encoding for IR verification last and debug messages.
+        cmds.add(socket.getPortPropertyFlag());
 
         cmds.add(TestFrameworkExecution.class.getName());
         cmds.add(testClass.getName());
@@ -853,8 +865,6 @@ public class TestFramework {
      * to determine if IR matching should be done or not.
      */
     private List<String> getTestVMFlags() {
-        String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DShouldDoIRVerification=(true|false).*)\\R" + "(?=" + IREncodingPrinter.END + ")";
-        Pattern pattern = Pattern.compile(patternString);
         List<String> flagList = new ArrayList<>();
 
         if (VERIFY_VM) {
@@ -869,17 +879,21 @@ public class TestFramework {
                 System.out.println("Read sent data from flag VM from socket:");
                 System.out.println(flags);
             }
+            String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DShouldDoIRVerification=(true|false).*)\\R"
+                                   + "(?=" + IREncodingPrinter.END + ")";
+            Pattern pattern = Pattern.compile(patternString);
             Matcher matcher = pattern.matcher(flags);
             check(matcher.find(), "Invalid flag encoding emitted by flag VM");
             shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
             flagList.addAll(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
+            flagList.add("-DShouldDoIRVerification=true");
         }
         return flagList;
     }
 
     private void checkTestVMExitCode(JVMOutput vmOutput) {
         final int exitCode = vmOutput.getExitCode();
-        if (EXCLUDE_RANDOM || (VERBOSE && exitCode == 0)) {
+        if (EXCLUDE_RANDOM || REPORT_STDOUT || (VERBOSE && exitCode == 0)) {
             System.out.println("--- OUTPUT TestFramework test VM ---");
             System.out.println(vmOutput.getOutput());
         }
@@ -901,7 +915,7 @@ public class TestFramework {
             throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude. " +
                                           "Make sure to define a set of at least one @Test method");
         } else {
-            throw new TestVMException(vmOutput);
+            throw new TestVMException(vmOutput.getExceptionInfo(scenario != null));
         }
     }
 
@@ -924,6 +938,7 @@ public class TestFramework {
  * Class to encapsulate information about the test VM output, the run process and the scenario.
  */
 class JVMOutput {
+
     private final Scenario scenario;
     private final OutputAnalyzer oa;
     private final ProcessBuilder process;
@@ -941,7 +956,7 @@ class JVMOutput {
     }
 
     public String getCommandLine() {
-        return String.join(" ", process.command());
+        return "Command Line:\n" + String.join(" ", process.command()) + "\n\n";
     }
 
     public int getExitCode() {
@@ -963,6 +978,41 @@ class JVMOutput {
     public String getHotspotPidFileName() {
         return hotspotPidFileName;
     }
+
+    /**
+     * Get more detailed information about the exception in a pretty format.
+     */
+    public String getExceptionInfo(boolean stripRerunHint) {
+        int exitCode = getExitCode();
+        String stdErr = getStderr();
+        String rerunHint = "";
+        String stdOut = "";
+        if (exitCode == 134) {
+            stdOut = "\n\nStandard Output\n---------------\n" + getOutput();
+        } else if (!stripRerunHint) {
+            rerunHint = getRerunHint();
+        }
+        if (exitCode == 0) {
+            // IR exception
+            return getCommandLine() + rerunHint;
+        } else {
+            return "TestFramework test VM exited with code " + exitCode + "\n"
+                   + stdOut + "\n" + getCommandLine() + "\n\nError Output\n------------\n" + stdErr + "\n\n" + rerunHint;
+        }
+    }
+
+    public static String getRerunHint() {
+        return """
+                 ###########################################################
+                  - To only run the failed tests use -DTest, -DExclude, 
+                    and/or -DScenarios.
+                  - To also get the standard output of the test VM run with\s
+                  -DReportStdout=true or for even more fine-grained logging
+                  use -DVerbose=true.
+                 ###########################################################
+                 
+               """;
+    }
 }
 
 /**
@@ -973,8 +1023,12 @@ class TestFrameworkSocket {
 
     // Static fields used by flag and test VM only.
     private static final int SERVER_PORT = Integer.getInteger(SERVER_PORT_PROPERTY, -1);
+
     private static final boolean REPRODUCE = Boolean.getBoolean("Reproduce");
     private static final String HOSTNAME = null;
+    private static final String STDOUT_PREFIX = "[STDOUT]";
+    private static Socket clientSocket = null;
+    private static PrintWriter clientWriter = null;
 
     private final String serverPortPropertyFlag;
     private FutureTask<String> socketTask;
@@ -1043,16 +1097,27 @@ class TestFrameworkSocket {
      * Only called by flag and test VM to write to server socket.
      */
     public static void write(String msg, String type) {
+        write(msg, type, false);
+    }
+    /**
+     * Only called by flag and test VM to write to server socket.
+     */
+    public static void write(String msg, String type, boolean stdout) {
         if (REPRODUCE) {
             System.out.println("Debugging Test VM: Skip writing due to -DReproduce");
             return;
         }
         TestFramework.check(SERVER_PORT != -1, "Server port was not set correctly for flag and/or test VM "
                                               + "or method not called from flag or test VM");
-        try (Socket socket = new Socket(HOSTNAME, SERVER_PORT);
-             PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
-        ) {
-            out.print(msg);
+        try {
+            if (clientSocket == null) {
+                clientSocket = new Socket(HOSTNAME, SERVER_PORT);
+                clientWriter = new PrintWriter(clientSocket.getOutputStream(), true);
+            }
+            if (stdout) {
+                msg = STDOUT_PREFIX + msg;
+            }
+            clientWriter.println(msg);
         } catch (Exception e) {
             String failMsg = """
                              
@@ -1070,9 +1135,60 @@ class TestFrameworkSocket {
         }
     }
 
+    /**
+     * Closes (and flushes) the printer to the socket and the socket itself. Is called as last thing before exiting
+     * the main() method of the flag and the test VM.
+     */
+    public static void closeClientSocket() {
+        if (clientSocket != null) {
+            try {
+                clientWriter.close();
+                clientSocket.close();
+            } catch (IOException e) {
+                throw new RuntimeException("Could not close TestFrameworkExecution socket", e);
+            }
+        }
+    }
+
+    /**
+     * Get the socket output of the flag VM.
+     */
     public String getOutput() {
         try {
             return socketTask.get();
+
+        } catch (Exception e) {
+            TestFramework.fail("Could not read from socket task", e);
+            return null;
+        }
+    }
+
+    /**
+     * Get the socket output from the test VM by stripping all lines starting with a [STDOUT] output and printing them
+     * to the standard output.
+     */
+    public String getOutputPrintStdout() {
+        try {
+            String output = socketTask.get();
+            if (TestFramework.TESTLIST || TestFramework.EXCLUDELIST) {
+                StringBuilder builder = new StringBuilder();
+                Scanner scanner = new Scanner(output);
+                System.out.println("\nRun flag defined test list");
+                System.out.println("--------------------------");
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine();
+                    if (line.startsWith(STDOUT_PREFIX)) {
+                        line = "> " + line.substring(STDOUT_PREFIX.length());
+                        System.out.println(line);
+                    } else {
+                        builder.append(line).append("\n");
+                    }
+                }
+                System.out.println();
+                return builder.toString();
+            }
+            return output;
+
         } catch (Exception e) {
             TestFramework.fail("Could not read from socket task", e);
             return null;

@@ -33,6 +33,7 @@ package jdk.test.lib.hotspot.ir_framework;
  */
 public class IRViolationException extends RuntimeException {
     private final String compilations;
+    private String exceptionInfo;
 
     IRViolationException(String message, String compilations) {
         super(message);
@@ -41,5 +42,13 @@ public class IRViolationException extends RuntimeException {
 
     String getCompilations() {
         return compilations;
+    }
+
+    void setExceptionInfo(String exceptionInfo) {
+        this.exceptionInfo = exceptionInfo;
+    }
+
+    public String getExceptionInfo() {
+        return exceptionInfo;
     }
 }

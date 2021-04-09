@@ -88,7 +88,7 @@ public class TestFrameworkExecution {
     private static final boolean GC_AFTER = Boolean.getBoolean("GCAfter");
     private static final boolean SHUFFLE_TESTS = Boolean.parseBoolean(System.getProperty("ShuffleTests", "true"));
     // Use separate flag as VERIFY_IR could have been set by user but due to other flags it was disabled by flag VM.
-    private static final boolean PRINT_VALID_IR_RULES = Integer.getInteger(TestFrameworkSocket.SERVER_PORT_PROPERTY, -1) != -1;
+    private static final boolean PRINT_VALID_IR_RULES = Boolean.getBoolean("ShouldDoIRVerification");
     protected static final long PerMethodTrapLimit = (Long)WHITE_BOX.getVMFlag("PerMethodTrapLimit");
     protected static final boolean ProfileInterpreter = (Boolean)WHITE_BOX.getVMFlag("ProfileInterpreter");
     private static final boolean FLIP_C1_C2 = Boolean.getBoolean("FlipC1C2");
@@ -137,14 +137,18 @@ public class TestFrameworkExecution {
     }
 
     public static void main(String[] args) {
-        String testClassName = args[0];
-        System.out.println("Framework main(), about to run tests in class " + testClassName);
-        Class<?> testClass;
-        testClass = getClassObject(testClassName, "test");
+        try {
+            String testClassName = args[0];
+            System.out.println("Framework main(), about to run tests in class " + testClassName);
+            Class<?> testClass;
+            testClass = getClassObject(testClassName, "test");
 
-        TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
-        framework.addHelperClasses(args);
-        framework.start();
+            TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
+            framework.addHelperClasses(args);
+            framework.start();
+        } finally {
+            TestFrameworkSocket.closeClientSocket();
+        }
     }
 
     protected static Class<?> getClassObject(String className, String classType) {
@@ -757,9 +761,10 @@ public class TestFrameworkExecution {
             Collections.shuffle(testList);
         }
         for (AbstractTest test : testList) {
-            if (testFilterPresent) {
-                System.out.print("Run ");
-                test.print();
+            if (VERBOSE) {
+                System.out.println("Run " + test.toString());
+            } else if (testFilterPresent) {
+                TestFrameworkSocket.write("Run " + test.toString(), "testfilter", true);
             }
             test.run();
             if (PRINT_TIMES || VERBOSE) {
@@ -906,8 +911,6 @@ abstract class AbstractTest {
         this.skip = skip;
     }
 
-    abstract void print();
-    
     protected boolean shouldCompile(DeclaredTest test) {
         return test.getCompLevel() != CompLevel.SKIP;
     }
@@ -947,7 +950,7 @@ abstract class AbstractTest {
         if (skip) {
             return;
         }
-        onRunStart();
+        onStart();
         for (int i = 0; i < warmupIterations; i++) {
             invokeTest();
         }
@@ -957,13 +960,15 @@ abstract class AbstractTest {
         invokeTest();
     }
 
-    abstract void onRunStart();
+    protected void onStart() {
+        // Do nothing by default
+    }
 
-    abstract void invokeTest();
+    abstract protected void invokeTest();
 
-    protected void onWarmupFinished() { }
+    abstract protected void onWarmupFinished();
 
-    abstract void compileTest();
+    abstract protected void compileTest();
 
     protected void compileMethod(DeclaredTest test) {
         final Method testMethod = test.getTestMethod();
@@ -1083,8 +1088,8 @@ class BaseTest extends AbstractTest {
     }
 
     @Override
-    void print() {
-        System.out.println("Base Test: " + testMethod.getName());
+    public String toString() {
+        return "Base Test: " + testMethod.getName();
     }
 
     @Override
@@ -1093,10 +1098,7 @@ class BaseTest extends AbstractTest {
     }
 
     @Override
-    protected void onRunStart() {
-        if (TestFrameworkExecution.VERBOSE) {
-            System.out.println("Starting " + getName());
-        }
+    protected void onStart() {
         test.printFixedRandomArguments();
     }
 
@@ -1168,8 +1170,8 @@ class CheckedTest extends BaseTest {
     }
 
     @Override
-    void print() {
-        System.out.println("Checked Test - @Test: " + testMethod.getName());
+    public String toString() {
+        return "Checked Test - @Test: " + testMethod.getName();
     }
 
     @Override
@@ -1220,21 +1222,15 @@ class CustomRunTest extends AbstractTest {
     }
 
     @Override
-    void print() {
-        System.out.print("Custom Run Test - @Test");
+    public String toString() {
+        String s = "Custom Run Test - @Test";
         if (tests.size() == 1) {
-            System.out.println(": " + tests.get(0).getTestMethod().getName());
+            s += ": " + tests.get(0).getTestMethod().getName();
         } else {
-            System.out.println("s: {" + tests.stream().map(t -> t.getTestMethod().getName())
-                                             .collect(Collectors.joining(",")) + "}");
+            s += "s: {" + tests.stream().map(t -> t.getTestMethod().getName())
+                                             .collect(Collectors.joining(",")) + "}";
         }
-    }
-
-    @Override
-    protected void onRunStart() {
-        if (TestFrameworkExecution.VERBOSE) {
-            System.out.println("Starting " + getName());
-        }
+        return s;
     }
 
     @Override

@@ -46,14 +46,14 @@ import java.util.regex.Pattern;
 public class TestBadFormat {
 
     public static void main(String[] args) {
-//        expectTestFormatException(BadNoTests.class);
-//        expectTestFormatException(BadArgumentsAnnotation.class);
-//        expectTestFormatException(BadOverloadedMethod.class);
-//        expectTestFormatException(BadCompilerControl.class);
-//        expectTestFormatException(BadWarmup.class);
-//        expectTestFormatException(BadBaseTests.class);
-//        expectTestFormatException(BadRunTests.class);
-//        expectTestFormatException(BadCheckTest.class);
+        expectTestFormatException(BadNoTests.class);
+        expectTestFormatException(BadArgumentsAnnotation.class);
+        expectTestFormatException(BadOverloadedMethod.class);
+        expectTestFormatException(BadCompilerControl.class);
+        expectTestFormatException(BadWarmup.class);
+        expectTestFormatException(BadBaseTests.class);
+        expectTestFormatException(BadRunTests.class);
+        expectTestFormatException(BadCheckTest.class);
         expectTestFormatException(BadIRAnnotations.class);
         expectTestFormatException(BadInnerClassTest.class);
         expectTestFormatException(BadCompileClassInitializer.class, BadCompileClassInitializerHelper1.class,

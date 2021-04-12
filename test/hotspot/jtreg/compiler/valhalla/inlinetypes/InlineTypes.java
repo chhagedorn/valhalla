@@ -34,6 +34,7 @@ public class InlineTypes {
 
     public static final Scenario[] DEFAULT_SCENARIOS = {
             new Scenario(0,
+                         "-XX:+IgnoreUnrecognizedVMOptions",
                          "-XX:-UseACmpProfile",
                          "-XX:+AlwaysIncrementalInline",
                          "-XX:FlatArrayElementMaxOops=5",
@@ -44,6 +45,7 @@ public class InlineTypes {
                          "-XX:+InlineTypeReturnedAsFields"
             ),
             new Scenario(1,
+                         "-XX:+IgnoreUnrecognizedVMOptions",
                          "-XX:-UseACmpProfile",
                          "-XX:-UseCompressedOops",
                          "-XX:FlatArrayElementMaxOops=5",
@@ -54,6 +56,7 @@ public class InlineTypes {
                          "-XX:-InlineTypeReturnedAsFields"
             ),
             new Scenario(2,
+                         "-XX:+IgnoreUnrecognizedVMOptions",
                          "-XX:-UseACmpProfile",
                          "-XX:-UseCompressedOops",
                          "-XX:FlatArrayElementMaxOops=0",
@@ -65,6 +68,7 @@ public class InlineTypes {
                          "-XX:+StressInlineTypeReturnedAsFields"
             ),
             new Scenario(3,
+                         "-XX:+IgnoreUnrecognizedVMOptions",
                          "-DVerifyIR=false",
                          "-XX:+AlwaysIncrementalInline",
                          "-XX:FlatArrayElementMaxOops=0",
@@ -74,6 +78,7 @@ public class InlineTypes {
                          "-XX:+InlineTypeReturnedAsFields"
             ),
             new Scenario(4,
+                         "-XX:+IgnoreUnrecognizedVMOptions",
                          "-DVerifyIR=false",
                          "-XX:FlatArrayElementMaxOops=-1",
                          "-XX:FlatArrayElementMaxSize=-1",
@@ -83,6 +88,7 @@ public class InlineTypes {
                          "-XX:-ReduceInitialCardMarks"
             ),
             new Scenario(5,
+                         "-XX:+IgnoreUnrecognizedVMOptions",
                          "-XX:-UseACmpProfile",
                          "-XX:+AlwaysIncrementalInline",
                          "-XX:FlatArrayElementMaxOops=5",

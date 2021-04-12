@@ -23,8 +23,6 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
-import jdk.test.lib.hotspot.ir_framework.examples.CheckedTestExample;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -32,24 +30,25 @@ import java.lang.annotation.RetentionPolicy;
  * Annotation for a check method of a <b>checked test</b>.
  *
  * <p>
- * Let {@code t} be a test method specifying the {@link Test} annotation and {@code c} be a check method specifying
+ * Let {@code t} be a test method specifying the {@link Test @Test} annotation and {@code c} be a check method specifying
  * the {@code @Check(test = "t")} annotation. These two methods represent a so-called <i>checked test</i>. The only
  * difference to a <i>base test</i> (see {@link Test}) is that the framework will invoke the check method {@code c}
  * directly after the invocation of the test method {@code t} which allows to do some additional verification,
  * including the return value of {@code t}. The framework does the following, similar as for <i>base tests</i>:
  * <ol>
  *     <li><p>The framework warms {@code t} up by invoking it for a predefined number of iterations (default: 2000)
- *     or any number specified by an additional {@link Warmup} annotation at {@code t} or by using
- *     {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is similar
- *     to simulating {@code -Xcomp}). After each invocation of {@code t}, the framework also invokes {@code c} if the
- *     {@code @Check} annotation specifies {@link CheckAt#EACH_INVOCATION} at {@link #when()}.</li>
+ *            or any number specified by an additional {@link Warmup @Warmup} annotation at {@code t} or by using
+ *            {@link TestFramework#setDefaultWarmup(int)} (could also be 0 which skips the warm-up completely which is
+ *            similar to simulating {@code -Xcomp}). After each invocation of {@code t}, the framework also invokes
+ *            {@code c} if the {@code @Check} annotation specifies {@link CheckAt#EACH_INVOCATION} at {@link #when()}.
+ *            More information about the warm-up in general can be found at {@link Warmup}</li>
  *     <li><p>After the warm-up, the framework compiles {@code t} at the specified compilation level set by
- *     {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is usually
- *     {@link CompLevel#C2}).</li>
- *     <li><p>The framework invokes {@code t} one more time to check the compilation and immediately afterwards
- *     always invokes {@code c}.</li>
- *     <li><p>The framework checks any specified {@link IR} constraints at the test method {@code t}.
- *     More information about IR matching can be found in {@link IR}.</li>
+ *            {@link Test#compLevel()} (default {@link CompLevel#ANY} will pick the highest available level which is
+ *            usually {@link CompLevel#C2}).</li>
+ *     <li><p>The framework invokes {@code t} one more time to run the compilation. Afterwards, the framework will
+ *            always invoke {@code c} again to be able perform additional checks after the compilation of {@code t}.</li>
+ *     <li><p>The framework checks any specified {@link IR @IR} constraints at the test method {@code t}.
+ *            More information about IR matching can be found at {@link IR}.</li>
  * </ol>
  *
  * <p>
@@ -58,22 +57,23 @@ import java.lang.annotation.RetentionPolicy;
  * The following additional constraints must be met for the test method {@code t} and check method {@code c}:
  * <ul>
  *     <li><p>{@code c} must specify the method name {@code t} as property in {@code @Check(test = "t")}
- *     (see {@link #test()}. Specifying a non-{@code Test} annotated method or a {@code @Test} method that
- *     has already been used by another {@code @Check} or {@link Run} method results in a {@link TestFormatException}.
+ *     (see {@link #test()}. Specifying a non-{@code @Test} annotated method or a {@code @Test} method that
+ *     has already been used by another {@code @Check} or {@link Run @Run} method results in a {@link TestFormatException}.
  *     <li><p>{@code c} can specify the following method parameter combinations:
  *     <ul>
  *         <li><p>void</li>
- *         <li><p>1st parameter: {@link TestInfo} which provides some methods to check various things, including
- *         information about {@code t}.</li>
- *         <li><p>1st parameter specifies the exact same type as the return value of {@code t}. When {@code c} is
- *         invoked by the framework, this parameter contains the return value of {@code t}.</li>
- *         <li><p>1st parameter: {@link TestInfo}; 2nd parameter: return type of {@code t} (see above)</li>
+ *         <li><p>One parameter: {@link TestInfo} which provides some information about {@code t} and utility methods.</li>
+ *         <li><p>One parameter: the <i>exact</i> same type as the return value of {@code t}. When {@code c} is
+ *                invoked by the framework, this parameter contains the return value of {@code t}.</li>
+ *         <li><p>1st parameter: {@link TestInfo}; 2nd parameter: the <i>exact</i> same type as the return value of
+ *                {@code t} (see above)</li>
  *         <li><p> Any other combination will result in a {@link TestFormatException}.
  *     </ul>
  *     <li><p>{@code c} is not compiled nor inlined.
- *     <li><p>{@code c} must be part of the test class. Using {@code @Check} in nested or other classes is not allowed. TODO write test for it</li>
- *     <li><p>{@code c} cannot specify any helper-method specific compile command annotations ({@link ForceCompile},
- *     {@link DontCompile}, {@link ForceInline}, {@link DontInline}). </li>
+ *     <li><p>{@code c} must be part of the test class. Using {@code @Check} in nested or other classes is not allowed.</li>
+ *     <li><p>{@code c} cannot specify any helper-method-specific compile command annotations
+ *            ({@link ForceCompile @ForceCompile}, {@link DontCompile @DontCompile}, {@link ForceInline @ForceInline},
+ *            {@link DontInline @DontInline}).</li>
  * </ul>
  *
  * <p>
@@ -84,6 +84,10 @@ import java.lang.annotation.RetentionPolicy;
  * <p>
  * Examples on how to write checked tests can be found in {@link jdk.test.lib.hotspot.ir_framework.examples.CheckedTestExample}
  * and also as part of the internal testing in the package {@link jdk.test.lib.hotspot.ir_framework.tests}.
+ *
+ * @see Test
+ * @see TestInfo
+ * @see CheckAt
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Check {
@@ -93,8 +97,8 @@ public @interface Check {
      * invoke the {@code @Check} method after each invocation or only after the compilation of the associated {@code @Test}
      * method (depending on the value set with {@link #when()}).
      * <p>
-     * If a non-{@code Test} annotated method is used or a {@code @Test} method that has already been used by another
-     * {@code @Check} or {@link Run} method, then a {@link TestFormatException} is thrown.
+     * If a non-{@code @Test} annotated method or a {@code @Test} method that has already been used by another
+     * {@code @Check} or {@link Run} method is specified, then a {@link TestFormatException} is thrown.
      *
      * @see Test
      */

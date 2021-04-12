@@ -30,13 +30,14 @@ package jdk.test.lib.hotspot.ir_framework;
  */
 public enum RunMode {
     /**
-     * Default mode: First warm up run method, then compile the associated
-     * test method and finally invoke the run method once more.
+     * Default mode: First warm up the run method (if a warm-up is done), then compile the associated {@link Test}
+     * method and finally invoke the run method once more.
      */
     NORMAL,
     /**
-     * Standalone mode: There is no warm up and no forced compilation.
-     * The run method is responsible to trigger the compilation(s).
+     * Standalone mode: There is no warm-up and no compilation done by the framework. The run method is responsible to
+     * trigger the compilation(s), especially in regard of possible {@link IR} annotations at the associated {@link Test}
+     * method.
      */
     STANDALONE
 }

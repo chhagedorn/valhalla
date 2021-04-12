@@ -46,14 +46,14 @@ import java.util.stream.Collectors;
  * be used for other non-IR matching (and non-compiler) tests by providing easy to use annotations for commonly used
  * testing patterns and compiler control flags.
  * <p>
- * The framework offers various annotations to control how your code should be invoked and being tested. There are
+ * The framework offers various annotations to control how your test code should be invoked and being checked. There are
  * three kinds of tests depending on how much control is needed over the test invocation:
  * <b>Base tests</b> (see {@link Test}), <b>checked tests</b> (see {@link Check}), and <b>custom run tests</b>
- * (see {@link Run}). Each type of test needs to define a unique <i>test method</i> that specifies a {@link Test}
+ * (see {@link Run}). Each type of test needs to define a unique <i>test method</i> that specifies a {@link Test @Test}
  * annotation which represents the test code that is eventually executed by the test framework. More information about
  * the usage and how to write different tests can be found in {@link Test}, {@link Check}, and {@link Run}.
  * <p>
- * Each test method can specify an arbitrary number of IR rules. This is done by using {@link IR} annotations which
+ * Each test method can specify an arbitrary number of IR rules. This is done by using {@link IR @IR} annotations which
  * can define regex strings that are matched on the output of {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}.
  * The matching is done after the test method was (optionally) warmed up and compiled. More information about the usage
  * and how to write different IR rules can be found at {@link IR}.
@@ -66,8 +66,9 @@ import java.util.stream.Collectors;
  * Note that even though the framework uses the Whitebox API internally, it is not required to build and enabel it in the
  * JTreg test if the test itself is not utilizing any Whitebox features directly.
  * <p>
- * To specify additional flags, use {@link #addFlags(String...)} or {@link #addScenarios(Scenario...)} where the latter
- * can also be used to run different flag combinations (instead of specifying multiple {@code {@literal @}run} entries).
+ * To specify additional flags, use {@link #runWithFlags(String...)}, {@link #addFlags(String...)},
+ * {@link #addScenarios(Scenario...)}, or {@link #runWithScenarios(Scenario...)} where the scenarios can also be used
+ * to run different flag combinations (instead of specifying multiple JTreg {@code @run} entries).
  * <p>
  * After annotating your test code with the framework specific annotations, the framework needs to be invoked from the
  * {@code main()} method of your JTreg test. There are two ways to do so. The first way is by calling the various
@@ -75,7 +76,7 @@ import java.util.stream.Collectors;
  * {@code TestFramework} builder object on which {@link #start()} needs to be eventually called to start the testing.
  * <p>
  * The framework is called from the <i>driver VM</i> in which the JTreg test is initially run by specifying {@code
- * {@literal @}run driver} in the JTreg header. This strips all additionally specified JTreg VM and Java options.
+ * @run driver} in the JTreg header. This strips all additionally specified JTreg VM and Javaoptions.
  * The framework creates a new <i>flag VM</i> with all these flags added again in order to figure out which flags are
  * required to run the tests specified in the test class (e.g. {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}
  * for IR matching).
@@ -84,7 +85,7 @@ import java.util.stream.Collectors;
  * tests in the test class as described in {@link Test}, {@link Check}, and {@link Run}.
  * <p>
  * In a last step, once the test VM has terminated without exceptions, IR matching is performed if there are any IR
- * rules and if no VM flags disable it (e.g. not running with {@code -Xcomp}, see {@link IR} for more details).
+ * rules and if no VM flags disable it (e.g. not running with {@code -Xint}, see {@link IR} for more details).
  * The IR regex matching is done on the output of {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly} by parsing
  * the hotspot_pid file of the test VM. Failing IR rules are reported by throwing a {@link IRViolationException}.
  *
@@ -102,7 +103,7 @@ public class TestFramework {
      * A flag is whitelisted if it is a property flag (starting with -D), -ea, -esa, or if the flag name contains any of
      * the entries of this list as a substring.
      */
-    private static final Set<String> jtregWhitelistFlags = new HashSet<>(
+    public static final Set<String> JTREG_WHITELIST_FLAGS = new HashSet<>(
             Arrays.asList(
                     // The following substrings are part of more than one VM flag
                     "RAM",
@@ -729,7 +730,7 @@ public class TestFramework {
                                    .collect(Collectors.toList());
         for (String flag : flags) {
             // Property flags (prefix -D), -ea and -esa are whitelisted.
-            if (!flag.startsWith("-D") && !flag.startsWith("-e") && jtregWhitelistFlags.stream().noneMatch(flag::contains)) {
+            if (!flag.startsWith("-D") && !flag.startsWith("-e") && JTREG_WHITELIST_FLAGS.stream().noneMatch(flag::contains)) {
                 // Found VM flag that is not whitelisted
                 return false;
             }

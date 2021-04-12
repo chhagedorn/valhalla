@@ -34,6 +34,11 @@ public class TestVMException extends RuntimeException {
         this.exceptionInfo = exceptionInfo;
     }
 
+    /**
+     * Get some more detailed information about the exception thrown in the test VM and how to reproduce it.
+     *
+     * @return a formatted string containing information about the exception of the test VM and how to reproduce it.
+     */
     public String getExceptionInfo() {
         return exceptionInfo;
     }

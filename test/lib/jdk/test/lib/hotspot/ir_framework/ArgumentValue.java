@@ -60,9 +60,10 @@ class ArgumentValue {
 
     /**
      * Return all arguments for the @Arguments annotation.
-     * @param m The @Test method
-     * @return  Return array with Argument objects for each specified argument in the @Arguments annotation of m.
-     *          Return null if method has no @Arguments annotation.
+     *
+     * @param m The @Test method.
+     * @return  Returns an array with Argument objects for each specified argument in the @Arguments annotation of m.
+     *          Returns null if method has no @Arguments annotation.
      */
     public static ArgumentValue[] getArguments(Method m) {
         Arguments argumentsAnno = m.getAnnotation(Arguments.class);
@@ -74,7 +75,9 @@ class ArgumentValue {
         Class<?>[] declaredParameters = m.getParameterTypes();
         Parameter[] declaredParameterObjects = m.getParameters();
         try {
-            TestFormat.check(values.length == declaredParameters.length, "Number of argument values provided in @Arguments does not match the number of actual arguments in " + m);
+            TestFormat.check(values.length == declaredParameters.length,
+                             "Number of argument values provided in @Arguments does not match the number " +
+                             "of actual arguments in " + m);
 
             for (int i = 0; i < values.length; i++) {
                 Argument specifiedArg = values[i];
@@ -86,49 +89,69 @@ class ArgumentValue {
                             try {
                                 arguments[i] = createDefault(parameter);
                             } catch (NoSuchMethodException e) {
-                                TestFormat.fail("Cannot create new default instance of " + parameter + " for " + m + " due to missing default constructor");
+                                TestFormat.fail("Cannot create new default instance of " + parameter
+                                                + " for " + m + " due to missing default constructor");
                             } catch (Exception e) {
-                                TestFormat.fail("Cannot create new default instance of " + parameter + " for " + m + ": " + e.getCause());
+                                TestFormat.fail("Cannot create new default instance of " + parameter
+                                                + " for " + m + ": " + e.getCause());
                             }
                         }
                         case NUMBER_42 -> {
-                            TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_42 argument for non-number " + parameterObj + " for " + m);
+                            TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_42 argument " +
+                                                                  "for non-number " + parameterObj + " for " + m);
                             arguments[i] = create((byte) 42);
                         }
                         case NUMBER_MINUS_42 -> {
-                            TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_MINUS_42 argument for non-number " + parameterObj + " for " + m);
+                            TestFormat.check(isNumber(parameter), "Provided invalid NUMBER_MINUS_42 argument " +
+                                                                  "for non-number " + parameterObj + " for " + m);
                             arguments[i] = create((byte) -42);
                         }
                         case MIN -> {
-                            TestFormat.check(isNumber(parameter) || isChar(parameter), "Provided invalid MIN argument for non-number " + parameterObj + " for " + m);
+                            TestFormat.check(isNumber(parameter) || isChar(parameter),
+                                             "Provided invalid MIN argument for non-number "
+                                             + parameterObj + " for " + m);
                             arguments[i] = createMin(parameter);
                         }
                         case MAX -> {
-                            TestFormat.check(isNumber(parameter) || isChar(parameter), "Provided invalid MAX argument for non-number " + parameterObj + " for " + m);
+                            TestFormat.check(isNumber(parameter) || isChar(parameter),
+                                             "Provided invalid MAX argument for non-number "
+                                             + parameterObj + " for " + m);
                             arguments[i] = createMax(parameter);
                         }
                         case FALSE -> {
-                            TestFormat.check(ArgumentValue.isBoolean(parameter), "Provided invalid FALSE argument for non-boolean " + parameterObj + " for " + m);
+                            TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                             "Provided invalid FALSE argument for non-boolean "
+                                             + parameterObj + " for " + m);
                             arguments[i] = create(false);
                         }
                         case TRUE -> {
-                            TestFormat.check(ArgumentValue.isBoolean(parameter), "Provided invalid TRUE argument for non-boolean " + parameterObj + " for " + m);
+                            TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                             "Provided invalid TRUE argument for non-boolean "
+                                             + parameterObj + " for " + m);
                             arguments[i] = create(true);
                         }
                         case BOOLEAN_TOGGLE_FIRST_FALSE -> {
-                            TestFormat.check(isBoolean(parameter), "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean " + parameterObj + " for " + m);
+                            TestFormat.check(isBoolean(parameter),
+                                             "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean "
+                                             + parameterObj + " for " + m);
                             arguments[i] = createToggleBoolean(false);
                         }
                         case BOOLEAN_TOGGLE_FIRST_TRUE -> {
-                            TestFormat.check(ArgumentValue.isBoolean(parameter), "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean " + parameterObj + " for " + m);
+                            TestFormat.check(ArgumentValue.isBoolean(parameter),
+                                             "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean "
+                                             + parameterObj + " for " + m);
                             arguments[i] = createToggleBoolean(true);
                         }
                         case RANDOM_ONCE -> {
-                            TestFormat.check(isPrimitiveType(parameter), "Provided invalid RANDOM_ONCE argument for non-primitive type " + parameterObj + " for " + m);
+                            TestFormat.check(isPrimitiveType(parameter),
+                                             "Provided invalid RANDOM_ONCE argument for non-primitive type "
+                                             + parameterObj + " for " + m);
                             arguments[i] = createRandom(parameter);
                         }
                         case RANDOM_EACH -> {
-                            TestFormat.check(isPrimitiveType(parameter), "Provided invalid RANDOM_EACH argument for non-primitive type " + parameterObj + " for " + m);
+                            TestFormat.check(isPrimitiveType(parameter),
+                                             "Provided invalid RANDOM_EACH argument for non-primitive type "
+                                             + parameterObj + " for " + m);
                             arguments[i] = createRandomEach(parameter);
                         }
                     }
@@ -201,7 +224,7 @@ class ArgumentValue {
         } else if (c.equals(double.class)) {
             argument = Double.MAX_VALUE;
         } else {
-            throw new TestFrameworkException("Invalid class passed to createMin()");
+            throw new TestFrameworkException("Invalid class passed to createMax()");
         }
         return new ArgumentValue(argument, null, false);
     }

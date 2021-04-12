@@ -28,23 +28,29 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * This annotation is used to define a constraint/rule/check on the resulting IR of a test method (method with {@link Test}
- * annotation). A test method can define multiple {@code {@literal @}IR} rules.
+ * This annotation is used to define a constraint/rule/check on the resulting IR of a test method (method with
+ * {@link Test @Test} annotation). A test method can define multiple {@code @IR} rules.
  * <p>
  * There are two kinds of checks that can be specified:
  * <ul>
  *     <li><p>{@link #failOn()}: Specify a list of (node) regexes that should not be matched on the {@code PrintIdeal} or
- *     {@code PrintOptoAssembly} output.</li>
+ *            {@code PrintOptoAssembly} output.</li>
  *     <li><p>{@link #counts()}: Specify a list of ({@code regex,count}) pairs: The (node) {@code regex} should be matched
- *     for the specified amount in {@code count} on the {@code PrintIdeal} or {@code PrintOptoAssembly} output.</li>
+ *            for the specified amount in {@code count} on the {@code PrintIdeal} or {@code PrintOptoAssembly} output.</li>
  * </ul>
  * An IR rule must specify either or both of these two checks. If one or both of the checks fails, an
  * {@link IRViolationException} is thrown.
  * <p>
- * Sometimes, the shape of an IR is changed by commonly used VM flags in such a way that an IR rule no longer applies.
- * Generally, the framework does <b>not</b> apply any IR rules when any of the following flags are used:
- * {@code -Xcomp, -XX:-UseCompiler, -XX:TieredStopAtLevel={1,2,3}, -XX:CompileThreshold=XX, -DStressCC=true}
- * An IR rule can specify additional preconditions on the remaining flags that must hold when an IR rule is applied.
+ * Sometimes, the shape of the resulting IR is changed by commonly used VM flags in such a way that an IR rule no longer
+ * applies. Generally, the framework does <b>not</b> apply any IR rules when any of the following flags are used:
+ * {@code -Xint, -XX:-UseCompiler, -XX:TieredStopAtLevel={1,2,3}, -DExcludeRandom=true, -DFlipC1C2=true}.
+ * Furthermore, a JTreg test could be run with additional VM and Javaoptions flags. The IR verification is <b>not</b>
+ * performed if any flag is used that is not part of the whitelist specified by {@link TestFramework#JTREG_WHITELIST_FLAGS}.
+ * <p>
+ * For any other flag specified either by user code (e.g. {@link Scenario#Scenario(int, String...)},
+ * {@link TestFramework#runWithFlags(String...) etc.} or as part of the JTreg whitelist, IR verification is applied.
+ * To restrict the application of IR rules when certain flags are present that could change the IR, each {@code @IR}
+ * annotation can specify additional preconditions on the allowed test VM flags that must hold when an IR rule is applied.
  * If the specified preconditions fail, then the framework does not apply the IR rule. These preconditions can be
  * set with {@link #applyIf()}, {@link #applyIfNot()}, {@link #applyIfAnd()}, or {@link #applyIfOr()}.
  * <p>
@@ -127,7 +133,7 @@ public @interface IR {
      * with the type of the VM flag. A number based flag value can be proceeded with an additional comparator
      * ({@code =, !=, <, <=, =>, >}) where the equality operator is optional (default if no comparator is specified).
      * <p>
-     * Use  {@link #applyIfOr()} for conjunction and for single precondition constraints use {@link #applyIf()} or
+     * Use  {@link #applyIfAnd()} for conjunction and for single precondition constraints use {@link #applyIf()} or
      * {@link #applyIfNot()} depending on the use case.
      */
     String[] applyIfOr() default {};

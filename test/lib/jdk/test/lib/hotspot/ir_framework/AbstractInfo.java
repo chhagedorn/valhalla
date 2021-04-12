@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
  * 
  * @see Test
  * @see Check
+ * @see Run
  */
 abstract public class AbstractInfo {
     private static final Random random = new Random();
@@ -48,7 +49,7 @@ abstract public class AbstractInfo {
     }
     
     /**
-     * Returns a different boolean each time this method is invoked (switching between {@code false} and {@code true}.
+     * Returns a different boolean each time this method is invoked (switching between {@code false} and {@code true}).
      * The first invocation returns {@code false}.
      *
      * @return an inverted boolean of the result of the last invocation of this method.
@@ -62,7 +63,7 @@ abstract public class AbstractInfo {
     /**
      * Get a random boolean.
      *
-     * @return a random boolean
+     * @return a random boolean.
      */
     public boolean getRandomBoolean() {
         return random.nextBoolean();
@@ -71,7 +72,7 @@ abstract public class AbstractInfo {
     /**
      * Get a random integer.
      *
-     * @return a random integer
+     * @return a random integer.
      */
     public int getRandomInt() {
         return random.nextInt();
@@ -141,7 +142,7 @@ abstract public class AbstractInfo {
      * Returns a boolean indicating if the test VM runs with flags that allow C2 compilations.
      *
      * @return {@code true} if C2 compilations are allowed;
-     *         {@code false} otherwise (run with {@code -XX:TieredStopAtLevel={1,2,3}, -XX:-Com}.
+     *         {@code false} otherwise (run with {@code -XX:TieredStopAtLevel={1,2,3}, -XX:-UseCompiler}.
      */
     public boolean isC2CompilationEnabled() {
         return TestFrameworkExecution.USE_COMPILER && !TestFrameworkExecution.TEST_C1;

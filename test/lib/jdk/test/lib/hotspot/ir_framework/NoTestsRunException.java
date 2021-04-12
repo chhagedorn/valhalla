@@ -29,9 +29,14 @@ package jdk.test.lib.hotspot.ir_framework;
  */
 public class NoTestsRunException extends RuntimeException {
 
-    NoTestsRunException() {
-    }
+    /**
+     * Default constructor used by test VM
+     */
+    NoTestsRunException() {}
 
+    /**
+     * Constructor used to eventually throw the exception in the driver VM.
+     */
     NoTestsRunException(String message) {
         super(message);
     }

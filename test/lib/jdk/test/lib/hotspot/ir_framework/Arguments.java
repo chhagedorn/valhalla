@@ -28,7 +28,7 @@ import java.lang.annotation.RetentionPolicy;
 
 /**
  * This annotation is used to specify well-defined {@link Argument} values for test methods (specifying {@link Test}) when
- * used as part of a <i>base test</i> or <i>checked test</i>.
+ * used as part of a <b>base test</b> or <b>checked test</b>.
  *
  * @see Argument
  * @see Test

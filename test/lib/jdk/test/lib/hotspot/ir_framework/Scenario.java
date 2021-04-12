@@ -29,10 +29,14 @@ import java.util.*;
  * This class represents a scenario that can be executed by the {@link TestFramework}.
  * <p>
  * A JTreg test should call the test framework with {@code @run driver}, not allowing to specify any additional flags.
- * If a test should run with additional flags, use {@link TestFramework#addFlags(String...)}. If, however, the test
- * should be run with different settings (equivalent to having multiple {@code @run} statements in a normal JTreg test),
- * use scenarios. A scenario will be run with the scenario specific flags, if any, and the flags specified with
- * {@link TestFramework#addFlags(String...)} whereas scenario flags will have precedence.
+ * If a test should run with additional flags, use {@link TestFramework#runWithFlags(String...)} or
+ * {@link TestFramework#addFlags(String...)}. If, however, the test should be run with different settings (equivalent
+ * to having multiple {@code @run} entries in a normal JTreg test), use scenarios. A scenario will be run with the
+ * scenario specific flags, if any, and the flags specified with
+ * {@link TestFramework#runWithFlags(String...)}/{@link TestFramework#addFlags(String...)} whereas scenario flags will
+ * have precedence.
+ *
+ * @see TestFramework
  */
 public class Scenario {
     private static final String ADDITIONAL_SCENARIO_FLAGS = System.getProperty("ScenarioFlags", "");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,16 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package jdk.test.lib.hotspot.ir_framework;
 
-public primitive class Point {
-    int x = 4;
-    int y = 7;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/**
+ * Force inlining of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}). Using this annotation on <i>non-helper</i> methods
+ * results in a {@link TestFormatException TestFormatException}.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ForceInline {
 }

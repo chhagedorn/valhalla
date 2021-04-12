@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,15 +21,14 @@
  * questions.
  */
 
-final primitive class SimpleInlineType {
-    final int x;
+package jdk.test.lib.hotspot.ir_framework;
 
-    private SimpleInlineType() {
-        x = 0;
-    }
+/**
+ * Checked internal exceptions in the framework to propagate error handling.
+ */
+class CheckedTestFrameworkException extends Exception {
 
-    static SimpleInlineType create() {
-        return SimpleInlineType.default;
+    CheckedTestFrameworkException(String msg) {
+        super(msg);
     }
 }
-

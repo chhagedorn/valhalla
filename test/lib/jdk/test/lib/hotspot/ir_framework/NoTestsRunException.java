@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,18 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package jdk.test.lib.hotspot.ir_framework;
 
-public primitive class Rectangle {
-    Point p0 = new Point();
-    Point p1 = new Point();
+/**
+ * Exception that is thrown by the test VM if no tests are run as a result of specifying {@code -DTest} and/or
+ * {@code -DExclude} defining an empty set with the used test VM flags.
+ */
+public class NoTestsRunException extends RuntimeException {
+
+    NoTestsRunException() {
+    }
+
+    NoTestsRunException(String message) {
+        super(message);
+    }
 }

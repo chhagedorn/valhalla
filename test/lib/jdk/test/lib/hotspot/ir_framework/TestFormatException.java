@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,14 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package jdk.test.lib.hotspot.ir_framework;
 
-public abstract class MyAbstract implements MyInterface {
+/**
+ * Exception that is thrown if a JTreg test violates the supported format by the test framework.
+ */
+public class TestFormatException extends RuntimeException {
 
+    TestFormatException(String message) {
+        super(message);
+    }
 }
-

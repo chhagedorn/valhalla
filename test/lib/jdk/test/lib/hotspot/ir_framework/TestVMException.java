@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,20 +21,20 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package jdk.test.lib.hotspot.ir_framework;
 
-public class NamedRectangle {
-    Rectangle rect = new Rectangle();
-    String name = "";
+/**
+ * Exception that is thrown if the test VM has thrown any kind of exception (except for {@link TestFormatException}).
+ */
+public class TestVMException extends RuntimeException {
+    private final String exceptionInfo;
 
-    static int getP1X(NamedRectangle nr) {
-        return nr.rect
-            .p1
-            .x;
+    TestVMException(String exceptionInfo) {
+        super("There were one or multiple errors. Please check stderr for more information.");
+        this.exceptionInfo = exceptionInfo;
     }
 
-    static Point getP1(NamedRectangle nr) {
-        return nr.rect
-            .p1;
+    public String getExceptionInfo() {
+        return exceptionInfo;
     }
 }

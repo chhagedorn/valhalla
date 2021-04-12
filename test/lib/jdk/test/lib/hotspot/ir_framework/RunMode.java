@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,10 +21,22 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package jdk.test.lib.hotspot.ir_framework;
 
-public final primitive class MyValueEmpty extends MyAbstract {
-    public long hash() { return 0; }
-
-    public MyValueEmpty copy(MyValueEmpty other) { return other; }
+/**
+ * The run mode for a <b>custom run test</b> specified in {@link Run#mode}.
+ *
+ * @see Run
+ */
+public enum RunMode {
+    /**
+     * Default mode: First warm up run method, then compile the associated
+     * test method and finally invoke the run method once more.
+     */
+    NORMAL,
+    /**
+     * Standalone mode: There is no warm up and no forced compilation.
+     * The run method is responsible to trigger the compilation(s).
+     */
+    STANDALONE
 }

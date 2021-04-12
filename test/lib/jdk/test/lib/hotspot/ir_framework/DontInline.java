@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,17 @@
  * questions.
  */
 
-package compiler.valhalla.inlinetypes;
+package jdk.test.lib.hotspot.ir_framework;
 
-public interface MyInterface {
-    public long hash();
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/**
+ * Prevent inlining of the associated <i>helper</i> method (not specifying {@link Test @Test},
+ * {@link Check @Check} or {@link Test @Run}). <i>Non-helper</i> methods are never inlined.
+ * Explicitly using this annotation on <i>non-helper</i> methods results in a
+ * {@link TestFormatException TestFormatException}.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+public @interface DontInline {
 }
-

@@ -140,8 +140,8 @@ public class TestFramework {
     private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
     private static final boolean REPORT_STDOUT = Boolean.getBoolean("ReportStdout");
     private final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
-    private final boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
-    private boolean shouldVerifyIR = VERIFY_IR; // Should we perform IR matching?
+    private boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
+    private boolean shouldVerifyIR; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
     private final Class<?> testClass;
@@ -402,7 +402,7 @@ public class TestFramework {
      */
     public void start() {
         installWhiteBox();
-        maybeDisableIRVerification();
+        maybeDisableIRVerificationCompletely();
 
         if (scenarios == null) {
             try {
@@ -603,26 +603,26 @@ public class TestFramework {
     }
 
     /**
-     * Disable IR verification in certain cases.
+     * Disable IR verification completely in certain cases.
      */
-    private void maybeDisableIRVerification() {
+    private void maybeDisableIRVerificationCompletely() {
         if (VERIFY_IR) {
-            shouldVerifyIR = hasIRAnnotations();
-            if (!shouldVerifyIR) {
+            VERIFY_IR = hasIRAnnotations();
+            if (!VERIFY_IR) {
                 System.out.println("IR verification disabled due to test " + testClass + " not specifying any @IR annotations");
                 return;
             }
 
-            shouldVerifyIR = Platform.isDebugBuild() && !Platform.isInt() && !Platform.isComp();
-            if (!shouldVerifyIR) {
+            VERIFY_IR = Platform.isDebugBuild() && !Platform.isInt() && !Platform.isComp();
+            if (!VERIFY_IR) {
                 System.out.println("IR verification disabled due to not running a debug build (required for PrintIdeal" +
                                    "and PrintOptoAssembly), running with -Xint, or -Xcomp (use warm-up of 0 instead)");
                 return;
             }
 
             // No IR verification is done if additional non-whitelisted JTreg VM or Javaoptions flag is specified.
-            shouldVerifyIR = onlyWhitelistedJTregVMAndJavaOptsFlags();
-            if (!shouldVerifyIR) {
+            VERIFY_IR = onlyWhitelistedJTregVMAndJavaOptsFlags();
+            if (!VERIFY_IR) {
                 System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions flag(s).\n");
             }
         }
@@ -707,6 +707,7 @@ public class TestFramework {
                                "-DScenarios and is therefore not executed.");
             return;
         }
+        shouldVerifyIR = VERIFY_IR;
         socket = TestFrameworkSocket.getSocket();
         this.scenario = scenario;
         try {

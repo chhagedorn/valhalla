@@ -46,30 +46,31 @@ public class TestCallingConventionC1 {
         final Scenario[] scenarios = {
                 // Default: both C1 and C2 are enabled, tiered compilation enabled
                 new Scenario(0,
-                        "-XX:CICompilerCount=2",
-                        "-XX:TieredStopAtLevel=4",
-                        "-XX:+TieredCompilation"),
+                             "-XX:CICompilerCount=2",
+                             "-XX:TieredStopAtLevel=4",
+                             "-XX:+TieredCompilation"),
                 // Default: both C1 and C2 are enabled, tiered compilation enabled
                 new Scenario(1,
-                        "-XX:CICompilerCount=2",
-                        "-XX:TieredStopAtLevel=4",
-                        "-XX:+TieredCompilation",
-                        "-XX:+StressInlineTypeReturnedAsFields"),
+                             "-XX:CICompilerCount=2",
+                             "-XX:TieredStopAtLevel=4",
+                             "-XX:+TieredCompilation",
+                             "-XX:+IgnoreUnrecognizedVMOptions",
+                             "-XX:+StressInlineTypeReturnedAsFields"),
                 // Same as above, but flip all the compLevel=CompLevel.C1 and compLevel=CompLevel.C2, so we test
                 // the compliment of the above scenario.
                 new Scenario(2,
-                        "-XX:CICompilerCount=2",
-                        "-XX:TieredStopAtLevel=4",
-                        "-XX:+TieredCompilation",
-                        "-DFlipC1C2=true"),
+                             "-XX:CICompilerCount=2",
+                             "-XX:TieredStopAtLevel=4",
+                             "-XX:+TieredCompilation",
+                             "-DFlipC1C2=true"),
                 // Only C1. Tiered compilation disabled.
                 new Scenario(3,
-                        "-XX:TieredStopAtLevel=1",
-                        "-XX:+TieredCompilation"),
+                             "-XX:TieredStopAtLevel=1",
+                             "-XX:+TieredCompilation"),
                 // Only C2.
                 new Scenario(4,
-                        "-XX:TieredStopAtLevel=4",
-                        "-XX:-TieredCompilation")
+                             "-XX:TieredStopAtLevel=4",
+                             "-XX:-TieredCompilation")
         };
 
         System.gc(); // Resolve this call, to avoid C1 code patching in the test cases.

@@ -104,7 +104,7 @@ public class CustomRunTestExample {
     @Run(test = "test2")
     public void runWithRunInfo(RunInfo info) {
         // We could also skip some invocations. This might have an influence on possible @IR rules, need to be careful.
-        if (info.getRandomBoolean()) {
+        if (info.getRandom().nextBoolean()) {
             int returnValue = test(34);
             if (returnValue != 34) {
                 throw new RuntimeException("Must match");

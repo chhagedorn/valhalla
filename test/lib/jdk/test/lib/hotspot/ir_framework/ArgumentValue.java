@@ -35,16 +35,19 @@ class ArgumentValue {
     private static final Random random = new Random();
 
     private final Object argumentValue;
-    private final boolean isToggleBoolean;
     private final boolean isRandomEach;
     private final boolean isFixedRandom;
     private final Class<?> randomClass;
-    private boolean previousBoolean;
 
-    private ArgumentValue(Object argumentValue, Boolean booleanToggle, boolean isFixedRandom) {
+    ArgumentValue() {
+        this.argumentValue = null;
+        this.isRandomEach = false;
+        this.randomClass = null;
+        this.isFixedRandom = false;
+    }
+
+    private ArgumentValue(Object argumentValue, boolean isFixedRandom) {
         this.argumentValue = argumentValue;
-        this.isToggleBoolean = booleanToggle != null;
-        this.previousBoolean = isToggleBoolean && !booleanToggle;
         this.isRandomEach = false;
         this.randomClass = null;
         this.isFixedRandom = isFixedRandom;
@@ -52,7 +55,6 @@ class ArgumentValue {
 
     private ArgumentValue(Object argumentValue, Class<?> randomClass) {
         this.argumentValue = argumentValue;
-        this.isToggleBoolean = false;
         this.isRandomEach = true;
         this.randomClass = randomClass;
         this.isFixedRandom = false;
@@ -62,8 +64,8 @@ class ArgumentValue {
      * Return all arguments for the @Arguments annotation.
      *
      * @param m The @Test method.
-     * @return  Returns an array with Argument objects for each specified argument in the @Arguments annotation of m.
-     *          Returns null if method has no @Arguments annotation.
+     * @return Returns an array with Argument objects for each specified argument in the @Arguments annotation of m.
+     *         Returns null if method has no @Arguments annotation.
      */
     public static ArgumentValue[] getArguments(Method m) {
         Arguments argumentsAnno = m.getAnnotation(Arguments.class);
@@ -134,13 +136,13 @@ class ArgumentValue {
                             TestFormat.check(isBoolean(parameter),
                                              "Provided invalid BOOLEAN_TOGGLE_FIRST_FALSE argument for non-boolean "
                                              + parameterObj + " for " + m);
-                            arguments[i] = createToggleBoolean(false);
+                            arguments[i] = BooleanToggleValue.create(false);
                         }
                         case BOOLEAN_TOGGLE_FIRST_TRUE -> {
                             TestFormat.check(ArgumentValue.isBoolean(parameter),
                                              "Provided invalid BOOLEAN_TOGGLE_FIRST_TRUE argument for non-boolean "
                                              + parameterObj + " for " + m);
-                            arguments[i] = createToggleBoolean(true);
+                            arguments[i] = BooleanToggleValue.create(true);
                         }
                         case RANDOM_ONCE -> {
                             TestFormat.check(isPrimitiveType(parameter),
@@ -167,7 +169,7 @@ class ArgumentValue {
     }
 
     private static ArgumentValue create(Object argumentValue) {
-        return new ArgumentValue(argumentValue, null, false);
+        return new ArgumentValue(argumentValue, false);
     }
 
     private static ArgumentValue createDefault(Class<?> c) throws Exception {
@@ -204,7 +206,7 @@ class ArgumentValue {
         } else {
             throw new TestFrameworkException("Invalid class passed to createMin()");
         }
-        return new ArgumentValue(argument, null, false);
+        return new ArgumentValue(argument, false);
     }
 
     private static ArgumentValue createMax(Class<?> c) {
@@ -226,15 +228,11 @@ class ArgumentValue {
         } else {
             throw new TestFrameworkException("Invalid class passed to createMax()");
         }
-        return new ArgumentValue(argument, null, false);
-    }
-
-    private static ArgumentValue createToggleBoolean(boolean firstBoolean) {
-        return new ArgumentValue(null, firstBoolean, false);
+        return new ArgumentValue(argument, false);
     }
 
     private static ArgumentValue createRandom(Class<?> c) {
-        return new ArgumentValue(getRandom(c), null, true);
+        return new ArgumentValue(getRandom(c), true);
     }
 
     private static ArgumentValue createRandomEach(Class<?> c) {
@@ -246,10 +244,7 @@ class ArgumentValue {
     }
 
     public Object getArgument() {
-        if (isToggleBoolean) {
-            previousBoolean = !previousBoolean;
-            return previousBoolean;
-        } else if (isRandomEach) {
+        if (isRandomEach) {
             return getRandom(randomClass);
         } else {
             return argumentValue;
@@ -306,5 +301,26 @@ class ArgumentValue {
             TestFormat.fail("Cannot generate random value for non-primitive type");
             return null;
         }
+    }
+}
+
+/**
+ * Special class to handle boolean toggle argument values.
+ */
+class BooleanToggleValue extends ArgumentValue {
+    private boolean previousBoolean;
+
+    BooleanToggleValue(boolean firstBoolean) {
+        this.previousBoolean = !firstBoolean;
+    }
+
+    @Override
+    public Object getArgument() {
+        previousBoolean = !previousBoolean;
+        return previousBoolean;
+    }
+
+    static BooleanToggleValue create(boolean firstBoolean) {
+        return new BooleanToggleValue(firstBoolean);
     }
 }

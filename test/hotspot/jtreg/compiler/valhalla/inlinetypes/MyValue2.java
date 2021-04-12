@@ -23,7 +23,8 @@
 
 package compiler.valhalla.inlinetypes;
 
-import jdk.test.lib.hotspot.ir_framework.*;
+import jdk.test.lib.hotspot.ir_framework.DontInline;
+import jdk.test.lib.hotspot.ir_framework.ForceInline;
 
 final primitive class MyValue2Inline {
     final double d;

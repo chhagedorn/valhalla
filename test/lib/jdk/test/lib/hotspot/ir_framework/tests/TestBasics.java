@@ -51,6 +51,7 @@ public class TestBasics {
 
     public static void main(String[] args) throws Exception {
         // Run on same VM to make this test easier as we are not interested in any output processing.
+        Class<?> c = TestFramework.class; // Enable JTreg test to compile TestFramework
         Method runTestsOnSameVM = TestFrameworkExecution.class.getDeclaredMethod("runTestsOnSameVM", Class.class);
         runTestsOnSameVM.setAccessible(true);
         runTestsOnSameVM.invoke(null, new Object[]{ null });

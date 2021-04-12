@@ -827,7 +827,8 @@ public class TestFrameworkExecution {
     }
 
     static void assertDeoptimizedByC1(Method m) {
-        TestRun.check(compiledByC1(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized by C1");
+        TestRun.check(compiledByC1(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter,
+                      m + " should have been deoptimized by C1");
     }
 
     static void assertDeoptimizedByC2(Method m) {
@@ -852,7 +853,7 @@ public class TestFrameworkExecution {
     }
 
     static void assertCompiled(Method m) {
-        TestRun.check(isC1Compiled(m) || isC2Compiled(m), m + " should have been compiled");
+        TestRun.check(compiledByC1(m) != TriState.No || compiledByC2(m) != TriState.No, m + " should have been compiled");
     }
 
     private static TriState compiledByC1(Method m) {
@@ -873,17 +874,11 @@ public class TestFrameworkExecution {
     }
 
     private static TriState compiledAtLevel(Method m, CompLevel level) {
-        if (!USE_COMPILER || XCOMP || TEST_C1 ||
-            (EXCLUDE_RANDOM && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
-            return TriState.Maybe;
-        }
         if (WHITE_BOX.isMethodCompiled(m, false)) {
             switch (level) {
                 case C1, C1_LIMITED_PROFILE, C1_FULL_PROFILE, C2 -> {
                     if (WHITE_BOX.getMethodCompilationLevel(m, false) == level.getValue()) {
                         return TriState.Yes;
-                    } else {
-                        return TriState.No;
                     }
                 }
                 case ANY -> {
@@ -891,6 +886,10 @@ public class TestFrameworkExecution {
                 }
                 default -> TestRun.fail("compiledAtLevel() should not be called with " + level);
             }
+        }
+        if (!USE_COMPILER || XCOMP || TEST_C1 ||
+            (EXCLUDE_RANDOM && !WHITE_BOX.isMethodCompilable(m, level.getValue(), false))) {
+            return TriState.Maybe;
         }
         return TriState.No;
     }

@@ -808,7 +808,11 @@ public class TestFramework {
         if (scenario != null) {
             scenario.setTestVMOutput(lastTestVMOutput);
         }
-        String socketOutput = socket.getOutputPrintStdout();
+        String socketOutput = "";
+        if (shouldVerifyIR || TESTLIST || EXCLUDELIST) {
+            // Socket has only output to read if IR verification is done and/or if a test list was provided by user
+            socketOutput = socket.getOutputPrintStdout();
+        }
         checkTestVMExitCode(output);
         if (shouldVerifyIR) {
             try {

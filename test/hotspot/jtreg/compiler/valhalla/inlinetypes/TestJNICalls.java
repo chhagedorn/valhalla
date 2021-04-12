@@ -33,9 +33,8 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rL;
  * @test
  * @key randomness
  * @summary Test calling native methods with inline type arguments from compiled code.
- * @library /test/lib
+ * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestJNICalls
  */
 

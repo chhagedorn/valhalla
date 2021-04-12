@@ -37,15 +37,13 @@ import java.util.Arrays;
  * @test
  * @key randomness
  * @summary Test nullable inline type arrays
- * @library /test/lib
+ * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver compiler.valhalla.inlinetypes.TestNullableArrays
  */
 
 @ForceCompileClassInitializer
 public class TestNullableArrays {
-    static final TestFramework testFramework = InlineTypes.getFramework();
 
     public static void main(String[] args) {
 
@@ -55,11 +53,12 @@ public class TestNullableArrays {
         scenarios[4].addFlags("-XX:-MonomorphicArrayCheck", "-XX:-UncommonNullCast");
         scenarios[5].addFlags("-XX:-MonomorphicArrayCheck", "-XX:-UncommonNullCast", "-XX:+StressArrayCopyMacroNode");
 
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class,
-                                       MyValue2.class,
-                                       MyValue2Inline.class)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class)
+                   .start();
     }
 
     // Helper methods

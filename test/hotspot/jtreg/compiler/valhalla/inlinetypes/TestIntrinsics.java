@@ -39,10 +39,9 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rL;
  * @test
  * @key randomness
  * @summary Test intrinsic support for inline types
- * @library /test/lib
+ * @library /test/lib /
  * @modules java.base/jdk.internal.misc
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestIntrinsics
  */
 
@@ -63,7 +62,7 @@ public class TestIntrinsics {
                    .addHelperClasses(MyValue1.class,
                                      MyValue2.class,
                                      MyValue2Inline.class)
-                    .start();
+                   .start();
     }
 
     // Test correctness of the Class::isAssignableFrom intrinsic

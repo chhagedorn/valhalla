@@ -32,9 +32,8 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rL;
  * @test
  * @key randomness
  * @summary Various tests that are specific for C1.
- * @library /test/lib
+ * @library /test/lib /
  * @requires os.simpleArch == "x64"
- * @compile InlineTypes.java
  * @compile -XDallowWithFieldOperator TestC1.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestC1
  */
@@ -61,8 +60,11 @@ public class TestC1 {
 
         InlineTypes.getFramework()
                    .addScenarios(scenarios)
-                   .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class,
-                                     MyValue3.class, MyValue3Inline.class)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class,
+                                     MyValue3.class,
+                                     MyValue3Inline.class)
                    .start();
     }
 

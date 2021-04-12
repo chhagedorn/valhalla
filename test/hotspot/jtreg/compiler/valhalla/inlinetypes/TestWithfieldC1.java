@@ -30,9 +30,8 @@ import jdk.test.lib.hotspot.ir_framework.*;
  * @test
  * @key randomness
  * @summary Verify that C1 performs escape analysis before optimizing withfield bytecode to putfield.
- * @library /test/lib
+ * @library /test/lib /
  * @requires os.simpleArch == "x64"
- * @compile InlineTypes.java
  * @compile -XDallowWithFieldOperator TestWithfieldC1.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestWithfieldC1
  */

@@ -38,16 +38,13 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @test
  * @key randomness
  * @summary Test inline type arrays
- * @library /test/lib
+ * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestArrays
  */
 
 @ForceCompileClassInitializer
 public class TestArrays {
-
-    static final TestFramework testFramework = InlineTypes.getFramework();
 
     public static void main(String[] args) {
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
@@ -56,9 +53,10 @@ public class TestArrays {
         scenarios[4].addFlags("-XX:-MonomorphicArrayCheck", "-XX:-UncommonNullCast");
         scenarios[5].addFlags("-XX:-MonomorphicArrayCheck", "-XX:-UncommonNullCast", "-XX:+StressArrayCopyMacroNode");
 
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class)
+                   .start();
     }
 
     // Helper methods and classes

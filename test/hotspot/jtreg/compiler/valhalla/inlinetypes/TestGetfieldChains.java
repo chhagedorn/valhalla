@@ -30,9 +30,9 @@ import jdk.test.lib.hotspot.ir_framework.*;
  * @test
  * @key randomness
  * @summary Verify that chains of getfields on flattened fields are correctly optimized
- * @library /test/lib
+ * @library /test/lib /
  * @requires os.simpleArch == "x64"
- * @compile InlineTypes.java GetfieldChains.jcod
+ * @compile GetfieldChains.jcod
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestGetfieldChains
  */
 

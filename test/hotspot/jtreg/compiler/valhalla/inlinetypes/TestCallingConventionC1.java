@@ -34,15 +34,13 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rL;
  * @test
  * @key randomness
  * @summary Test calls from {C1} to {C2, Interpreter}, and vice versa.
- * @library /test/lib
+ * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConventionC1
  */
 
 @ForceCompileClassInitializer
 public class TestCallingConventionC1 {
-    static final TestFramework testFramework = InlineTypes.getFramework();
 
     public static void main(String[] args) {
         final Scenario[] scenarios = {
@@ -76,8 +74,9 @@ public class TestCallingConventionC1 {
 
         System.gc(); // Resolve this call, to avoid C1 code patching in the test cases.
 
-        testFramework.addScenarios(scenarios)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .start();
     }
 
     // Helper methods and classes

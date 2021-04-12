@@ -26,6 +26,8 @@ package compiler.valhalla.inlinetypes;
 import jdk.test.lib.Asserts;
 import jdk.test.lib.hotspot.ir_framework.*;
 
+import java.lang.reflect.Method;
+
 import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.*;
 
@@ -35,7 +37,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.*;
  * @summary Test the basic inline type implementation in C2
  *
  * @requires os.simpleArch == "x64"
- * @library /test/lib
+ * @library /test/lib /
  * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestBasicFunctionality
  */
@@ -43,17 +45,19 @@ import static compiler.valhalla.inlinetypes.InlineTypes.*;
 @ForceCompileClassInitializer
 public class TestBasicFunctionality {
 
-    static final TestFramework testFramework = InlineTypes.getFramework();
-
     public static void main(String[] args) {
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[2].addFlags("-DVerifyIR=false");
         scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
 
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class, MyValue2.class, MyValue2Inline.class,
-                                       MyValue3.class, MyValue3Inline.class)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class,
+                                     MyValue3.class,
+                                     MyValue3Inline.class)
+                   .start();
     }
 
     // Helper methods
@@ -465,12 +469,12 @@ public class TestBasicFunctionality {
     @IR(applyIf = {"InlineTypePassFieldsAsArgs", "false"},
         counts = {ALLOC, "= 1"},
         failOn = LOAD)
-    public long test20(boolean deopt) {
+    public long test20(boolean deopt, Method m) {
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         MyValue2[] va = new MyValue2[3];
         if (deopt) {
             // uncommon trap
-            testFramework.deoptimize("test20");
+            TestFramework.deoptimize(m);
         }
 
         return v.hashInterpreted() + va[0].hashInterpreted() +
@@ -480,7 +484,7 @@ public class TestBasicFunctionality {
     @Run(test = "test20")
     public void test20_verifier(RunInfo info) {
         MyValue2[] va = new MyValue2[42];
-        long result = test20(!info.isWarmUp());
+        long result = test20(!info.isWarmUp(), info.getTest());
         Asserts.assertEQ(result, hash() + va[0].hash() + va[1].hash() + va[2].hash());
     }
 
@@ -601,19 +605,19 @@ public class TestBasicFunctionality {
     // Test allocation elimination of unused object with initialized inline type field
     @Test
     @IR(failOn = {ALLOC, LOAD, STORE, LOOP})
-    public void test27(boolean deopt) {
+    public void test27(boolean deopt, Method m) {
         TestClass27 unused = new TestClass27();
         MyValue1 v = MyValue1.createWithFieldsInline(rI, rL);
         unused.v = v;
         if (deopt) {
             // uncommon trap
-            testFramework.deoptimize("test27");
+            TestFramework.deoptimize(m);
         }
     }
 
     @Run(test = "test27")
     public void test27_verifier(RunInfo info) {
-        test27(!info.isWarmUp());
+        test27(!info.isWarmUp(), info.getTest());
     }
 
     static MyValue3 staticVal3;

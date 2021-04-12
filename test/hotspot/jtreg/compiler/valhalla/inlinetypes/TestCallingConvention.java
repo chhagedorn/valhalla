@@ -38,9 +38,8 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @test
  * @key randomness
  * @summary Test inline type calling convention optimizations
- * @library /test/lib
+ * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConvention
  */
 
@@ -66,8 +65,6 @@ public class TestCallingConvention {
         }
     }
 
-    static final TestFramework testFramework = InlineTypes.getFramework();
-
     public static void main(String[] args) {
 
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
@@ -77,14 +74,15 @@ public class TestCallingConvention {
         scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
         scenarios[4].addFlags("-XX:-UseTLAB");
 
-        testFramework.addScenarios(scenarios)
-                    .addHelperClasses(MyValue1.class,
-                                      MyValue2.class,
-                                      MyValue2Inline.class,
-                                      MyValue3.class,
-                                      MyValue3Inline.class,
-                                      MyValue4.class)
-                    .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class,
+                                     MyValue3.class,
+                                     MyValue3Inline.class,
+                                     MyValue4.class)
+                   .start();
     }
 
     // Helper methods and classes

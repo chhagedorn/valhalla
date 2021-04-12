@@ -38,15 +38,13 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @test
  * @key randomness
  * @summary Test method handle support for inline types
- * @library /test/lib
+ * @library /test/lib /
  * @requires os.simpleArch == "x64"
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestMethodHandles
  */
 
 @ForceCompileClassInitializer
 public class TestMethodHandles {
-    static final TestFramework testFramework = InlineTypes.getFramework();
 
     static {
         try {
@@ -135,13 +133,14 @@ public class TestMethodHandles {
                               "-XX:CompileCommand=dontinline,java.lang.invoke.DirectMethodHandle::internalMemberName");
         scenarios[4].addFlags("-XX:CompileCommand=dontinline,java.lang.invoke.DirectMethodHandle::internalMemberName");
 
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class,
-                                       MyValue2.class,
-                                       MyValue2Inline.class,
-                                       MyValue3.class,
-                                       MyValue3Inline.class)
-                    .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class,
+                                     MyValue3.class,
+                                     MyValue3Inline.class)
+                   .start();
     }
 
     // Everything inlined

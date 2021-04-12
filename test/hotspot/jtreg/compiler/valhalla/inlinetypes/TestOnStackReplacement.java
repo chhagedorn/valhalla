@@ -36,27 +36,26 @@ import java.lang.reflect.Method;
  * @test
  * @key randomness
  * @summary Test on stack replacement (OSR) with inline types
- * @library /test/lib
+ * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestOnStackReplacement
  */
 
 public class TestOnStackReplacement {
 
-    static final TestFramework testFramework = InlineTypes.getFramework();
 
     public static void main(String[] args) throws Throwable {
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[3].addFlags("-XX:FlatArrayElementMaxSize=0");
 
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class,
-                                       MyValue2.class,
-                                       MyValue2Inline.class,
-                                       MyValue3.class,
-                                       MyValue3Inline.class)
-                     .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class,
+                                     MyValue3.class,
+                                     MyValue3Inline.class)
+                   .start();
     }
 
     // Helper methods

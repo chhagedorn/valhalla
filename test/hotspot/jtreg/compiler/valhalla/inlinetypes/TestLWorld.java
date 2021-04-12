@@ -40,16 +40,14 @@ import test.java.lang.invoke.lib.InstructionHelper;
  * @test
  * @key randomness
  * @summary Test inline types in LWorld.
- * @library /test/lib /test/jdk/lib/testlibrary/bytecode /test/jdk/java/lang/invoke/common
+ * @library /test/lib /test/jdk/lib/testlibrary/bytecode /test/jdk/java/lang/invoke/common /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
  * @build jdk.experimental.bytecode.BasicClassBuilder test.java.lang.invoke.lib.InstructionHelper
- * @compile InlineTypes.java
  * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestLWorld
  */
 
 @ForceCompileClassInitializer
 public class TestLWorld {
-    static final TestFramework testFramework = InlineTypes.getFramework();
 
     public static void main(String[] args) {
 
@@ -58,13 +56,14 @@ public class TestLWorld {
         scenarios[3].addFlags("-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
         scenarios[4].addFlags("-XX:-MonomorphicArrayCheck");
 
-        testFramework.addScenarios(scenarios)
-                     .addHelperClasses(MyValue1.class,
-                                       MyValue2.class,
-                                       MyValue2Inline.class,
-                                       MyValue3.class,
-                                       MyValue3Inline.class)
-                    .start();
+        InlineTypes.getFramework()
+                   .addScenarios(scenarios)
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class,
+                                     MyValue2Inline.class,
+                                     MyValue3.class,
+                                     MyValue3Inline.class)
+                   .start();
     }
 
     // Helper methods

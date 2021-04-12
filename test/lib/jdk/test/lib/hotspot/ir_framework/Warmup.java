@@ -32,7 +32,7 @@ import java.lang.annotation.RetentionPolicy;
  *     <li><p>Any positive value or zero is permitted. A warm-up of zero allows a simulation of {@code -Xcomp}.</li>
  *     <li><p>Custom run tests (see {@link Run}) must specify a {@code @Warmup} annotation at the run method.</li>
  *     <li><p>Base and checked tests (see {@link Test}, {@link Check}) must specify a {@code @Warmup} annotation at
- *     the test method.</li>
+ *            the test method.</li>
  * </ul>
  *
  * @see Test
@@ -41,5 +41,8 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Warmup {
+    /**
+     * The warm-up iterations for the test.
+     */
     int value();
 }

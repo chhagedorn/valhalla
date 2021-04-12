@@ -114,7 +114,7 @@ abstract public class AbstractInfo {
      * Returns a boolean indicating if the test VM runs with flags that allow C2 compilations.
      *
      * @return {@code true} if C2 compilations are allowed;
-     *         {@code false} otherwise (run with {@code -XX:TieredStopAtLevel={1,2,3}, -XX:-UseCompiler}.
+     *         {@code false} otherwise (run with {@code -XX:TieredStopAtLevel={1,2,3}, -XX:-UseCompiler}).
      */
     public boolean isC2CompilationEnabled() {
         return TestFrameworkExecution.USE_COMPILER && !TestFrameworkExecution.TEST_C1;

@@ -55,8 +55,8 @@ public class RunInfo extends AbstractInfo {
     }
 
     /**
-     * Get the associated test method object of this custom run test. This method can only be called if one test method
-     * is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #getTest(String)}.
+     * Get the associated test method object of this custom run test. This method can only be called if <i>one</i> test
+     * method is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #getTest(String)}.
      *
      * @return the associated test method object.
      * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
@@ -72,8 +72,8 @@ public class RunInfo extends AbstractInfo {
      *
      * @param testName the test method for which the method object should be returned.
      * @return the associated test method object with the name {@code testName}.
-     * @throws TestRunException if there is no test method with the name {@code testName} or if called with more than
-     *         one associated test method.
+     * @throws TestRunException if there is no test method with the name {@code testName} or if called with only
+     *         <i>one</i> associated test method.
      */
     public Method getTest(String testName) {
         checkMultipleTests("getTest");
@@ -83,11 +83,11 @@ public class RunInfo extends AbstractInfo {
     /**
      * Return a boolean indicating if the framework skipped a compilation of the associated test method after the warm-up
      * due to VM flags not allowing a compilation on the requested level in {@link Test#compLevel()}. This method can only
-     * be called if one test method is specified in the custom run test ({@link Run#test()}). Otherwise, use
+     * be called if <i>one</i> test method is specified in the custom run test ({@link Run#test()}). Otherwise, use
      * {@link #isCompilationSkipped(String)}.
      *
      * @return {@code true} if the framework compiled the test;
-     *         {@code false} otherwise
+     *         {@code false} otherwise.
      * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
      */
     public boolean isCompilationSkipped() {
@@ -103,17 +103,19 @@ public class RunInfo extends AbstractInfo {
      *
      * @param testName the test method for which the method object should be returned.
      * @return {@code true} if the framework compiled the test;
-     *         {@code false} otherwise
-     * @throws TestRunException if there is no test method with the name {@code testName} or if called with more than
-     *         one associated test method.     */
+     *         {@code false} otherwise.
+     * @throws TestRunException if there is no test method with the name {@code testName} or if called with only
+     *         <i>one</i> associated test method.
+     */
     public boolean isCompilationSkipped(String testName) {
         checkMultipleTests("isCompilationSkipped");
         return getDeclaredTest(testName).getCompLevel() == CompLevel.SKIP;
     }
 
     /**
-     * Returns a boolean indicating if the associated test method is C1 compiled. This method can only be called if one
-     * test method is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #isTestC1Compiled(String)}.
+     * Returns a boolean indicating if the associated test method is C1 compiled. This method can only be called if
+     * <i>one</i> test method is specified in the custom run test ({@link Run#test()}). Otherwise, use
+     * {@link #isTestC1Compiled(String)}.
      *
      * @return {@code true} if the associated test method is C1 compiled;
      *         {@code false} otherwise.
@@ -130,10 +132,10 @@ public class RunInfo extends AbstractInfo {
      * Otherwise, use {@link #isTestC1Compiled()}.
      *
      * @param testName the name of the test method.
-     * @return {@code true} if the test method with the name {@code testName} is C2 compiled;
+     * @return {@code true} if the test method with the name {@code testName} is C1 compiled;
      *         {@code false} otherwise.
-     * @throws TestRunException if there is no test method with the name {@code testName} or if called with more than
-     *         one associated test method.
+     * @throws TestRunException if there is no test method with the name {@code testName} or if called with only
+     *         <i>one</i> associated test method.
      */
     public boolean isTestC1Compiled(String testName) {
         checkMultipleTests("isTestC1Compiled");
@@ -141,8 +143,9 @@ public class RunInfo extends AbstractInfo {
     }
 
     /**
-     * Returns a boolean indicating if the associated test method is C2 compiled. This method can only be called if one
-     * test method is specified in the custom run test ({@link Run#test()}). Otherwise, use {@link #isTestC2Compiled(String)}.
+     * Returns a boolean indicating if the associated test method is C2 compiled. This method can only be called if
+     * <i>one</i> test method is specified in the custom run test ({@link Run#test()}). Otherwise, use
+     * {@link #isTestC2Compiled(String)}.
      *
      * @return {@code true} if the associated test method is C2 compiled;
      *         {@code false} otherwise.
@@ -154,15 +157,15 @@ public class RunInfo extends AbstractInfo {
     }
 
     /**
-     * Returns a boolean indicating if the associated test method with the name {@code testName} is C2 compiled. This
-     * method can only be called if the custom run test specifies more than one test method in ({@link Run#test()}).
-     * Otherwise, use {@link #isTestC1Compiled()}.
+     * Returns a boolean indicating if the associated test method with the name {@code testName} is C2 compiled.
+     * This method can only be called if the custom run test specifies more than one test method in ({@link Run#test()}).
+     * Otherwise, use {@link #isTestC2Compiled()}.
      *
      * @param testName the name of the test method.
      * @return {@code true} if the test method with the name {@code testName} is C2 compiled;
      *         {@code false} otherwise.
-     * @throws TestRunException if there is no test method with the name {@code testName} or if called with more than
-     *         one associated test method.
+     * @throws TestRunException if there is no test method with the name {@code testName} or if called with only
+     *         <i>one</i> associated test method.
      */
     public boolean isTestC2Compiled(String testName) {
         checkMultipleTests("isTestC2Compiled");
@@ -171,7 +174,7 @@ public class RunInfo extends AbstractInfo {
 
     /**
      * Returns a boolean indicating if the associated test method is compiled at {@code compLevel}. This method can only
-     * be called if one test method is specified in the custom run test ({@link Run#test()}).
+     * be called if <i>one</i> test method is specified in the custom run test ({@link Run#test()}).
      * Otherwise, use {@link #isTestCompiledAtLevel(String, CompLevel)}.
      *
      * @param compLevel the compilation level
@@ -193,8 +196,8 @@ public class RunInfo extends AbstractInfo {
      * @param compLevel the compilation level.
      * @return {@code true} if the test method with the name {@code testName} is compiled at {@code compLevel};
      *         {@code false} otherwise.
-     * @throws TestRunException if there is no test method with the name {@code testName} or if called with more than
-     *         one associated test method.
+     * @throws TestRunException if there is no test method with the name {@code testName} oor if called with only
+     *         <i>one</i> associated test method.
      */
     public boolean isTestCompiledAtLevel(String testName, CompLevel compLevel) {
         checkMultipleTests("isTestCompiledAtLevel");
@@ -223,6 +226,7 @@ public class RunInfo extends AbstractInfo {
         }
         return test;
     }
+
     private Method getMethod(String testName) {
         return getDeclaredTest(testName).getTestMethod();
     }

@@ -28,13 +28,14 @@ import java.util.*;
 /**
  * This class represents a scenario that can be executed by the {@link TestFramework}.
  * <p>
- * A JTreg test should call the test framework with {@code @run driver}, not allowing to specify any additional flags.
+ * A JTreg test should use the test framework with {@code @run driver} (without directly specify any additional flags).
  * If a test should run with additional flags, use {@link TestFramework#runWithFlags(String...)} or
  * {@link TestFramework#addFlags(String...)}. If, however, the test should be run with different settings (equivalent
  * to having multiple {@code @run} entries in a normal JTreg test), use scenarios. A scenario will be run with the
- * scenario specific flags, if any, and the flags specified with
- * {@link TestFramework#runWithFlags(String...)}/{@link TestFramework#addFlags(String...)} whereas scenario flags will
- * have precedence.
+ * scenario specific VM flags, if any, and optionally specified VM flags with {@link TestFramework#addFlags(String...)}
+ * whereas scenario VM flags will have precedence.
+ * <p>
+ * There is also the possibility to specify additional VM flags for all scenarios by using {@code DScenarioFlags}.
  *
  * @see TestFramework
  */
@@ -66,10 +67,10 @@ public class Scenario {
     }
 
     /**
-     * Create a scenario with index {@code index} that will be run with the additionally specified flags specified in
-     * {@code flags} (or without any additional flags if null or parameter not specified).
+     * Create a scenario with {@code index} that will be run with the additional VM flags specified in {@code flags}
+     * (or without any if null or parameter not provided).
      * <p>
-     * The scenario index must be unique to be distinguishable in stdout and stderr output and when specifying
+     * The scenario {@code index} must be unique to be distinguishable in the stdout and stderr output and when specifying
      * {@code -DScenarios} (see {@link Scenario}).
      *
      * @param index the unique scenario index.
@@ -87,9 +88,9 @@ public class Scenario {
     }
 
     /**
-     * Add additional flags to this scenario.
+     * Add additional VM flags to this scenario.
      *
-     * @param flags the additional scenario flags.
+     * @param flags the additional scenario VM flags.
      */
     public void addFlags(String... flags) {
         if (flags != null) {
@@ -98,9 +99,9 @@ public class Scenario {
     }
 
     /**
-     * Get all scenario specific flags as defined in {@link #Scenario(int, String...)}.
+     * Get all scenario specific VM flags as defined in {@link #Scenario(int, String...)}.
      *
-     * @return the scenario flags.
+     * @return the scenario VM flags.
      */
     public List<String> getFlags() {
         return flags;
@@ -113,18 +114,6 @@ public class Scenario {
      */
     public int getIndex() {
         return index;
-    }
-
-    /**
-     * Returns a boolean indicating if this scenario will be executed by the test framework. This only depends on
-     * the property flag {@code -DScenarios} (see {@link Scenario}).
-     *
-     * @return {@code true} if {@code -DScenarios} is either not set or if {@code -DScenarios} specifies the scenario
-     *         index set by {@link #Scenario(int, String...)}.
-     *         {@code false} otherwise.
-     */
-    public boolean isEnabled() {
-        return enabled;
     }
 
     /**
@@ -141,5 +130,17 @@ public class Scenario {
      */
     void setTestVMOutput(String testVMOutput) {
         this.testVMOutput = testVMOutput;
+    }
+
+    /**
+     * Returns a boolean indicating if this scenario will be executed by the test framework. This only depends on
+     * the property flag {@code -DScenarios} (see {@link Scenario}). This is only used by the framework internally.
+     *
+     * @return {@code true} if {@code -DScenarios} is either not set or if {@code -DScenarios} specifies the scenario
+     *         index set by {@link #Scenario(int, String...)}.
+     *         {@code false} otherwise.
+     */
+    boolean isEnabled() {
+        return enabled;
     }
 }

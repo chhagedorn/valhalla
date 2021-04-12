@@ -96,12 +96,12 @@ import java.util.stream.Collectors;
  */
 public class TestFramework {
     /**
-     * JTreg can define additional VM (-Dtest.vm.opts) and Javaoption (-Dtest.java.opts) flags. IR verification is only
+     * JTreg can define additional VM (-Dtest.vm.opts) and Javaoptions (-Dtest.java.opts) flags. IR verification is only
      * performed when all these additional JTreg flags (does not include additionally added framework and scenario flags
      * by user code) are whitelisted.
      *
      * A flag is whitelisted if it is a property flag (starting with -D), -ea, -esa, or if the flag name contains any of
-     * the entries of this list as a substring.
+     * the entries of this list as a substring (partial match).
      */
     public static final Set<String> JTREG_WHITELIST_FLAGS = new HashSet<>(
             Arrays.asList(
@@ -113,7 +113,8 @@ public class TestFramework {
                     "Print",
                     "Verify",
                     "TLAB",
-                    // The following substrings are only part of one VM flag (= exact match)
+                    "UseNewCode",
+                    // The following substrings are only part of one VM flag (=exact match)
                     "CreateCoredumpOnCrash",
                     "UnlockDiagnosticVMOptions",
                     "BackgroundCompilation",
@@ -123,8 +124,7 @@ public class TestFramework {
                     "UseParallelGC",
                     "UseG1GC",
                     "UseZGC",
-                    "UseShenandoahGC",
-                    "UseNewCode"
+                    "UseShenandoahGC"
             )
     );
 
@@ -138,10 +138,10 @@ public class TestFramework {
     private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.getBoolean("PreferCommandLineFlags");
     private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
-    private static final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
-    private static boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
     private static final boolean REPORT_STDOUT = Boolean.getBoolean("ReportStdout");
-    private boolean shouldVerifyIR = true; // Should we perform IR matching?
+    private final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
+    private final boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
+    private boolean shouldVerifyIR = VERIFY_IR; // Should we perform IR matching?
     private static String lastTestVMOutput;
 
     private final Class<?> testClass;
@@ -157,11 +157,10 @@ public class TestFramework {
      */
 
     /**
-     * Creates an instance of TestFramework to test the class from which this constructor was invoked from.
+     * Creates an instance acting as a builder to test the class from which this constructor was invoked from.
      * Use this constructor if you want to use multiple run options (flags, helper classes, scenarios).
      * Use the associated add methods ({@link #addFlags(String...)}, {@link #addScenarios(Scenario...)},
-     * {@link #addHelperClasses(Class...)})
-     * to set up everything and then start the testing by invoking {@link #start()}.
+     * {@link #addHelperClasses(Class...)}) to set up everything and then start the testing by invoking {@link #start()}.
      */
     public TestFramework() {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
@@ -172,11 +171,10 @@ public class TestFramework {
     }
 
     /**
-     * Creates an instance of TestFramework to test {@code testClass}.
+     * Creates an instance acting as a builder to test {@code testClass}.
      * Use this constructor if you want to use multiple run options (flags, helper classes, scenarios).
      * Use the associated add methods ({@link #addFlags(String...)}, @link #addScenarios(Scenario...)},
-     * {@link #addHelperClasses(Class...)})
-     * to set up everything and then start the testing by invoking {@link #start()}.
+     * {@link #addHelperClasses(Class...)}) to set up everything and then start the testing by invoking {@link #start()}.
      * 
      * @param testClass the class to be tested by the framework.
      * @see #TestFramework()
@@ -228,11 +226,12 @@ public class TestFramework {
     /**
      * Tests the class from which this method was invoked from. The test VM is called with the specified {@code flags}.
      * <ul>
-     *     <li><p>The {@code flags} override any set Java or VM options by JTreg by default.<p>
-     *     Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the {@code flags}.</li>
-     *     <li><p>If you want to run your JTreg test with additional flags, use this method.</li>
-     *     <li><p>If you want to run your JTreg test with multiple flag combinations,
-     *     use {@link #runWithScenarios(Scenario...)}</li>
+     *     <li><p>The {@code flags} override any set VM or Javaoptions flags by JTreg by default.<p>
+     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the JTreg VM and  Javaoptions flags over
+     *            the specified {@code flags} of this method.</li>
+     *     <li><p>If you want to run your entire JTreg test with additional flags, use this method.</li>
+     *     <li><p>If you want to run your JTreg test with multiple flag combinations, use
+     *            {@link #runWithScenarios(Scenario...)}</li>
      * </ul>
      *
      * @param flags VM flags to be used for the test VM.
@@ -245,11 +244,12 @@ public class TestFramework {
     /**
      * Tests {@code testClass}. The test VM is called with the specified {@code flags}.
      * <ul>
-     *     <li><p>The {@code flags} override any set Java or VM options by JTreg by default.<p>
-     *     Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the {@code flags}.</li>
-     *     <li><p>If you want to run your JTreg test with additional flags, use this method.</li>
-     *     <li><p>If you want to run your JTreg test with multiple flag combinations,
-     *     use {@link #runWithScenarios(Class, Scenario...)}</li>
+     *     <li><p>The {@code flags} override any set VM or Javaoptions flags by JTreg by default.<p>
+     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the JTreg VM and  Javaoptions flags over
+     *            the specified {@code flags} of this method.</li>
+     *     <li><p>If you want to run your entire JTreg test with additional flags, use this method.</li>
+     *     <li><p>If you want to run your JTreg test with multiple flag combinations, use
+     *            {@link #runWithScenarios(Scenario...)}</li>
      * </ul>
      * 
      * @param testClass the class to be tested by the framework.
@@ -265,13 +265,15 @@ public class TestFramework {
 
     /**
      * Tests {@code testClass} which uses {@code helperClasses} that can specify additional compile command annotations
-     * ({@link ForceCompile}, {@link DontCompile}, {@link ForceInline}, {@link DontInline}) to be applied while testing
-     * {@code testClass} (also see description of {@link TestFramework}).
+     * ({@link ForceCompile @ForceCompile}, {@link DontCompile @DontCompile}, {@link ForceInline @ForceInline},
+     * {@link DontInline @DontInline}) to be applied while testing {@code testClass} (also see description of
+     * {@link TestFramework}).
      * <ul>
      *     <li><p>If a helper class is not in the same file as the test class, make sure that JTreg compiles it by using
      *     {@literal @}compile in the JTreg header comment block.</li>
-     *     <li><p>If a helper class does not specify any compile command annotations, you do not need to include it. If
-     *     no helper class specifies any compile commands, consider using {@link #run()} or {@link #run(Class)}.</li>
+     *     <li><p>If a class is used by the test class that does not specify any compile command annotations, you do not
+     *     need to include it in {@code helperClasses}. If no helper class specifies any compile commands, consider
+     *     using {@link #run()} or {@link #run(Class)}.</li>
      * </ul>
      *
      * @param testClass the class to be tested by the framework.
@@ -290,8 +292,9 @@ public class TestFramework {
      * by using the specified flags in the scenario.
      * <ul>
      *     <li><p>If there is only one scenario, consider using {@link #runWithFlags(String...)}.</li>
-     *     <li><p>The scenario flags override any Java or VM options set by JTreg by default.<p>
-     *     Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the scenario flags.</li>
+     *     <li><p>The scenario flags override any VM or Javaoptions set by JTreg by default.<p>
+     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the
+     *            scenario flags.</li>
      * </ul>
      *
      * @param scenarios scenarios which specify specific flags for the test VM.
@@ -306,8 +309,9 @@ public class TestFramework {
      * in the scenario.
      * <ul>
      *     <li><p>If there is only one scenario, consider using {@link #runWithFlags(String...)}.</li>
-     *     <li><p>The scenario flags override any Java or VM options set by JTreg by default.<p>
-     *     Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the scenario flags.</li>
+     *     <li><p>The scenario flags override any VM or Javaoptions set by JTreg by default.<p>
+     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the
+     *            scenario flags.</li>
      * </ul>
      *
      * @param testClass the class to be tested by the framework.
@@ -322,8 +326,8 @@ public class TestFramework {
     }
 
     /**
-     * Add VM flags to be used for the test VM. These flags override any Java or VM options set by JTreg by default.<p>
-     * Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the scenario flags.
+     * Add VM flags to be used for the test VM. These flags override any VM or Javaoptions set by JTreg by default.<p>
+     * Use {@code -DPreferCommandLineFlags=true} if you want to prefer the VM or Javaoptions over the scenario flags.
      *
      * <p>
      * The testing can be started by invoking {@link #start()}
@@ -338,14 +342,15 @@ public class TestFramework {
     }
 
     /**
-     * Add helper classes that can specify additional compile command annotations ({@link ForceCompile}, {@link DontCompile},
-     * {@link ForceInline}, {@link DontInline}) to be applied while testing{@code testClass} (also see description of
-     * {@link TestFramework}).
+     * Add helper classes that can specify additional compile command annotations ({@link ForceCompile @ForceCompile},
+     * {@link DontCompile @DontCompile}, {@link ForceInline @ForceInline}, {@link DontInline @DontInline}) to be applied
+     * while testing {@code testClass} (also see description of {@link TestFramework}).
      * <ul>
      *     <li><p>If a helper class is not in the same file as the test class, make sure that JTreg compiles it by using
-     *     {@literal @}compile in the JTreg header comment block.</li>
-     *     <li><p>If a helper class does not specify any compile command annotations, you do not need to include it. If
-     *     no helper class specifies any compile commands, you do not need to use this method</li>
+     *            {@code @compile} in the JTreg header comment block.</li>
+     *     <li><p>If a class is used by the test class that does not specify any compile command annotations, you do not
+     *            need to include it with this method. If no helper class specifies any compile commands, you do
+     *            not need to call this method at all.</li>
      * </ul>
      *
      * <p>
@@ -371,9 +376,9 @@ public class TestFramework {
 
     /**
      * Add scenarios to be used for the test VM. A test VM is called for each scenario in {@code scenarios} by using the
-     * specified flags in the scenario. The scenario flags override any flags set by {@link #addFlags(String...)}
-     * and thus also override any Java or VM options set by JTreg by default.<p>
-     * Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the scenario flags.
+     * specified VM flags in the scenario. The scenario flags override any flags set by {@link #addFlags(String...)}
+     * and thus also override any VM or Javaoptions set by JTreg by default.<p>
+     * Use {@code -DPreferCommandLineFlags=true} if you want to prefer the VM and Javaoptions over the scenario flags.
      *
      * <p>
      * The testing can be started by invoking {@link #start()}
@@ -392,8 +397,8 @@ public class TestFramework {
     }
 
     /**
-     * Start the testing of the implicitely set test class by {@link #TestFramework()}
-     * or explicitly set by {@link #TestFramework(Class)}.
+     * Start the testing of the implicitly (by {@link #TestFramework()}) or explicitly (by {@link #TestFramework(Class)})
+     * set test class.
      */
     public void start() {
         installWhiteBox();
@@ -417,10 +422,11 @@ public class TestFramework {
     }
 
     /**
-     * Set a new default warm-up (overriding the framework default of 2000) to be applied for all tests that do
-     * not specify an explicit warm-up with {@link Warmup}.
+     * Set a new default warm-up (overriding the framework default of 2000 at
+     * {@link TestFrameworkExecution#WARMUP_ITERATIONS}) to be applied for all tests that do not specify an explicit
+     * warm-up with {@link Warmup @Warmup}.
      *
-     * @param defaultWarmup a non-negative default warm-up
+     * @param defaultWarmup a new non-negative default warm-up.
      * @return the same framework instance.
      */
     public TestFramework setDefaultWarmup(int defaultWarmup) {
@@ -433,20 +439,20 @@ public class TestFramework {
      * Get the VM output of the test VM. Use {@code -DVerbose=true} to enable more debug information. If scenarios
      * were run, use {@link Scenario#getTestVMOutput()}.
      *
-     * @return the last test VM output
+     * @return the last test VM output.
      */
     public static String getLastTestVMOutput() {
         return lastTestVMOutput;
     }
 
     /*
-     * The following methods can only be called from actual tests and not from the main() method of a test.
-     * Calling these methods from main() results in a linking exception (Whitebox not yet loaded and enabled).
+     * The following methods are only intended to be called from actual @Test methods and not from the main() method of
+     * a JTreg test. Calling these methods from main() results in a linking exception (Whitebox not yet loaded and enabled).
      */
 
     /**
-     * Compile {@code m} at compilation level {@code compLevel}. {@code m} is first enqueued and might not be compiled
-     * yet upon returning from this method.
+     * Compile {@code m} at compilation level {@code compLevel}. {@code m} is first enqueued and might not be compiled,
+     * yet, upon returning from this method.
      *
      * @param m the method to be compiled.
      * @param compLevel the (valid) compilation level at which the method should be compiled.
@@ -531,9 +537,9 @@ public class TestFramework {
     }
 
     /**
-     * Checks if {@code m} is compiled with C1.
+     * Verifies that {@code m} is compiled with C1.
      *
-     * @param m the method to be checked.
+     * @param m the method to be verified.
      * @throws TestRunException if {@code m} is not compiled with C1.
      */
     public static void assertCompiledByC1(Method m) {
@@ -541,7 +547,7 @@ public class TestFramework {
     }
 
     /**
-     * Checks if {@code m} is compiled with C2.
+     * Verifies that {@code m} is compiled with C2.
      *
      * @param m the method to be checked.
      * @throws TestRunException if {@code m} is not compiled with C2.
@@ -551,7 +557,7 @@ public class TestFramework {
     }
 
     /**
-     * Checks if {@code m} is compiled with at the specified {@code compLevel}.
+     * Verifies that {@code m} is compiled at the specified {@code compLevel}.
      *
      * @param m the method to be checked.
      * @param compLevel the compilation level.
@@ -562,7 +568,7 @@ public class TestFramework {
     }
 
     /**
-     * Checks if {@code m} was deoptimized after being C1 compiled.
+     * Verifies that {@code m} was deoptimized after being C1 compiled.
      *
      * @param m the method to be checked.
      * @throws TestRunException if {@code m} is was not deoptimized after being C1 compiled.
@@ -572,7 +578,7 @@ public class TestFramework {
     }
 
     /**
-     * Checks if {@code m} was deoptimized after being C2 compiled.
+     * Verifies that {@code m} was deoptimized after being C2 compiled.
      *
      * @param m the method to be checked.
      * @throws TestRunException if {@code m} is was not deoptimized after being C2 compiled.
@@ -601,16 +607,22 @@ public class TestFramework {
      */
     private void maybeDisableIRVerification() {
         if (VERIFY_IR) {
-            VERIFY_IR = Platform.isDebugBuild() && !Platform.isInt() && !Platform.isComp();
-            if (!VERIFY_IR) {
+            shouldVerifyIR = hasIRAnnotations();
+            if (!shouldVerifyIR) {
+                System.out.println("IR verification disabled due to test " + testClass + " not specifying any @IR annotations");
+                return;
+            }
+
+            shouldVerifyIR = Platform.isDebugBuild() && !Platform.isInt() && !Platform.isComp();
+            if (!shouldVerifyIR) {
                 System.out.println("IR verification disabled due to not running a debug build (required for PrintIdeal" +
                                    "and PrintOptoAssembly), running with -Xint, or -Xcomp (use warm-up of 0 instead)");
                 return;
             }
 
             // No IR verification is done if additional non-whitelisted JTreg VM or Javaoptions flag is specified.
-            VERIFY_IR = onlyWhitelistedJTregVMAndJavaOptsFlags();
-            if (!VERIFY_IR) {
+            shouldVerifyIR = onlyWhitelistedJTregVMAndJavaOptsFlags();
+            if (!shouldVerifyIR) {
                 System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions flag(s).\n");
             }
         }
@@ -707,11 +719,10 @@ public class TestFramework {
                 additionalFlags.addAll(scenarioFlags);
             }
             socket.start();
-            if (VERIFY_IR) {
+            if (shouldVerifyIR) {
                 System.out.println("Run Flag VM:");
                 runFlagVM(additionalFlags);
             } else {
-                shouldVerifyIR = false;
                 System.out.println("Skip Flag VM due to not performing IR verification.");
             }
 
@@ -722,6 +733,10 @@ public class TestFramework {
             System.out.println();
             socket.close();
         }
+    }
+
+    private boolean hasIRAnnotations() {
+        return Arrays.stream(testClass.getDeclaredMethods()).anyMatch(m -> m.getAnnotationsByType(IR.class) != null);
     }
 
     private boolean onlyWhitelistedJTregVMAndJavaOptsFlags() {
@@ -756,7 +771,6 @@ public class TestFramework {
      */
     private ArrayList<String> prepareFlagVMFlags(List<String> additionalFlags) {
         ArrayList<String> cmds = new ArrayList<>();
-//        cmds.add( "-agentlib:jdwp=transport=dt_socket,address=127.0.0.1:44444,suspend=y,server=y");
         cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
         // Set java.library.path so JNI tests which rely on jtreg nativepath setting work
         cmds.add("-Djava.library.path=" + Utils.TEST_NATIVE_PATH);
@@ -822,10 +836,11 @@ public class TestFramework {
                 throw e;
             }
         } else {
-            System.out.println("IR verification disabled either through explicitly setting -DVerify=false, due to " +
-                               "not running a debug build, using a non-whitelisted JTreg VM or Javaopts flag like " +
-                               "-Xint, or running the test VM with other VM flags added by user code that make the " +
-                               "IR verification impossible (e.g. -XX:-UseCompile, -XX:TieredStopAtLevel=[1,2,3], etc.).");
+            System.out.println("IR verification disabled either due to no @IR annotations, through explicitly setting " +
+                               "-DVerify=false, due to not running a debug build, using a non-whitelisted JTreg VM or " +
+                               "Javaopts flag like -Xint, or running the test VM with other VM flags added by user code " +
+                               "that make the IR verification impossible (e.g. -XX:-UseCompile, " +
+                               "-XX:TieredStopAtLevel=[1,2,3], etc.).");
         }
     }
 
@@ -878,7 +893,7 @@ public class TestFramework {
 
         flagList.addAll(Arrays.asList(getDefaultFlags()));
 
-        if (VERIFY_IR) {
+        if (shouldVerifyIR) {
             String flags = socket.getOutput();
             if (VERBOSE) {
                 System.out.println("Read sent data from flag VM from socket:");
@@ -889,6 +904,7 @@ public class TestFramework {
             Pattern pattern = Pattern.compile(patternString);
             Matcher matcher = pattern.matcher(flags);
             check(matcher.find(), "Invalid flag encoding emitted by flag VM");
+            // Maybe we run with flags that make IR verification impossible
             shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
             flagList.addAll(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
             flagList.add("-DShouldDoIRVerification=true");

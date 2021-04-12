@@ -26,8 +26,7 @@ package jdk.test.lib.hotspot.ir_framework;
 import java.lang.reflect.Method;
 
 /**
- * Test info class which provides some useful utility methods and information about a <b>base test</b>
- * or a <b>checked test</b>.
+ * Test info class which provides some useful utility methods and information about a <b>checked test</b>.
  * 
  * @see Test
  * @see Check
@@ -45,7 +44,7 @@ public class TestInfo extends AbstractInfo {
     /**
      * Get the associated test method object.
      *
-     * @return the associated test method object
+     * @return the associated test method object.
      */
     public Method getTest() {
         return testMethod;
@@ -53,10 +52,10 @@ public class TestInfo extends AbstractInfo {
 
     /**
      * Return a boolean indicating if the framework skipped a compilation after the warm-up due to VM flags not
-     * allowing a compilation on the requested level in {@link Test#compLevel()}
+     * allowing a compilation on the requested level in {@link Test#compLevel()}.
      *
      * @return {@code true} if the framework compiled the test;
-     *         {@code false} otherwise
+     *         {@code false} otherwise.
      */
     public boolean isCompilationSkipped() {
         return compilationSkipped;
@@ -73,7 +72,7 @@ public class TestInfo extends AbstractInfo {
     }
 
     /**
-     * Returns a boolean indicating if the associated test method is C1 compiled.
+     * Returns a boolean indicating if the associated test method is C2 compiled.
      *
      * @return {@code true} if the test method is C2 compiled;
      *         {@code false} otherwise.
@@ -85,7 +84,7 @@ public class TestInfo extends AbstractInfo {
     /**
      * Returns a boolean indicating if the associated test method is compiled at {@code compLevel}.
      * 
-     * @param compLevel the compilation level
+     * @param compLevel the compilation level.
      * @return {@code true} if the test method is compiled at {@code compLevel};
      *         {@code false} otherwise.
      */

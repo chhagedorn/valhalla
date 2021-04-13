@@ -27,6 +27,8 @@ import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
 import sun.hotspot.WhiteBox;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
@@ -760,13 +762,24 @@ public class TestFrameworkExecution {
             // Execute tests in random order (execution sequence affects profiling)
             Collections.shuffle(testList);
         }
+        StringBuilder builder = new StringBuilder();
+        int failures = 0;
+
         for (AbstractTest test : testList) {
             if (VERBOSE) {
                 System.out.println("Run " + test.toString());
             } else if (testFilterPresent) {
                 TestFrameworkSocket.write("Run " + test.toString(), "testfilter", true);
             }
-            test.run();
+            try {
+                test.run();
+            } catch (TestRunException e) {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                builder.append(test.toString()).append(":\n").append(sw.toString()).append("\n\n");
+                failures++;
+            }
             if (PRINT_TIMES || VERBOSE) {
                 long endTime = System.nanoTime();
                 long duration = (endTime - startTime);
@@ -787,6 +800,12 @@ public class TestFrameworkExecution {
             for (Map.Entry<Long, String> entry : durations.entrySet()) {
                 System.out.format("%-10s%15d ns\n", entry.getValue() + ":", entry.getKey());
             }
+        }
+
+        if (failures > 0) {
+            String msg = "\n\nTest Failures (" + failures + ")\n" +
+                         "----------------" + "-".repeat(String.valueOf(failures).length());
+            throw new TestRunException(msg + "\n" + builder.toString());
         }
     }
 
@@ -827,12 +846,25 @@ public class TestFrameworkExecution {
     }
 
     static void assertDeoptimizedByC1(Method m) {
-        TestRun.check(compiledByC1(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter,
-                      m + " should have been deoptimized by C1");
+        if (notUnstableDeoptAssertion(m, CompLevel.C1)) {
+            TestRun.check(compiledByC1(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter,
+                          m + " should have been deoptimized by C1");
+        }
     }
 
     static void assertDeoptimizedByC2(Method m) {
-        TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter, m + " should have been deoptimized by C2");
+        if (notUnstableDeoptAssertion(m, CompLevel.C2)) {
+            TestRun.check(compiledByC2(m) != TriState.Yes || PerMethodTrapLimit == 0 || !ProfileInterpreter,
+                          m + " should have been deoptimized by C2");
+        }
+    }
+
+    /**
+     * Some VM flags could make the deopt assertions unstable.
+     */
+    private static boolean notUnstableDeoptAssertion(Method m, CompLevel level) {
+        return (USE_COMPILER && !XCOMP && !TEST_C1 &&
+               (!EXCLUDE_RANDOM || WHITE_BOX.isMethodCompilable(m, level.getValue(), false)));
     }
 
     static void assertCompiledByC1(Method m) {
@@ -1028,7 +1060,7 @@ abstract class AbstractTest {
         final boolean maybeCodeBufferOverflow = (TestFrameworkExecution.TEST_C1 && VERIFY_OOPS);
         final long started = System.currentTimeMillis();
         boolean stateCleared = false;
-        long elapsed = 0;
+        long elapsed;
         do {
             elapsed = System.currentTimeMillis() - started;
             int level = WHITE_BOX.getMethodCompilationLevel(testMethod);
@@ -1088,7 +1120,7 @@ class BaseTest extends AbstractTest {
 
     @Override
     public String toString() {
-        return "Base Test: " + testMethod.getName();
+        return "Base Test: @Test " + testMethod.getName();
     }
 
     @Override
@@ -1170,7 +1202,7 @@ class CheckedTest extends BaseTest {
 
     @Override
     public String toString() {
-        return "Checked Test - @Test: " + testMethod.getName();
+        return "Checked Test: @Check " + checkMethod.getName() + " - @Test: " + testMethod.getName();
     }
 
     @Override
@@ -1222,7 +1254,7 @@ class CustomRunTest extends AbstractTest {
 
     @Override
     public String toString() {
-        String s = "Custom Run Test - @Test";
+        String s = "Custom Run Test: @Run: " + runMethod.getName() + " - @Test";
         if (tests.size() == 1) {
             s += ": " + tests.get(0).getTestMethod().getName();
         } else {

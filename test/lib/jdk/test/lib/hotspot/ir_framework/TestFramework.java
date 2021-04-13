@@ -1025,13 +1025,13 @@ class JVMOutput {
 
     public static String getRerunHint() {
         return """
-                 ###########################################################
+                 #############################################################
                   - To only run the failed tests use -DTest, -DExclude, 
                     and/or -DScenarios.
                   - To also get the standard output of the test VM run with\s
-                  -DReportStdout=true or for even more fine-grained logging
-                  use -DVerbose=true.
-                 ###########################################################
+                    -DReportStdout=true or for even more fine-grained logging
+                    use -DVerbose=true.
+                 #############################################################
                  
                """;
     }

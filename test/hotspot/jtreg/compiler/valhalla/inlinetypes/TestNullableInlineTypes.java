@@ -39,7 +39,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @summary Test correct handling of nullable inline types.
  * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @run driver compiler.valhalla.inlinetypes.TestNullableInlineTypes
+ * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestNullableInlineTypes
  */
 
 @ForceCompileClassInitializer

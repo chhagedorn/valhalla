@@ -39,7 +39,7 @@ import java.util.Arrays;
  * @summary Test nullable inline type arrays
  * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @run driver compiler.valhalla.inlinetypes.TestNullableArrays
+ * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestNullableArrays
  */
 
 @ForceCompileClassInitializer

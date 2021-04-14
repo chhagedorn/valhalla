@@ -39,13 +39,15 @@ import java.lang.annotation.RetentionPolicy;
  *            for the specified amount in {@code count} on the {@code PrintIdeal} or {@code PrintOptoAssembly} output.</li>
  * </ul>
  * An IR rule must specify either or both of these two checks. If one or both of the checks fails, an
- * {@link IRViolationException} is thrown.
+ * {@link IRViolationException} is thrown. A user can provide a custom regex string or specify any of the default node
+ * regexes defined in {@link IRNode}.
  * <p>
  * Sometimes, the shape of the resulting IR is changed by commonly used VM flags in such a way that an IR rule no longer
  * applies. Generally, the framework does <b>not</b> apply any IR rules when any of the following flags are used:
  * {@code -Xint, -XX:-UseCompiler, -XX:TieredStopAtLevel={1,2,3}, -DExcludeRandom=true, -DFlipC1C2=true}.
  * Furthermore, a JTreg test could be run with additional VM and Javaoptions flags. The IR verification is <b>not</b>
- * performed if any flag is used that is not part of the whitelist specified by {@link TestFramework#JTREG_WHITELIST_FLAGS}.
+ * performed in this case if any of these JTreg flags is used that is not part of the whitelist specified by
+ * {@link TestFramework#JTREG_WHITELIST_FLAGS}.
  * <p>
  * For any other flag specified either by user code (e.g. {@link Scenario#Scenario(int, String...)},
  * {@link TestFramework#runWithFlags(String...) etc.} or as part of the JTreg whitelist, IR verification is applied.
@@ -58,6 +60,7 @@ import java.lang.annotation.RetentionPolicy;
  * and also as part of the internal testing in {@link jdk.test.lib.hotspot.ir_framework.tests.TestIRMatching}.
  *
  * @see Test
+ * @see IRNode
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(IRs.class)

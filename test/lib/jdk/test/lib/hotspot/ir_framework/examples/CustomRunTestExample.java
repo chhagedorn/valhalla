@@ -40,7 +40,7 @@ import jdk.test.lib.hotspot.ir_framework.*;
  *            invoking a @Test method will result in an -Xcomp like compilation of the method as there is no profile
  *            information for it. The @Run method can do any arbitrary argument setup and return value verification and
  *            can invoke the @Test methods multiple times in a single invocation of the @Run method or even skip some
- *            test invocations.
+ *            test invocations.</li>
  *     <li><p>After the warm-up, the @Test methods are compiled (there can be multiple @Test methods).</li>
  *     <li><p>Invoke the @Run method once again.</li>
  * </ol>
@@ -57,14 +57,14 @@ import jdk.test.lib.hotspot.ir_framework.*;
  *     <li><p>At @Run method:</li>
  *     <ul>
  *         <li><p>@Warmup: Change warm-up iterations of @Run method (defined by default by 
- *                         TestFrameworkExecution.WARMUP_ITERATIONS)
- *         <li><p>{@link Run#test}: Specify any number of @Test methods. They cannot be shared with other @Check or 
- *                                  @Run methods.
+ *                         TestFrameworkExecution.WARMUP_ITERATIONS)</li>
+ *         <li><p>{@link Run#test}: Specify any number of @Test methods. They cannot be shared with other @Check or @Run
+ *                                  methods.</li>
  *         <li><p>{@link Run#mode}: Choose between normal invocation as described above or {@link RunMode#STANDALONE}. 
  *                                  STANDALONE only invokes the @Run method once without warm-up or a compilation by the 
  *                                  Test Framework. The only thing done by the framework is the verification of any @IR 
  *                                  rules afterwards. The STANDALONE @Run method needs to make sure that a C2 compilation
- *                                  is reliably triggered if there are any @IR rules.
+ *                                  is reliably triggered if there are any @IR rules.</li>
  *         <li><p>No @IR annotations</li>
  *     </ul>
  * </ul>

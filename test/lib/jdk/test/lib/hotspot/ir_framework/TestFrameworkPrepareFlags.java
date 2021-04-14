@@ -23,13 +23,10 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
-import jdk.test.lib.Platform;
-import jdk.test.lib.management.InputArguments;
 import sun.hotspot.WhiteBox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.function.Predicate;
 
 /**
  * This class' main method is called from {@link TestFramework} and represents the so-called "flag VM". It uses the
@@ -65,6 +62,9 @@ class TestFrameworkPrepareFlags {
         return new String[] {"-XX:+PrintCompilation", "-XX:+UnlockDiagnosticVMOptions"};
     }
 
+    /**
+     * Main entry point of the flag VM.
+     */
     public static void main(String[] args) {
         try {
             String testClassName = args[0];

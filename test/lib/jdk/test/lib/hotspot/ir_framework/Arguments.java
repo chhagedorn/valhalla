@@ -36,5 +36,8 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Arguments {
+    /**
+     * Get the argument value.
+     */
     Argument[] value();
 }

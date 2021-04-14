@@ -188,7 +188,7 @@ public class TestRunTests {
     @Test
     @IR(counts = {IRNode.STORE_I, "1"})
     public int test7(int x) {
-        for (int i = 0; i < 100; i++);
+        for (int i = 0; i < 100; i++) {}
         iFld = x;
         return x;
     }
@@ -197,7 +197,7 @@ public class TestRunTests {
     @Test
     @IR(counts = {IRNode.STORE_I, "1"})
     public int test8(int x) {
-        for (int i = 0; i < 100; i++);
+        for (int i = 0; i < 100; i++) {}
         iFld = x;
         return x;
     }

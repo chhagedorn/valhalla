@@ -96,11 +96,11 @@ public class TestFrameworkExecution {
     private static final boolean FLIP_C1_C2 = Boolean.getBoolean("FlipC1C2");
 
     private final HashMap<Method, DeclaredTest> declaredTests = new HashMap<>();
-    private final List<AbstractTest> allTests = new ArrayList<>(); // Keep order
+    private final List<AbstractTest> allTests = new ArrayList<>();
     private final HashMap<String, Method> testMethodMap = new HashMap<>();
     private final List<String> excludeList;
     private final List<String> testList;
-    private Set<Class<?>> helperClasses = null;
+    private Set<Class<?>> helperClasses = null; // Helper classes that contain framework annotations to be processed.
     private final IREncodingPrinter irMatchRulePrinter;
     private final Class<?> testClass;
     private final Map<Executable, CompLevel> forceCompileMap = new HashMap<>();
@@ -118,6 +118,9 @@ public class TestFrameworkExecution {
         }
     }
 
+    /**
+     * Parse "test1,test2,test3" into a list.
+     */
     private static List<String> createTestFilterList(String list, Class<?> testClass) {
         List<String> filterList = null;
         if (!list.isEmpty()) {
@@ -138,6 +141,9 @@ public class TestFrameworkExecution {
         return filterList;
     }
 
+    /**
+     * Main entry point of the test VM.
+     */
     public static void main(String[] args) {
         try {
             String testClassName = args[0];
@@ -164,6 +170,9 @@ public class TestFrameworkExecution {
         return c;
     }
 
+    /**
+     * Set up all helper classes and verify they are specified correctly.
+     */
     private void addHelperClasses(String[] args) {
         Class<?>[] helperClasses = getHelperClasses(args);
         if (helperClasses != null) {
@@ -195,22 +204,6 @@ public class TestFrameworkExecution {
         return helperClasses;
     }
 
-    // Only called by internal tests testing the framework itself. Accessed by reflection. Not exposed to normal users.
-    private static void runTestsOnSameVM(Class<?> testClass) {
-        if (testClass == null) {
-            StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-            testClass = walker.getCallerClass();
-        }
-        TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
-        framework.start();
-    }
-
-    private void start() {
-        parseTests();
-        checkForcedCompilationsCompleted();
-        runTests();
-    }
-
     private void checkHelperClass(Class<?> clazz) {
         checkAnnotationsInClass(clazz, "helper");
         for (Class<?> c : clazz.getDeclaredClasses()) {
@@ -230,16 +223,39 @@ public class TestFrameworkExecution {
         }
     }
 
-    private void parseTests() {
+    /**
+     * Only called by internal tests testing the framework itself. Accessed by reflection. Not exposed to normal users.
+     */
+    private static void runTestsOnSameVM(Class<?> testClass) {
+        if (testClass == null) {
+            StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+            testClass = walker.getCallerClass();
+        }
+        TestFrameworkExecution framework = new TestFrameworkExecution(testClass);
+        framework.start();
+    }
+
+    /**
+     * Once everything is initialized and set up, start collecting tests and executing them afterwards.
+     */
+    private void start() {
+        setupTests();
+        checkForcedCompilationsCompleted();
+        runTests();
+    }
+
+    private void setupTests() {
         for (Class<?> clazz : testClass.getDeclaredClasses()) {
             checkAnnotationsInClass(clazz, "inner");
         }
-        addReplay();
-        // Make sure to first parse tests and make them non-inlineable and only then process compile commands.
-        setupTests();
+        if (DUMP_REPLAY) {
+            addReplay();
+        }
+        // Make sure to first setup test methods and make them non-inlineable and only then process compile commands.
+        setupDeclaredTests();
         processControlAnnotations(testClass);
         processHelperClasses();
-        setupCheckAndRunMethods();
+        setupCheckedAndCustomRunTests();
 
         // All remaining tests are simple base tests without check or specific way to run them.
         addBaseTests();
@@ -283,12 +299,12 @@ public class TestFrameworkExecution {
         return false;
     }
 
+    /**
+     * Generate replay compilation files.
+     */
     private void addReplay() {
-        if (DUMP_REPLAY) {
-            // Generate replay compilation files
-            String directive = "[{ match: \"*.*\", DumpReplay: true }]";
-            TestFramework.check(WHITE_BOX.addCompilerDirective(directive) == 1, "Failed to add DUMP_REPLAY directive");
-        }
+        String directive = "[{ match: \"*.*\", DumpReplay: true }]";
+        TestFramework.check(WHITE_BOX.addCompilerDirective(directive) == 1, "Failed to add DUMP_REPLAY directive");
     }
 
     private void processControlAnnotations(Class<?> clazz) {
@@ -435,7 +451,10 @@ public class TestFrameworkExecution {
         }
     }
 
-    private void dontCompileMethod(Method m) {
+    /**
+     * Exlude the method from compilation and make sure it is not inlined.
+     */
+    private void dontCompileAndDontInlineMethod(Method m) {
         WHITE_BOX.makeMethodNotCompilable(m, CompLevel.ANY.getValue(), true);
         WHITE_BOX.makeMethodNotCompilable(m, CompLevel.ANY.getValue(), false);
         WHITE_BOX.testSetDontInlineMethod(m, true);
@@ -484,7 +503,11 @@ public class TestFrameworkExecution {
         }
     }
 
-    private void setupTests() {
+    /**
+     * Setup @Test annotated method an add them to the declaredTests map to have a convenient way of accessing them
+     * once setting up a framework test (base  checked, or custom run test).
+     */
+    private void setupDeclaredTests() {
         for (Method m : testClass.getDeclaredMethods()) {
             Test testAnno = getAnnotation(m, Test.class);
             try {
@@ -548,7 +571,9 @@ public class TestFrameworkExecution {
     }
 
 
-    // Get the appropriate level as permitted by the test scenario and VM options.
+    /**
+     * Get the appropriate level as permitted by the test scenario and VM flags.
+     */
     private static CompLevel restrictCompLevel(CompLevel compLevel) {
         if (!USE_COMPILER) {
             return CompLevel.SKIP;
@@ -578,6 +603,10 @@ public class TestFrameworkExecution {
         return compLevel;
     }
 
+    /**
+     * Verify that the helper classes do not contain illegal framework annotations and then apply the actions as
+     * specified by the different helper class annotations.
+     */
     private void processHelperClasses() {
         if (helperClasses != null) {
             for (Class<?> helperClass : helperClasses) {
@@ -590,13 +619,18 @@ public class TestFrameworkExecution {
         }
     }
 
-    private void setupCheckAndRunMethods() {
+    /**
+     * First set up checked (with @Check) and custom run tests (with @Run). All remaining unmatched/unused @Test methods
+     * are treated as base tests and set up as such later.
+     */
+    private void setupCheckedAndCustomRunTests() {
         for (Method m : testClass.getDeclaredMethods()) {
             Check checkAnno = getAnnotation(m, Check.class);
             Run runAnno = getAnnotation(m, Run.class);
             Arguments argumentsAnno = getAnnotation(m, Arguments.class);
             try {
-                TestFormat.check(argumentsAnno == null || (checkAnno == null && runAnno == null), "Cannot have @Argument annotation in combination with @Run or @Check at " + m);
+                TestFormat.check(argumentsAnno == null || (checkAnno == null && runAnno == null),
+                                 "Cannot have @Argument annotation in combination with @Run or @Check at " + m);
                 if (checkAnno != null) {
                     addCheckedTest(m, checkAnno, runAnno);
                 } else if (runAnno != null) {
@@ -608,18 +642,21 @@ public class TestFrameworkExecution {
         }
     }
 
+    /**
+     * Set up a checked test by first verifying the correct format of the @Test and @Check method and then adding it
+     * to the allTests list which keeps track of all framework tests that are eventually executed.
+     */
     private void addCheckedTest(Method m, Check checkAnno, Run runAnno) {
         Method testMethod = testMethodMap.get(checkAnno.test());
         DeclaredTest test = declaredTests.get(testMethod);
         checkCheckedTest(m, checkAnno, runAnno, testMethod, test);
         test.setAttachedMethod(m);
         CheckedTest.Parameter parameter = getCheckedTestParameter(m, testMethod);
-        dontCompileMethod(m);
-        // Don't inline check methods
-        WHITE_BOX.testSetDontInlineMethod(m, true);
+        dontCompileAndDontInlineMethod(m);
         CheckedTest checkedTest = new CheckedTest(test, m, checkAnno, parameter, shouldExcludeTest(testMethod.getName()));
         allTests.add(checkedTest);
         if (PRINT_VALID_IR_RULES) {
+            // Only need to emit IR verification information if IR verification is actually performed.
             irMatchRulePrinter.emitRuleEncoding(m, checkedTest.isSkipped());
         }
     }
@@ -634,6 +671,9 @@ public class TestFrameworkExecution {
                          "Cannot use @Test " + testMethod + " for more than one @Run or one @Check method. Found: " + m + ", " + attachedMethod);
     }
 
+    /**
+     * Only allow parameters as specified in {@link Check}.
+     */
     private CheckedTest.Parameter getCheckedTestParameter(Method m, Method testMethod) {
         boolean firstParameterTestInfo = m.getParameterCount() > 0 && m.getParameterTypes()[0].equals(TestInfo.class);
         boolean secondParameterTestInfo = m.getParameterCount() > 1 && m.getParameterTypes()[1].equals(TestInfo.class);
@@ -657,6 +697,10 @@ public class TestFrameworkExecution {
         return parameter;
     }
 
+    /**
+     * Set up a custom run test by first verifying the correct format of the @Test and @Run method and then adding it
+     * to the allTests list which keeps track of all framework tests that are eventually executed.
+     */
     private void addCustomRunTest(Method m, Run runAnno) {
         checkRunMethod(m, runAnno);
         List<DeclaredTest> tests = new ArrayList<>();
@@ -677,9 +721,7 @@ public class TestFrameworkExecution {
         if (tests.isEmpty()) {
             return; // There was a format violation. Return.
         }
-        dontCompileMethod(m);
-        // Don't inline run methods
-        WHITE_BOX.testSetDontInlineMethod(m, true);
+        dontCompileAndDontInlineMethod(m);
         CustomRunTest customRunTest = new CustomRunTest(m, getAnnotation(m, Warmup.class), runAnno, tests, shouldExcludeTest);
         allTests.add(customRunTest);
         if (PRINT_VALID_IR_RULES) {
@@ -687,6 +729,9 @@ public class TestFrameworkExecution {
         }
     }
 
+    /**
+     * Only allow parameters as specified in {@link Run}.
+     */
     private void checkCustomRunTest(Method m, String testName, Method testMethod, DeclaredTest test, RunMode runMode) {
         TestFormat.check(testMethod != null, "Did not find associated @Test method \""  + m.getDeclaringClass().getName()
                                              + "." + testName + "\" specified in @Run at " + m);
@@ -723,6 +768,10 @@ public class TestFrameworkExecution {
         return Arrays.stream(annos).findFirst().orElse(null);
     }
 
+    /**
+     * Ensure that all compilations that were enforced (added to compilation queue) by framework annotations are
+     * completed. Wait if necessary for a short amount of time for their completion.
+     */
     private void checkForcedCompilationsCompleted() {
         if (forceCompileMap.isEmpty()) {
             return;
@@ -744,14 +793,19 @@ public class TestFrameworkExecution {
         TestRun.fail("Could not force compile the following @ForceCompile methods:\n" + builder.toString());
     }
 
+    /**
+     * Once all framework tests are collected, they are run in this method.
+     */
     private void runTests() {
         TreeMap<Long, String> durations = (PRINT_TIMES || VERBOSE) ? new TreeMap<>() : null;
         long startTime = System.nanoTime();
         List<AbstractTest> testList;
         boolean testFilterPresent = testFilterPresent();
         if (testFilterPresent) {
+            // Only run the specified tests by the user filters -DTest and/or -DExclude.
             testList = allTests.stream().filter(test -> !test.isSkipped()).collect(Collectors.toList());
             if (testList.isEmpty()) {
+                // Throw an exception to inform the user about an empty specified test set with -DTest and/or -DExclude
                 throw new NoTestsRunException();
             }
         } else {
@@ -759,12 +813,14 @@ public class TestFrameworkExecution {
         }
 
         if (SHUFFLE_TESTS) {
-            // Execute tests in random order (execution sequence affects profiling)
+            // Execute tests in random order (execution sequence affects profiling). This is done by default.
             Collections.shuffle(testList);
         }
         StringBuilder builder = new StringBuilder();
         int failures = 0;
 
+        // Execute all tests and keep track of each exception that is thrown. These are then reported once all tests
+        // are executing. This prevents a premature exit without running all tests.
         for (AbstractTest test : testList) {
             if (VERBOSE) {
                 System.out.println("Run " + test.toString());
@@ -795,7 +851,7 @@ public class TestFrameworkExecution {
         }
 
         // Print execution times
-        if (PRINT_TIMES) {
+        if (VERBOSE || PRINT_TIMES) {
             System.out.println("\n\nTest execution times:");
             for (Map.Entry<Long, String> entry : durations.entrySet()) {
                 System.out.format("%-10s%15d ns\n", entry.getValue() + ":", entry.getKey());
@@ -803,6 +859,7 @@ public class TestFrameworkExecution {
         }
 
         if (failures > 0) {
+            // Finally, report all occurred exceptions in a nice format.
             String msg = "\n\nTest Failures (" + failures + ")\n" +
                          "----------------" + "-".repeat(String.valueOf(failures).length());
             throw new TestRunException(msg + "\n" + builder.toString());
@@ -927,7 +984,9 @@ public class TestFrameworkExecution {
     }
 }
 
-
+/**
+ * Abstract super class for base, checked and custom run tests.
+ */
 abstract class AbstractTest {
     protected static final WhiteBox WHITE_BOX = WhiteBox.getWhiteBox();
     protected static final int TEST_COMPILATION_TIMEOUT = Integer.parseInt(System.getProperty("TestCompilationTimeout", "10000"));
@@ -948,10 +1007,16 @@ abstract class AbstractTest {
 
     abstract String getName();
 
+    /**
+     * Should test be executed?
+     */
     public boolean isSkipped() {
         return skip;
     }
 
+    /**
+     * See {@link CompLevel#WAIT_FOR_COMPILATION}.
+     */
     protected static boolean isWaitForCompilation(DeclaredTest test) {
         return test.getCompLevel() == CompLevel.WAIT_FOR_COMPILATION;
     }
@@ -975,7 +1040,7 @@ abstract class AbstractTest {
     }
 
     /**
-     * Run the associated test
+     * Run the associated test.
      */
     public void run() {
         if (skip) {
@@ -987,12 +1052,12 @@ abstract class AbstractTest {
         }
         onWarmupFinished();
         compileTest();
-        // Always run method.
+        // Always run the test as a last step of the test execution.
         invokeTest();
     }
 
     protected void onStart() {
-        // Do nothing by default
+        // Do nothing by default.
     }
 
     abstract protected void invokeTest();
@@ -1022,7 +1087,8 @@ abstract class AbstractTest {
             if (!WHITE_BOX.isMethodQueuedForCompilation(testMethod)) {
                 if (elapsed > 0) {
                     if (TestFrameworkExecution.VERBOSE) {
-                        System.out.println(testMethod + " is not in queue anymore due to compiling it simultaneously on a different level. Enqueue again.");
+                        System.out.println(testMethod + " is not in queue anymore due to compiling it simultaneously on " +
+                                           "a different level. Enqueue again.");
                     }
                     enqueueMethodForCompilation(test);
                 }
@@ -1084,6 +1150,9 @@ abstract class AbstractTest {
         TestRun.fail(testMethod + " not compiled after waiting for " + WAIT_FOR_COMPILATION_TIMEOUT/1000 + " s");
     }
 
+    /**
+     * If it takes too long, try to disable Verify Oops.
+     */
     private void retryDisabledVerifyOops(Method testMethod, boolean stateCleared) {
         System.out.println("Temporarily disabling VerifyOops");
         try {
@@ -1099,7 +1168,9 @@ abstract class AbstractTest {
     }
 }
 
-
+/**
+ * A base test only consists of a single @Test method. See {@link Test} for more details and its precise definition.
+ */
 class BaseTest extends AbstractTest {
     private final DeclaredTest test;
     protected final Method testMethod;
@@ -1173,7 +1244,10 @@ class BaseTest extends AbstractTest {
     public void verify(Object result) { /* no verification in BaseTests */ }
 }
 
-
+/**
+ * A checked test is an extension of a base test with additional verification done in a @Check method.
+ * See {@link Check} for more details and its precise definition.
+ */
 class CheckedTest extends BaseTest {
     private final Method checkMethod;
     private final CheckAt checkAt;
@@ -1232,7 +1306,10 @@ class CheckedTest extends BaseTest {
     }
 }
 
-
+/**
+ * A custom run test allows the user to have full control over how the @Test method is invoked by specifying
+ * a dedicated @Run method. See {@link Run} for more details and its precise definition.
+ */
 class CustomRunTest extends AbstractTest {
     private final Method runMethod;
     private final RunMode mode;

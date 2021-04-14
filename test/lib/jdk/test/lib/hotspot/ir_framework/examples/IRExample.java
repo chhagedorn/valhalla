@@ -81,7 +81,6 @@ public class IRExample {
             TestFramework.run(FailingExamples.class); // Secondly, run tests from FailingExamples
         } catch (IRViolationException e) {
             // Expected. Check output to see how IR failures are reported.
-            throw e;
         }
     }
 
@@ -93,6 +92,11 @@ public class IRExample {
     // Rule with special configurable default regexes. All regexes with a "_OF" postfix in IR node expect a
     // second string specifying an additional required information.
     @IR(failOn = {IRNode.STORE_OF_FIELD, "iFld2", IRNode.LOAD, IRNode.STORE_OF_CLASS, "Foo"})
+    // Only apply this rule if the VM flag UseZGC is true
+    @IR(applyIf = {"UseZGC", "true"}, failOn = IRNode.LOAD)
+    // We can also use comparators (<, <=, >, >=, !=, =) to restrict the rules.
+    // This rule is only applied if the loop unroll limit is 10 or greater.
+    @IR(applyIf = {"LoopUnrollLimit", ">= 10"}, failOn = IRNode.LOAD)
     public void goodFailOn() {
         iFld = 42; // No load, no loop, no store to iFld2, no store to class Foo
     }

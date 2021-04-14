@@ -32,9 +32,7 @@ import jdk.test.lib.process.ProcessTools;
 /*
  * @test
  *  @requires vm.debug == true
-
- * @summary Test -DScenarios property flag. Run with othervm which should not be done when writing tests using
- *          the framework.
+ * @summary Test -DScenarios property flag. Run with othervm which should not be done when writing tests using the framework.
  * @library /test/lib
  * @run main/othervm -DScenarios=1,5,10 jdk.test.lib.hotspot.ir_framework.tests.TestDScenarios test
  * @run main/othervm -DScenarios=1,4 jdk.test.lib.hotspot.ir_framework.tests.TestDScenarios test

@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  * <p>
  * There are two types of default regexes:
  * <ul>
- *     <li><p>Standalone regexes: Use them directly.
+ *     <li><p>Standalone regexes: Use them directly.</li>
  *     <li><p>Composite regexes: Their names contain "{@code _OF}" and expect another string in a list in
  *            {@link IR#failOn()} and {@link IR#counts()}. They cannot be use as standalone regex and will result in a
  *            {@link TestFormatException} when doing so.</li>

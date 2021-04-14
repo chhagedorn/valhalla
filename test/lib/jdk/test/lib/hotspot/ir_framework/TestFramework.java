@@ -42,8 +42,8 @@ import java.util.stream.Collectors;
 
 /**
  * This class represents the main entry point to the test framework whose main purpose is to perform regex-based checks on
- * the IR shape emitted by the VM flags {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}. The framework can also
- * be used for other non-IR matching (and non-compiler) tests by providing easy to use annotations for commonly used
+ * the C2 IR shape emitted by the VM flags {@code -XX:+PrintIdeal} and {@code -XX:+PrintOptoAssembly}. The framework can
+ * also be used for other non-IR matching (and non-compiler) tests by providing easy to use annotations for commonly used
  * testing patterns and compiler control flags.
  * <p>
  * The framework offers various annotations to control how your test code should be invoked and being checked. There are
@@ -628,6 +628,11 @@ public class TestFramework {
         }
     }
 
+    /**
+     * For scenarios: Run the tests with the scenario settings and collect all exceptions to be able to run all
+     * scenarios without prematurely throwing an exception. Format violations, however, are wrong for all scenarios
+     * and thus is reported immediately on the first scenario execution.
+     */
     private void startWithScenarios() {
         Map<Scenario, Exception> exceptionMap = new TreeMap<>(Comparator.comparingInt(Scenario::getIndex));
         Set<Integer> scenarioIndices = new HashSet<>();
@@ -683,6 +688,7 @@ public class TestFramework {
         }
         System.err.println(builder.toString());
         if (!VERBOSE && !REPORT_STDOUT && !TESTLIST && !EXCLUDELIST) {
+            // Provide a hint to the user how to get additional output/debugging information.
             System.err.println(JVMOutput.getRerunHint());
         }
         TestRun.fail(failedScenarios + ". Please check stderr for more information.");
@@ -1089,6 +1095,9 @@ class TestFrameworkSocket {
         socketThread.start();
     }
 
+    /**
+     * Waits for client sockets (created by flag or test VM) to connect. Return the messages received by the clients.
+     */
     private FutureTask<String> initSocketTask() {
         return new FutureTask<>(() -> {
             try (Socket clientSocket = serverSocket.accept();
@@ -1121,6 +1130,7 @@ class TestFrameworkSocket {
     public static void write(String msg, String type) {
         write(msg, type, false);
     }
+
     /**
      * Only called by flag and test VM to write to server socket.
      */
@@ -1132,6 +1142,8 @@ class TestFrameworkSocket {
         TestFramework.check(SERVER_PORT != -1, "Server port was not set correctly for flag and/or test VM "
                                               + "or method not called from flag or test VM");
         try {
+            // Keep the client socket open until the flag or test VM terminates (calls closeClientSocket before exiting
+            // main()).
             if (clientSocket == null) {
                 clientSocket = new Socket(HOSTNAME, SERVER_PORT);
                 clientWriter = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -1141,6 +1153,8 @@ class TestFrameworkSocket {
             }
             clientWriter.println(msg);
         } catch (Exception e) {
+            // When the test VM is directly run, we should ignore all messages that would normally be sent to the
+            // driver VM.
             String failMsg = """
                              
                              ###########################################################

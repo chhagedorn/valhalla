@@ -39,6 +39,9 @@ import jdk.test.lib.hotspot.ir_framework.TestFramework;
  * @run main/othervm -DShuffleTests=false jdk.test.lib.hotspot.ir_framework.tests.TestDFlags
  * @run main/othervm -DReproduce=true jdk.test.lib.hotspot.ir_framework.tests.TestDFlags
  * @run main/othervm -DReportStdout=true jdk.test.lib.hotspot.ir_framework.tests.TestDFlags
+ * @run main/othervm -DGCAfter=true jdk.test.lib.hotspot.ir_framework.tests.TestDFlags
+ * @run main/othervm -DPrintTimes=true jdk.test.lib.hotspot.ir_framework.tests.TestDFlags
+ * @run main/othervm -DVerifyIR=false jdk.test.lib.hotspot.ir_framework.tests.TestDFlags
  */
 
 public class TestDFlags {

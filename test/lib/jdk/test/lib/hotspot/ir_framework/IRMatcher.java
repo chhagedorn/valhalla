@@ -57,7 +57,9 @@ class IRMatcher {
         applyRules();
     }
 
-
+    /**
+     * Sets up a map testname -> IRMethod (containing the PrintIdeal and PrintOptoAssembly output for testname).
+     */
     private void setupTestMethods(String irEncoding) {
         Map<String, Integer[]> irRulesMap = parseIREncoding(irEncoding);
         for (Method m : testClass.getDeclaredMethods()) {

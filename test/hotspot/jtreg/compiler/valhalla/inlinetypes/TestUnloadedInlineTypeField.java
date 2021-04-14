@@ -50,9 +50,11 @@ public class TestUnloadedInlineTypeField {
         final Scenario[] scenarios = {
                 new Scenario(0),
                 new Scenario(1, "-XX:InlineFieldMaxFlatSize=0"),
-                new Scenario(2, "-XX:+PatchALot"),
-                new Scenario(3, "-XX:InlineFieldMaxFlatSize=0",
-                                 "-XX:+PatchALot")
+                new Scenario(2, "-XX:+IgnoreUnrecognizedVMOptions", "-XX:-XX:+PatchALot"),
+                new Scenario(3,
+                             "-XX:InlineFieldMaxFlatSize=0",
+                             "-XX:+IgnoreUnrecognizedVMOptions",
+                             "-XX:+PatchALot")
         };
 
         InlineTypes.getFramework()

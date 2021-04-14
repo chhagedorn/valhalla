@@ -90,10 +90,11 @@ public class TestLWorldProfiling {
         };
 
         InlineTypes.getFramework()
-                .addScenarios(scenarios)
-                .addHelperClasses(MyValue1.class,
-                                  MyValue2.class)
-                .start();
+                   .addScenarios(scenarios)
+                   .addFlags("-XX:+IgnoreUnrecognizedVMOptions")
+                   .addHelperClasses(MyValue1.class,
+                                     MyValue2.class)
+                   .start();
     }
 
     private static final MyValue1 testValue1 = MyValue1.createWithFieldsInline(rI, rL);

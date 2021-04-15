@@ -175,7 +175,7 @@ public class TestFramework {
      * Use this constructor if you want to use multiple run options (flags, helper classes, scenarios).
      * Use the associated add methods ({@link #addFlags(String...)}, @link #addScenarios(Scenario...)},
      * {@link #addHelperClasses(Class...)}) to set up everything and then start the testing by invoking {@link #start()}.
-     * 
+     *
      * @param testClass the class to be tested by the framework.
      * @see #TestFramework()
      */
@@ -251,10 +251,10 @@ public class TestFramework {
      *     <li><p>If you want to run your JTreg test with multiple flag combinations, use
      *            {@link #runWithScenarios(Scenario...)}</li>
      * </ul>
-     * 
+     *
      * @param testClass the class to be tested by the framework.
      * @param flags VM flags to be used for the test VM.
-     *              
+     *
      * @see #runWithFlags(String...)
      */
     public static void runWithFlags(Class<?> testClass, String... flags) {
@@ -914,7 +914,7 @@ public class TestFramework {
             // Maybe we run with flags that make IR verification impossible
             shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
             flagList.addAll(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
-            flagList.add("-DShouldDoIRVerification=true");
+            System.out.println(matcher.group(1));
         }
         return flagList;
     }
@@ -1032,14 +1032,13 @@ class JVMOutput {
     public static String getRerunHint() {
         return """
                  #############################################################
-                  - To only run the failed tests use -DTest, -DExclude, 
+                  - To only run the failed tests use -DTest, -DExclude,
                     and/or -DScenarios.
                   - To also get the standard output of the test VM run with\s
                     -DReportStdout=true or for even more fine-grained logging
                     use -DVerbose=true.
                  #############################################################
-                 
-               """;
+               """ + "\n";
     }
 }
 
@@ -1155,12 +1154,11 @@ class TestFrameworkSocket {
         } catch (Exception e) {
             // When the test VM is directly run, we should ignore all messages that would normally be sent to the
             // driver VM.
-            String failMsg = """
-                             
+            String failMsg = "\n\n" + """
                              ###########################################################
-                              Did you directly run the test VM (TestFrameworkExecution) 
-                              to reproduce a bug?                                       
-                              => Append the flag -DReproduce=true and try again!        
+                              Did you directly run the test VM (TestFrameworkExecution)
+                              to reproduce a bug?
+                              => Append the flag -DReproduce=true and try again!
                              ###########################################################
                              """;
             TestRun.fail(failMsg, e);

@@ -40,7 +40,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
  * @summary Test inline type calling convention optimizations
  * @library /test/lib /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
- * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestCallingConvention
+ * @run driver/timeout=450 compiler.valhalla.inlinetypes.TestCallingConvention
  */
 
 @ForceCompileClassInitializer

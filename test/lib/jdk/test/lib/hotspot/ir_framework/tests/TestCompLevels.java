@@ -34,7 +34,7 @@ import java.lang.reflect.Method;
  *          This test runs directly the test VM which normally does not happen.
  * @library /test/lib
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
  *                   jdk.test.lib.hotspot.ir_framework.tests.TestCompLevels
  */

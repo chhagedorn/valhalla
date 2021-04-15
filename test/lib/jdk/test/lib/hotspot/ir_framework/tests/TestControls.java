@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  *          This test runs directly the test VM which normally does not happen.
  * @library /test/lib
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run main/othervm -Xbootclasspath/a:. -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
  *                   jdk.test.lib.hotspot.ir_framework.tests.TestControls
  */
@@ -148,12 +148,12 @@ public class TestControls {
     public void testDontCompile() {
         executed[2]++;
     }
-    
+
     @DontCompile
     public static void dontCompile() {
         executed[3]++;
     }
-    
+
     @Run(test = "testDontCompile", mode = RunMode.STANDALONE)
     public void runTestDontCompile() throws NoSuchMethodException {
         for (int i = 0; i < 10000; i++) {

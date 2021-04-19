@@ -23,6 +23,8 @@
 
 package jdk.test.lib.hotspot.ir_framework;
 
+import jdk.test.lib.Utils;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -32,7 +34,7 @@ import java.util.Random;
  * This class represents an argument value specified by {@link Argument} in {@link Arguments}.
  */
 class ArgumentValue {
-    private static final Random random = new Random();
+    private static final Random random = Utils.getRandomInstance();
 
     private final Object argumentValue;
     private final boolean isRandomEach;
@@ -292,10 +294,10 @@ class ArgumentValue {
         } else if (c.equals(long.class)) {
             return random.nextLong();
         } else if (c.equals(float.class)) {
-            // Get number between 0 and 1000.
+            // Get float between -10000 and 10000.
             return random.nextFloat() * 20000 - 10000;
         } else if (c.equals(double.class)) {
-            // Get number between 0 and 1000.
+            // Get double between -10000 and 10000.
             return random.nextDouble() * 20000 - 10000;
         } else {
             TestFormat.fail("Cannot generate random value for non-primitive type");

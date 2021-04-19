@@ -107,7 +107,6 @@ public class TestFramework {
             Arrays.asList(
                     // The following substrings are part of more than one VM flag
                     "RAM",
-                    "G1",
                     "Heap",
                     "Trace",
                     "Print",
@@ -116,15 +115,12 @@ public class TestFramework {
                     "UseNewCode",
                     // The following substrings are only part of one VM flag (=exact match)
                     "CreateCoredumpOnCrash",
+                    "IgnoreUnrecognizedVMOptions",
                     "UnlockDiagnosticVMOptions",
+                    "UnlockExperimentalVMOptions",
                     "BackgroundCompilation",
                     "Xbatch",
-                    "TieredCompilation",
-                    "UseSerialGC",
-                    "UseParallelGC",
-                    "UseG1GC",
-                    "UseZGC",
-                    "UseShenandoahGC"
+                    "TieredCompilation"
             )
     );
 
@@ -914,7 +910,6 @@ public class TestFramework {
             // Maybe we run with flags that make IR verification impossible
             shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
             flagList.addAll(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
-            System.out.println(matcher.group(1));
         }
         return flagList;
     }

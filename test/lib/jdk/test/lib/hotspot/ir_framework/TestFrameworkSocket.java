@@ -49,7 +49,7 @@ class TestFrameworkSocket implements AutoCloseable {
 
     private final String serverPortPropertyFlag;
     private FutureTask<String> socketTask;
-    private ServerSocket serverSocket;
+    private final ServerSocket serverSocket;
 
     private static TestFrameworkSocket singleton = null;
 
@@ -57,7 +57,7 @@ class TestFrameworkSocket implements AutoCloseable {
         try {
             serverSocket = new ServerSocket(0);
         } catch (IOException e) {
-            TestFramework.fail("Failed to create TestFramework server socket", e);
+            throw new TestFrameworkException("Failed to create TestFramework server socket", e);
         }
         int port = serverSocket.getLocalPort();
         if (TestFramework.VERBOSE) {
@@ -95,12 +95,11 @@ class TestFrameworkSocket implements AutoCloseable {
                 StringBuilder builder = new StringBuilder();
                 String next;
                 while ((next = in.readLine()) != null) {
-                    builder.append(next).append("\n");
+                    builder.append(next).append(System.lineSeparator());
                 }
                 return builder.toString();
             } catch (IOException e) {
-                TestFramework.fail("Server socket error", e);
-                return null;
+                throw new TestFrameworkException("Server socket error", e);
             }
         });
     }
@@ -110,7 +109,7 @@ class TestFrameworkSocket implements AutoCloseable {
         try {
             serverSocket.close();
         } catch (IOException e) {
-            TestFramework.fail("Could not close socket", e);
+            throw new TestFrameworkException("Could not close socket", e);
         }
     }
 
@@ -145,14 +144,14 @@ class TestFrameworkSocket implements AutoCloseable {
         } catch (Exception e) {
             // When the test VM is directly run, we should ignore all messages that would normally be sent to the
             // driver VM.
-            String failMsg = "\n\n" + """
+            String failMsg = System.lineSeparator() + System.lineSeparator() + """
                              ###########################################################
                               Did you directly run the test VM (TestFrameworkExecution)
                               to reproduce a bug?
                               => Append the flag -DReproduce=true and try again!
                              ###########################################################
                              """;
-            TestRun.fail(failMsg, e);
+            throw new TestRunException(failMsg, e);
         }
         if (TestFramework.VERBOSE) {
             System.out.println("Written " + type + " to socket:");
@@ -183,8 +182,7 @@ class TestFrameworkSocket implements AutoCloseable {
             return socketTask.get();
 
         } catch (Exception e) {
-            TestFramework.fail("Could not read from socket task", e);
-            return null;
+            throw new TestFrameworkException("Could not read from socket task", e);
         }
     }
 
@@ -198,7 +196,7 @@ class TestFrameworkSocket implements AutoCloseable {
             if (TestFramework.TESTLIST || TestFramework.EXCLUDELIST) {
                 StringBuilder builder = new StringBuilder();
                 Scanner scanner = new Scanner(output);
-                System.out.println("\nRun flag defined test list");
+                System.out.println(System.lineSeparator() + "Run flag defined test list");
                 System.out.println("--------------------------");
                 while (scanner.hasNextLine()) {
                     String line = scanner.nextLine();
@@ -206,7 +204,7 @@ class TestFrameworkSocket implements AutoCloseable {
                         line = "> " + line.substring(STDOUT_PREFIX.length());
                         System.out.println(line);
                     } else {
-                        builder.append(line).append("\n");
+                        builder.append(line).append(System.lineSeparator());
                     }
                 }
                 System.out.println();
@@ -215,8 +213,7 @@ class TestFrameworkSocket implements AutoCloseable {
             return output;
 
         } catch (Exception e) {
-            TestFramework.fail("Could not read from socket task", e);
-            return null;
+            throw new TestFrameworkException("Could not read from socket task", e);
         }
     }
 }

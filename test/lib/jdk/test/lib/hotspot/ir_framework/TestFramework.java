@@ -136,7 +136,7 @@ public class TestFramework {
                                           -DReportStdout=true or for even more fine-grained logging
                                           use -DVerbose=true.
                                        #############################################################
-                                     """ + "\n";
+                                     """ + System.lineSeparator();
 
     private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
     private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.getBoolean("PreferCommandLineFlags");
@@ -146,6 +146,7 @@ public class TestFramework {
     private boolean VERIFY_IR = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
     private boolean shouldVerifyIR; // Should we perform IR matching?
     private static String lastTestVMOutput;
+    private static boolean toggleBool;
 
     private final Class<?> testClass;
     private Set<Class<?>> helperClasses = null;
@@ -348,9 +349,9 @@ public class TestFramework {
      * while testing {@code testClass} (also see description of {@link TestFramework}).
      *
      * <p>
-     * If a class is used by the test class that does not specify any compile command annotations, you do not need
-     * to include it with this method. If no helper class specifies any compile commands, you do not need to call
-     * this method at all.
+     * Duplicates in {@code helperClasses} are ignored. If a class is used by the test class that does not specify any
+     * compile command annotations, you do not need to include it with this method. If no helper class specifies any
+     * compile commands, you do not need to call this method at all.
      *
      * <p>
      * The testing can be started by invoking {@link #start()}.
@@ -367,11 +368,7 @@ public class TestFramework {
             this.helperClasses = new HashSet<>();
         }
 
-        for (var helperClass : helperClasses) {
-            TestRun.check(!this.helperClasses.contains(helperClass),
-                          "Cannot add the same class twice: " + helperClass);
-            this.helperClasses.add(helperClass);
-        }
+        this.helperClasses.addAll(Arrays.asList(helperClasses));
         return this;
     }
 
@@ -416,12 +413,12 @@ public class TestFramework {
             try {
                 start(null);
             } catch (TestVMException e) {
-                System.err.println("\n" + e.getExceptionInfo());
+                System.err.println(System.lineSeparator() + e.getExceptionInfo());
                 throw e;
             } catch (IRViolationException e) {
                 System.out.println("Compilation(s) of failed match(es):");
                 System.out.println(e.getCompilations());
-                System.err.println("\n" + e.getExceptionInfo());
+                System.err.println(System.lineSeparator() + e.getExceptionInfo());
                 throw e;
             }
         } else {
@@ -595,6 +592,19 @@ public class TestFramework {
         TestFrameworkExecution.assertDeoptimizedByC2(m);
     }
 
+    /**
+     * Returns a different boolean each time this method is invoked (switching between {@code false} and {@code true}).
+     * The very first invocation returns {@code false}. Note that this method could be used by different tests and
+     * thus the first invocation for a test could be {@code true} or {@code false} depending on how many times
+     * other tests have already invoked this method.
+     *
+     * @return an inverted boolean of the result of the last invocation of this method.
+     */
+    public static boolean toggleBoolean() {
+        toggleBool = !toggleBool;
+        return toggleBool;
+    }
+
     /*
      * End of public interface methods
      */
@@ -631,7 +641,8 @@ public class TestFramework {
             // No IR verification is done if additional non-whitelisted JTreg VM or Javaoptions flag is specified.
             VERIFY_IR = onlyWhitelistedJTregVMAndJavaOptsFlags();
             if (!VERIFY_IR) {
-                System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions flag(s).\n");
+                System.out.println("IR verification disabled due to using non-whitelisted JTreg VM or Javaoptions flag(s)."
+                                   + System.lineSeparator());
             }
         }
     }
@@ -644,7 +655,6 @@ public class TestFramework {
     private void startWithScenarios() {
         Map<Scenario, Exception> exceptionMap = new TreeMap<>(Comparator.comparingInt(Scenario::getIndex));
         for (Scenario scenario : scenarios) {
-            int scenarioIndex = scenario.getIndex();
             try {
                 start(scenario);
             } catch (TestFormatException e) {
@@ -665,7 +675,7 @@ public class TestFramework {
                                                .map(s -> String.valueOf(s.getIndex()))
                                                .collect(Collectors.joining(", #"));
         StringBuilder builder = new StringBuilder(failedScenarios);
-        builder.append("\n\n");
+        builder.append(System.lineSeparator()).append(System.lineSeparator());
         for (Map.Entry<Scenario, Exception> entry : exceptionMap.entrySet()) {
             Exception e = entry.getValue();
             Scenario scenario = entry.getKey();
@@ -678,30 +688,33 @@ public class TestFramework {
                 System.out.println((scenario != null ? "Scenario #" + scenario.getIndex() + " - " : "")
                                    + "Compilation(s) of failed matche(s):");
                 System.out.println(irException.getCompilations());
-                builder.append(errorMsg).append("\n").append(irException.getExceptionInfo()).append(e.getMessage());
+                builder.append(errorMsg).append(System.lineSeparator()).append(irException.getExceptionInfo())
+                       .append(e.getMessage());
             } else if (e instanceof TestVMException) {
-                builder.append(errorMsg).append("\n").append(((TestVMException) e).getExceptionInfo());
+                builder.append(errorMsg).append(System.lineSeparator()).append(((TestVMException) e).getExceptionInfo());
             } else {
                 // Print stack trace otherwise
                 StringWriter errors = new StringWriter();
                 e.printStackTrace(new PrintWriter(errors));
                 builder.append(errors.toString());
             }
-            builder.append("\n");
+            builder.append(System.lineSeparator());
         }
         System.err.println(builder.toString());
         if (!VERBOSE && !REPORT_STDOUT && !TESTLIST && !EXCLUDELIST) {
             // Provide a hint to the user how to get additional output/debugging information.
             System.err.println(RERUN_HINT);
         }
-        TestRun.fail(failedScenarios + ". Please check stderr for more information.");
+        throw new TestRunException(failedScenarios + ". Please check stderr for more information.");
     }
 
     private static String getScenarioTitleAndFlags(Scenario scenario) {
         StringBuilder builder = new StringBuilder();
         String title = "Scenario #" + scenario.getIndex();
-        builder.append(title).append("\n").append("=".repeat(title.length())).append("\n");
-        builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]\n");
+        builder.append(title).append(System.lineSeparator()).append("=".repeat(title.length()))
+               .append(System.lineSeparator());
+        builder.append("Scenario flags: [").append(String.join(", ", scenario.getFlags())).append("]")
+               .append(System.lineSeparator());
         return builder.toString();
     }
 
@@ -827,8 +840,7 @@ public class TestFramework {
             // Java options in prepareTestVMFlags().
             oa = ProcessTools.executeProcess(process);
         } catch (Exception e) {
-            fail("Error while executing Test VM", e);
-            return;
+            throw new TestFrameworkException("Error while executing Test VM", e);
         }
         JVMOutput output = new JVMOutput(oa, scenario, process);
         lastTestVMOutput = oa.getOutput();
@@ -942,7 +954,7 @@ public class TestFramework {
             Pattern pattern = Pattern.compile("Violations \\(\\d+\\)[\\s\\S]*(?=/============/)");
             Matcher matcher = pattern.matcher(stdErr);
             TestFramework.check(matcher.find(), "Must find violation matches");
-            throw new TestFormatException("\n\n" + matcher.group());
+            throw new TestFormatException(System.lineSeparator() + System.lineSeparator() + matcher.group());
         } else if (stdErr.contains("NoTestsRunException")) {
             shouldVerifyIR = false;
             throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude. " +
@@ -954,16 +966,8 @@ public class TestFramework {
 
     static void check(boolean test, String failureMessage) {
         if (!test) {
-            fail(failureMessage);
+            throw new TestFrameworkException(failureMessage);
         }
-    }
-
-    static void fail(String failureMessage) {
-        throw new TestFrameworkException("Internal Test Framework exception - please file a bug:\n" + failureMessage);
-    }
-
-    static void fail(String failureMessage, Throwable e) {
-        throw new TestFrameworkException("Internal Test Framework exception - please file a bug:\n" + failureMessage, e);
     }
 }
 
@@ -989,7 +993,8 @@ class JVMOutput {
     }
 
     public String getCommandLine() {
-        return "Command Line:\n" + String.join(" ", process.command()) + "\n\n";
+        return "Command Line:" + System.lineSeparator() + String.join(" ", process.command())
+               + System.lineSeparator();
     }
 
     public int getExitCode() {
@@ -1021,7 +1026,8 @@ class JVMOutput {
         String rerunHint = "";
         String stdOut = "";
         if (exitCode == 134) {
-            stdOut = "\n\nStandard Output\n---------------\n" + getOutput();
+            stdOut = System.lineSeparator() + System.lineSeparator() + "Standard Output" + System.lineSeparator()
+                     + "---------------" + System.lineSeparator() + getOutput();
         } else if (!stripRerunHint) {
             rerunHint = TestFramework.RERUN_HINT;
         }
@@ -1029,8 +1035,10 @@ class JVMOutput {
             // IR exception
             return getCommandLine() + rerunHint;
         } else {
-            return "TestFramework test VM exited with code " + exitCode + "\n"
-                   + stdOut + "\n" + getCommandLine() + "\n\nError Output\n------------\n" + stdErr + "\n\n" + rerunHint;
+            return "TestFramework test VM exited with code " + exitCode + System.lineSeparator() + stdOut
+                   + System.lineSeparator() + getCommandLine() + System.lineSeparator() + System.lineSeparator()
+                   + "Error Output" + System.lineSeparator() + "------------" + System.lineSeparator() + stdErr
+                   + System.lineSeparator() + System.lineSeparator() + rerunHint;
         }
     }
 }

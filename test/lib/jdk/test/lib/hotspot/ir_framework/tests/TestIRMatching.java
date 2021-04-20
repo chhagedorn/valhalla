@@ -309,7 +309,8 @@ public class TestIRMatching {
                 builder.append(j);
             }
         }
-        Asserts.assertTrue(output.contains(builder.toString()), "Could not find encoding: \"" + builder.toString() + "\n");
+        Asserts.assertTrue(output.contains(builder.toString()), "Could not find encoding: \"" + builder.toString()
+                                                                + System.lineSeparator());
     }
 }
 
@@ -1421,7 +1422,7 @@ class GoodRuleConstraint extends Constraint {
 
     @Override
     protected void checkIRRule(String irRule) {
-        Asserts.fail(errorPrefix() + " should not fail:\n" + irRule);
+        Asserts.fail(errorPrefix() + " should not fail:" + System.lineSeparator() + irRule);
     }
 }
 
@@ -1438,7 +1439,7 @@ class GoodFailOnConstraint extends GoodRuleConstraint {
 
     @Override
     protected void checkIRRule(String irRule) {
-        Asserts.assertFalse(irRule.contains("- failOn"), errorPrefix() + " should not have failed:\n" + irRule);
+        Asserts.assertFalse(irRule.contains("- failOn"), errorPrefix() + " should not have failed:" + System.lineSeparator() + irRule);
     }
 }
 
@@ -1455,7 +1456,8 @@ class GoodCountsConstraint extends GoodRuleConstraint {
 
     @Override
     protected void checkIRRule(String irRule) {
-        Asserts.assertFalse(irRule.contains("- counts"), errorPrefix() + " should not have failed with counts:\n" + irRule);
+        Asserts.assertFalse(irRule.contains("- counts"), errorPrefix() + " should not have failed with counts:"
+                                                         + System.lineSeparator() + irRule);
     }
 }
 
@@ -1500,10 +1502,10 @@ abstract class RegexConstraint extends Constraint {
     private static Pattern initIRPattern(String category, int ruleIdx) {
         if (category.equals("failOn")) {
             return Pattern.compile("rule " + ruleIdx + ":.*\\R.*- failOn: Graph contains forbidden nodes.*\\R" +
-                                   ".*Regex \\d+\\).*\\R.*Matched forbidden node.*");
+                                   ".*Regex \\d+:.*\\R.*Matched forbidden node.*");
         } else {
             return Pattern.compile("rule " + ruleIdx + ":.*\\R.*- counts: Graph contains wrong number of nodes:\\R" +
-                                   ".*Regex \\d+\\).*\\R.*Expected.*");
+                                   ".*Regex \\d+:.*\\R.*Expected.*");
         }
     }
 
@@ -1523,7 +1525,7 @@ abstract class RegexConstraint extends Constraint {
         Pattern pattern;
         Matcher matcher;
         for (int regexIndex : this.regexIndexes) {
-            pattern = Pattern.compile("Regex " + regexIndex + "\\).*");
+            pattern = Pattern.compile("Regex " + regexIndex + ":.*");
             matcher = pattern.matcher(categoryString);
             if (isGood) {
                 Asserts.assertFalse(matcher.find(), errorPrefix() + " failed with Regex " + regexIndex);

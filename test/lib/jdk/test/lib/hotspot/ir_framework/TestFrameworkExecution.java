@@ -50,7 +50,7 @@ public class TestFrameworkExecution {
         try {
             WHITE_BOX = WhiteBox.getWhiteBox();
         } catch (UnsatisfiedLinkError e) {
-            System.err.println("\n" + """
+            System.err.println(System.lineSeparator() + """
                                ##########################################################
                                 - Did you call a test-related interface method from
                                   TestFramework in main() of your test? Make sure to
@@ -164,8 +164,7 @@ public class TestFrameworkExecution {
         try {
             c = Class.forName(className);
         } catch (Exception e) {
-            TestRun.fail("Could not find " + classType + " class", e);
-            return null;
+            throw new TestRunException("Could not find " + classType + " class", e);
         }
         return c;
     }
@@ -430,7 +429,7 @@ public class TestFrameworkExecution {
         Run runAnno = getAnnotation(ex, Run.class);
         Check checkAnno = getAnnotation(ex, Check.class);
         TestFormat.check((testAnno == null && runAnno == null && checkAnno == null) || Stream.of(forceCompileAnno, dontCompileAnno, forceInlineAnno, dontInlineAnno).noneMatch(Objects::nonNull),
-                         "Cannot use explicit compile command annotations (@ForceInline, @DontInline," +
+                         "Cannot use explicit compile command annotations (@ForceInline, @DontInline, " +
                          "@ForceCompile or @DontCompile) together with @Test, @Check or @Run: " + ex + ". Use compLevel in @Test for fine tuning.");
         if (Stream.of(forceInlineAnno, dontCompileAnno, dontInlineAnno).filter(Objects::nonNull).count() > 1) {
             // Failure
@@ -789,8 +788,10 @@ public class TestFrameworkExecution {
             elapsed = System.currentTimeMillis() - started;
         } while (elapsed < 5000);
         StringBuilder builder = new StringBuilder();
-        forceCompileMap.forEach((key, value) -> builder.append("- ").append(key).append(" at CompLevel.").append(value).append("\n"));
-        TestRun.fail("Could not force compile the following @ForceCompile methods:\n" + builder.toString());
+        forceCompileMap.forEach((key, value) -> builder.append("- ").append(key).append(" at CompLevel.").append(value)
+                                                       .append(System.lineSeparator()));
+        throw new TestRunException("Could not force compile the following @ForceCompile methods:"
+                                   + System.lineSeparator() + builder.toString());
     }
 
     /**
@@ -814,7 +815,7 @@ public class TestFrameworkExecution {
 
         if (SHUFFLE_TESTS) {
             // Execute tests in random order (execution sequence affects profiling). This is done by default.
-            Collections.shuffle(testList);
+            Collections.shuffle(testList, Utils.getRandomInstance());
         }
         StringBuilder builder = new StringBuilder();
         int failures = 0;
@@ -833,7 +834,8 @@ public class TestFrameworkExecution {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
-                builder.append(test.toString()).append(":\n").append(sw.toString()).append("\n\n");
+                builder.append(test.toString()).append(":").append(System.lineSeparator()).append(sw.toString())
+                       .append(System.lineSeparator()).append(System.lineSeparator());
                 failures++;
             }
             if (PRINT_TIMES || VERBOSE) {
@@ -852,17 +854,17 @@ public class TestFrameworkExecution {
 
         // Print execution times
         if (VERBOSE || PRINT_TIMES) {
-            System.out.println("\n\nTest execution times:");
+            System.out.println(System.lineSeparator() + System.lineSeparator() + "Test execution times:");
             for (Map.Entry<Long, String> entry : durations.entrySet()) {
-                System.out.format("%-10s%15d ns\n", entry.getValue() + ":", entry.getKey());
+                System.out.format("%-10s%15d ns" + System.lineSeparator(), entry.getValue() + ":", entry.getKey());
             }
         }
 
         if (failures > 0) {
             // Finally, report all occurred exceptions in a nice format.
-            String msg = "\n\nTest Failures (" + failures + ")\n" +
-                         "----------------" + "-".repeat(String.valueOf(failures).length());
-            throw new TestRunException(msg + "\n" + builder.toString());
+            String msg = System.lineSeparator() + System.lineSeparator() + "Test Failures (" + failures + ")"
+                         + System.lineSeparator() + "----------------" + "-".repeat(String.valueOf(failures).length());
+            throw new TestRunException(msg + System.lineSeparator() + builder.toString());
         }
     }
 
@@ -973,7 +975,7 @@ public class TestFrameworkExecution {
                 case ANY -> {
                     return TriState.Yes;
                 }
-                default -> TestRun.fail("compiledAtLevel() should not be called with " + level);
+                default -> throw new TestRunException("compiledAtLevel() should not be called with " + level);
             }
         }
         if (!USE_COMPILER || XCOMP || TEST_C1 ||
@@ -1147,7 +1149,8 @@ abstract class AbstractTest {
                 return;
             }
         } while (elapsed < WAIT_FOR_COMPILATION_TIMEOUT);
-        TestRun.fail(testMethod + " not compiled after waiting for " + WAIT_FOR_COMPILATION_TIMEOUT/1000 + " s");
+        throw new TestRunException(testMethod + " not compiled after waiting for "
+                                   + WAIT_FOR_COMPILATION_TIMEOUT/1000 + " s");
     }
 
     /**
@@ -1412,7 +1415,8 @@ class CustomRunTest extends AbstractTest {
         try {
             executor.awaitTermination(timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
-            TestRun.fail("Some compilations did not complete after " + timeout + "ms for @Run method " + runMethod);
+            throw new TestRunException("Some compilations did not complete after " + timeout
+                                       + "ms for @Run method " + runMethod);
         }
     }
 
@@ -1439,11 +1443,12 @@ class CustomRunTest extends AbstractTest {
             String message = "Compilation level should be " + test.getCompLevel().name() + " (requested) but was "
                              + level.name() + " for " + test.getTestMethod() + ".";
             switch (mode) {
-                case STANDALONE -> TestFramework.fail("Should not be called for STANDALONE method " + runMethod);
-                case NORMAL -> message = message + "\nCheck your @Run method " + runMethod + " to ensure that "
-                                         + test.getTestMethod() + " is called at least once in each iteration.";
+                case STANDALONE -> throw new TestFrameworkException("Should not be called for STANDALONE method " + runMethod);
+                case NORMAL -> message = message + System.lineSeparator() + "Check your @Run method " + runMethod
+                                         + " to ensure that " + test.getTestMethod()
+                                         + " is called at least once in each iteration.";
             }
-            TestRun.fail(message);
+            throw new TestRunException(message);
         }
     }
 }

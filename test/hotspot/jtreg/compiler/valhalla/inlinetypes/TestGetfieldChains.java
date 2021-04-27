@@ -73,7 +73,7 @@ public class TestGetfieldChains {
 
 
     // Simple chain of getfields ending with primitive field
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test1() {
         return NamedRectangle.getP1X(new NamedRectangle());
     }
@@ -85,7 +85,7 @@ public class TestGetfieldChains {
     }
 
     // Simple chain of getfields ending with a flattened field
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public Point test2() {
         return NamedRectangle.getP1(new NamedRectangle());
     }
@@ -98,7 +98,7 @@ public class TestGetfieldChains {
     }
 
     // Chain of getfields but the initial receiver is null
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public NullPointerException test3() {
         NullPointerException npe = null;
         try {
@@ -119,7 +119,7 @@ public class TestGetfieldChains {
     }
 
     // Chain of getfields but one getfield in the middle of the chain trigger an illegal access
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public IllegalAccessError test4() {
         IllegalAccessError iae = null;
         try {
@@ -141,7 +141,7 @@ public class TestGetfieldChains {
     }
 
     // Chain of getfields but the last getfield trigger a NoSuchFieldError
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public NoSuchFieldError test5() {
         NoSuchFieldError nsfe = null;
         try {
@@ -172,7 +172,7 @@ public class TestGetfieldChains {
         EmptyContainer container1 = new EmptyContainer();
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public EmptyType test6() {
         Container c = new Container();
         return c.container1.et;
@@ -184,7 +184,7 @@ public class TestGetfieldChains {
         Asserts.assertEQ(et, EmptyType.default);
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public EmptyType test7() {
         Container[] ca = new Container[10];
         return ca[3].container0.et;

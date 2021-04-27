@@ -191,7 +191,7 @@ public class TestWithfieldC1 {
     }
 
     // escape with putstatic
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test1() {
         return FooValue.test1();
     }
@@ -203,7 +203,7 @@ public class TestWithfieldC1 {
     }
 
     // escape with putfield
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test2() {
         FooValue v = FooValue.default;
 
@@ -227,7 +227,7 @@ public class TestWithfieldC1 {
     }
 
     // escape with function call
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test3() {
         return FooValue.test3();
     }
@@ -240,7 +240,7 @@ public class TestWithfieldC1 {
     }
 
     // escape and then branch backwards
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test4() {
         return FooValue.test4();
     }
@@ -253,7 +253,7 @@ public class TestWithfieldC1 {
     }
 
     // escape using a different local variable
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test5() {
         return FooValue.test5();
     }
@@ -266,7 +266,7 @@ public class TestWithfieldC1 {
     }
 
     // escape using aastore
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test6() {
         return FooValue.test6();
     }
@@ -282,7 +282,7 @@ public class TestWithfieldC1 {
     }
 
     // Copying a value into different local slots -- disable withfield optimization
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test7() {
         return FooValue.test7();
     }
@@ -295,7 +295,7 @@ public class TestWithfieldC1 {
     }
 
     // escape by invoking non-static method
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test8() {
         return FooValue.test8();
     }
@@ -308,7 +308,7 @@ public class TestWithfieldC1 {
     }
 
     // duplicate reference with local variables
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public FooValue test9() {
         FooValue v = FooValue.default;
 

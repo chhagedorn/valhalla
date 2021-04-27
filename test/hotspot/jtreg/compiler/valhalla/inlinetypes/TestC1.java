@@ -69,7 +69,7 @@ public class TestC1 {
     }
 
     // JDK-8229799
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public long test1(Object a, Object b, long n) {
         long r;
         n += (a == b) ? 0x5678123456781234L : 0x1234567812345678L;
@@ -97,7 +97,7 @@ public class TestC1 {
     // JDK-8231961
     // Test that the value numbering optimization does not remove
     // the second load from the buffered array element.
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test2(SimpleValue2[] array) {
         return array[0].value + array[0].value;
     }
@@ -115,7 +115,7 @@ public class TestC1 {
     // sub-elements of a flattened array without copying the element first
 
     // Test access to a null array
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test3(MyValue2[] array, int index) {
         return array[index].x;
     }
@@ -132,7 +132,7 @@ public class TestC1 {
     }
 
     // Test out of bound accesses
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test4(MyValue2[] array, int index) {
         return array[index].x;
     }
@@ -157,7 +157,7 @@ public class TestC1 {
     }
 
     // Test 1st level sub-element access to primitive field
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test5(MyValue2[] array, int index) {
         return array[index].x;
     }
@@ -172,7 +172,7 @@ public class TestC1 {
     }
 
     // Test 1st level sub-element access to flattened field
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public MyValue2Inline test6(MyValue2[] array, int index) {
         return array[index].v;
     }
@@ -231,7 +231,7 @@ public class TestC1 {
         }
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public Big test7(TestValue[] array, int index) {
         return array[index].big;
     }
@@ -248,7 +248,7 @@ public class TestC1 {
     }
 
     // Test 2nd level sub-element access to primitive field
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public byte test8(MyValue1[] array, int index) {
         return array[index].v2.y;
     }
@@ -271,7 +271,7 @@ public class TestC1 {
     // (OOB, null pointer)
     static primitive class EmptyType {}
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public EmptyType test9() {
         EmptyType[] array = new EmptyType[10];
         return array[4];
@@ -283,7 +283,7 @@ public class TestC1 {
         Asserts.assertEQ(et, EmptyType.default);
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public EmptyType test10(EmptyType[] array) {
         return array[0];
     }
@@ -295,7 +295,7 @@ public class TestC1 {
         Asserts.assertEQ(et, EmptyType.default);
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public EmptyType test11(EmptyType[] array, int index) {
         return array[index];
     }
@@ -326,7 +326,7 @@ public class TestC1 {
         Asserts.assertNotNull(e);
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public void test12(EmptyType[] array, int index, EmptyType value) {
         array[index] = value;
     }

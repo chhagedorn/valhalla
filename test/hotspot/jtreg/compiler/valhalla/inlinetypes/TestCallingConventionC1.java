@@ -56,7 +56,7 @@ public class TestCallingConventionC1 {
                              "-XX:+TieredCompilation",
                              "-XX:+IgnoreUnrecognizedVMOptions",
                              "-XX:+StressInlineTypeReturnedAsFields"),
-                // Same as above, but flip all the compLevel=CompLevel.C1 and compLevel=CompLevel.C2, so we test
+                // Same as above, but flip all the compLevel=CompLevel.C1_SIMPLE and compLevel=CompLevel.C2, so we test
                 // the compliment of the above scenario.
                 new Scenario(2,
                              "-XX:CICompilerCount=2",
@@ -95,7 +95,7 @@ public class TestCallingConventionC1 {
             return x + y;
         }
 
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func_c1(Point p) {
             return x + y + p.x + p.y;
         }
@@ -173,9 +173,9 @@ public class TestCallingConventionC1 {
     static class MyImplPojo1 implements Intf {
         int field = 1000;
 
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func1(int a, int b)             { return field + a + b + 20; }
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 20; }
     }
 
@@ -203,10 +203,10 @@ public class TestCallingConventionC1 {
         }
 
         @DontInline
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func1(int a, int b) { return field + a + b + 300; }
 
-        @DontInline @ForceCompile(CompLevel.C1)
+        @DontInline @ForceCompile(CompLevel.C1_SIMPLE)
         public int func2(int a, int b, Point p)    { return field + a + b + p.x + p.y + 300; }
     }
 
@@ -335,19 +335,19 @@ public class TestCallingConventionC1 {
         }
 
         @DontInline
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public final int final_func(RefPoint rp2) { // opt_virtual_call
             return this.x.n + this.y.n + rp2.x.n + rp2.y.n;
         }
 
         @DontInline
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func1(RefPoint rp2) {
             return this.x.n + this.y.n + rp2.x.n + rp2.y.n;
         }
 
         @DontInline
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func2(RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
             return x.n + y.n +
                    rp1.x.n + rp1.y.n +
@@ -365,7 +365,7 @@ public class TestCallingConventionC1 {
             return rp2.x.n + rp2.y.n + 1111111;
         }
         @DontInline
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func2(RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
             return 111111 +
                    rp1.x.n + rp1.y.n +
@@ -383,7 +383,7 @@ public class TestCallingConventionC1 {
             return rp2.x.n + rp2.y.n + 2222222;
         }
         @DontInline
-        @ForceCompile(CompLevel.C1)
+        @ForceCompile(CompLevel.C1_SIMPLE)
         public int func2(RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
             return 222222 +
                    rp1.x.n + rp1.y.n +
@@ -432,7 +432,7 @@ public class TestCallingConventionC1 {
     //**********************************************************************
 
     //** C1 passes inline type to interpreter (static)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test1() {
         return test1_helper(pointField);
     }
@@ -452,7 +452,7 @@ public class TestCallingConventionC1 {
     }
 
     //** C1 passes inline type to interpreter (monomorphic)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test2() {
         return test2_helper(pointField);
     }
@@ -472,7 +472,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1 passes inline type to interpreter (megamorphic: vtable)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test3(Functor functor) {
         return functor.apply_interp(pointField);
     }
@@ -504,7 +504,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1 passes inline type to interpreter (megamorphic: itable)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test4(FunctorInterface fi) {
         return fi.apply_interp(pointField);
     }
@@ -524,7 +524,7 @@ public class TestCallingConventionC1 {
     //**********************************************************************
 
     // Interpreter passes inline type to C1 (static)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     static public int test20(Point p1, long l, Point p2) {
         return p1.x + p2.y;
     }
@@ -566,7 +566,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test30_helper(Point p) {
         return p.x + p.y;
     }
@@ -588,7 +588,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test31_helper(Point p1, Point p2) {
         return p1.x + p2.y;
     }
@@ -610,7 +610,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test32_helper(int x, Point p1, int y, Point p2) {
         return p1.x + p2.y + x + y;
     }
@@ -664,7 +664,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test35_helper(int a1, int a2, int a3, int a4, int a5, Point p) {
         return a1 + a2 + a3 + a4 + a5 + p.x + p.y;
     }
@@ -686,7 +686,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test36_helper(Point p, int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8) {
         return a6 + a8;
     }
@@ -708,7 +708,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test37_helper(Point p, long a1, long a2, long a3, long a4, long a5, long a6, long a7, long a8) {
         return (int)(a6 + a8);
     }
@@ -730,7 +730,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test38_helper(Point p, boolean a0, byte a1, char a2, short a3, int a4, long a5, byte a6, short a7, int a8) {
         if (a0) {
             return (int)(a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8);
@@ -756,7 +756,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static long test39_helper(int a1, FixedPoints f1, int a2, FixedPoints f2) {
         if (f1.Z0 == false && f1.Z1 == true && f2.Z0 == false && f2.Z1 == true) {
             return f1.B + f2.C + f1.S + f2.I + f1.J;
@@ -782,7 +782,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static double test40_helper(float a1, double a2, FloatPoint fp, DoublePoint dp, float a3, double a4, float a5, double a6, double a7, double a8, double a9, double a10, double a11, double a12) {
         return a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + fp.x + fp.y - dp.x - dp.y;
     }
@@ -804,7 +804,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static double test41_helper(int a1, double a2, Point p, FloatPoint fp, DoublePoint dp, float a3, int a4, float a5, double a6, double a7, double a8, long a9, double a10, double a11, double a12) {
       return a1 + a2  + fp.x + fp.y - dp.x - dp.y + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12;
     }
@@ -826,7 +826,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test42_helper(EightFloats ep1, // (xmm0 ... xmm7) -> rsi
                                        Point p2,        // (rsi, rdx) -> rdx
                                        int i3,          // rcx -> rcx
@@ -856,7 +856,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test43_helper(FloatPoint fp, int a1, int a2, int a3, int a4, int a5, int a6) {
         // On x64:
         //    Scalarized entry -- all parameters are passed in registers
@@ -881,7 +881,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test44_helper(FloatPoint fp1, FloatPoint fp2, int a1, int a2, int a3, int a4, int a5, int a6) {
         // On x64:
         //    Scalarized entry -- all parameters are passed in registers
@@ -909,7 +909,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test45_helper(FloatPoint fp1, FloatPoint fp2, FloatPoint fp3, FloatPoint fp4, FloatPoint fp5, int a1, int a2, int a3, int a4, int a5, int a6, int a7) {
         return fp1.x + fp1.y +
                fp2.x + fp2.y +
@@ -936,7 +936,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test46_helper(FloatPoint fp1, FloatPoint fp2, Point p1, FloatPoint fp3, FloatPoint fp4, Point p2, FloatPoint fp5, int a1, int a2, int a3, int a4, int a5, int a6, int a7) {
         return p1.x + p1.y +
                p2.x + p2.y +
@@ -990,7 +990,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test47_helper(FloatPoint fp, int a1, int a2, int a3, int a4, int a5) {
         test47_thrower();
         return 0.0f;
@@ -1028,7 +1028,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test48_helper(FloatPoint fp, int a1, int a2, int a3, int a4, int a5) {
         test48_thrower();
         return 0.0f;
@@ -1099,7 +1099,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test50_helper(FloatPoint fp, int a1, int a2, int a3, int a4, int a5, int a6) {
         test50_thrower();
         return 0.0f;
@@ -1129,7 +1129,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test51_helper(RefPoint rp1) {
         return rp1.x.n + rp1.y.n;
     }
@@ -1151,7 +1151,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test52_helper(Point p1, RefPoint rp1) {
         return p1.x + p1.y + rp1.x.n + rp1.y.n;
     }
@@ -1173,7 +1173,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test53_helper(RefPoint rp1, RefPoint rp2, RefPoint rp3, RefPoint rp4) {
         return rp1.x.n + rp1.y.n +
                rp2.x.n + rp2.y.n +
@@ -1198,7 +1198,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test54_helper(RefPoint rp1, RefPoint rp2, float f, int i, RefPoint rp3, RefPoint rp4) {
         return rp1.x.n + rp1.y.n +
                rp2.x.n + rp2.y.n +
@@ -1247,7 +1247,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test55_helper(Point p1) {
         return p1.x + p1.y;
     }
@@ -1273,7 +1273,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test56_helper(RefPoint rp1) {
         return rp1.x.n + rp1.y.n;
     }
@@ -1324,7 +1324,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test58_helper(RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
         return rp1.x.n + rp1.y.n +
                rp2.x.n + rp2.y.n +
@@ -1360,7 +1360,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test59_helper(RefPoint rp1, int a1, int a2, int a3, int a4, boolean doGC) {
         if (doGC) {
             System.gc();
@@ -1388,7 +1388,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static int test60_helper(int x0, int x1, int x2, RefPoint rp1, RefPoint rp2,int a1, int a2, int a3, int a4, boolean doGC) {
         // On x64, C2 passes:   reg0=x1, reg1=x1, reg2=x2, reg3=rp1.x, reg4=rp1.y, reg5=rp2.x stack0=rp2.y ....
         //         C1 expects:  reg0=x1, reg1=x1, reg2=x2, reg3=rp1,   reg4=rp2,   reg5=a1    stack0=a2 ...
@@ -1484,7 +1484,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     public static int test64_helper(RefPoint_Access rpa, RefPoint rp1, RefPoint rp2, Number n1, RefPoint rp3, RefPoint rp4, Number n2) {
         return rp3.y.n;
     }
@@ -1560,7 +1560,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static Point test78_helper(Point p) {
         return p;
     }
@@ -1580,7 +1580,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static RefPoint test79_helper(RefPoint p) {
         return p;
     }
@@ -1593,7 +1593,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->C2 invokestatic with InlineTypeReturnedAsFields (RefPoint)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test80(RefPoint p) {
         RefPoint np = test80_helper(p);
         return np.x.n + np.y.n;
@@ -1613,7 +1613,7 @@ public class TestCallingConventionC1 {
     }
 
     // Interpreter->C1 invokestatic with InlineTypeReturnedAsFields (Point)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public Point test81(Point p) {
         return p;
     }
@@ -1629,7 +1629,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->Interpreter invokestatic with InlineTypeReturnedAsFields (RefPoint)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test82(RefPoint p) {
         RefPoint np = test82_helper(p);
         return np.x.n + np.y.n;
@@ -1659,7 +1659,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static TooBigToReturnAsFields test83_helper(TooBigToReturnAsFields p) {
         return p;
     }
@@ -1672,7 +1672,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->C2 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test84(TooBigToReturnAsFields p) {
         TooBigToReturnAsFields np = test84_helper(p);
         return p.a0 + p.a5;
@@ -1692,7 +1692,7 @@ public class TestCallingConventionC1 {
     }
 
     // Interpreter->C1 invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public TooBigToReturnAsFields test85(TooBigToReturnAsFields p) {
         return p;
     }
@@ -1705,7 +1705,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->Interpreter invokestatic with InlineTypeReturnedAsFields (TooBigToReturnAsFields)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test86(TooBigToReturnAsFields p) {
         TooBigToReturnAsFields np = test86_helper(p);
         return p.a0 + p.a5;
@@ -1734,7 +1734,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static RefPoint.ref test87_helper(RefPoint.ref p) {
         return p;
     }
@@ -1752,7 +1752,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static RefPoint.ref test88_helper() {
         return null;
     }
@@ -1764,7 +1764,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->C2 invokestatic with InlineTypeReturnedAsFields (RefPoint.ref)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public RefPoint.ref test89(RefPoint.ref p) {
         return test89_helper(p);
     }
@@ -1792,7 +1792,7 @@ public class TestCallingConventionC1 {
     //----------------------------------------------------------------------------------
 
     // C1->C1 invokeinterface -- call Unverified Value Entry of MyImplPojo1.func2 (compiled by C1)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test90(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
     }
@@ -1813,7 +1813,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->C2 invokeinterface -- call Unverified Value Entry of MyImplPojo2.func2 (compiled by C2)
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test91(Intf intf, int a, int b) {
         return intf.func2(a, b, pointField);
     }
@@ -1918,7 +1918,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->C2 GC handling in StubRoutines::store_inline_type_fields_to_buf()
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public RefPoint test96(RefPoint rp, boolean b) {
         RefPoint p = test96_helper(rp);
         if (b) {
@@ -1952,7 +1952,7 @@ public class TestCallingConventionC1 {
     //           callee is executed by the interpreter. Then, callee is compiled
     //           and SharedRuntime::fixup_callers_callsite is called to fix up the
     //           callsite from test97_verifier->test97.
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public int test97(Point p1, Point p2) {
         return test97_helper(p1, p2);
     }
@@ -1962,7 +1962,7 @@ public class TestCallingConventionC1 {
         return p1.x + p1.y + p2.x + p2.y;
     }
 
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     public void test97_verifier(RunInfo info) {
         int count = info.isWarmUp() ? 1 : 20;
         for (int i=0; i<count; i++) {
@@ -1988,7 +1988,7 @@ public class TestCallingConventionC1 {
         return p1.x + p1.y + p2.x + p2.y;
     }
 
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     public void test98_verifier(RunInfo info) {
         int count = info.isWarmUp() ? 1 : 20;
         for (int i=0; i<count; i++) {
@@ -2004,7 +2004,7 @@ public class TestCallingConventionC1 {
     }
 
     // C1->C2  - same as test97, except the callee is a static method.
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public static int test99(Point p1, Point p2) {
         return test99_helper(p1, p2);
     }
@@ -2014,7 +2014,7 @@ public class TestCallingConventionC1 {
         return p1.x + p1.y + p2.x + p2.y;
     }
 
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     public void test99_verifier(RunInfo info) {
         int count = info.isWarmUp() ? 1 : 20;
         for (int i=0; i<count; i++) {
@@ -2037,7 +2037,7 @@ public class TestCallingConventionC1 {
     }
 
     @DontInline
-    @ForceCompile(CompLevel.C1)
+    @ForceCompile(CompLevel.C1_SIMPLE)
     private static float test100_helper(FloatPoint fp1, FloatPoint fp2, RefPoint rp, int a1, int a2, int a3, int a4) {
         // On x64:
         //    Scalarized entry -- all parameters are passed in registers
@@ -2080,7 +2080,7 @@ public class TestCallingConventionC1 {
 
     // C1->C2 force GC for every allocation when storing the returned
     // fields back into a buffered object.
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public RefPoint test101(RefPoint rp) {
         return test101_helper(rp);
     }
@@ -2110,7 +2110,7 @@ public class TestCallingConventionC1 {
     }
 
     // Same as test101, except we have Interpreter->C2 instead.
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public RefPoint test102(RefPoint rp) {
         return test102_interp(rp);
     }
@@ -2144,7 +2144,7 @@ public class TestCallingConventionC1 {
         }
     }
 
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public void test103() {
         // when this method is compiled by C1, the Test103Value class is not yet loaded.
         test103_v = new Test103Value(); // invokestatic "Test103Value.<init>()QTest103Value;"
@@ -2169,7 +2169,7 @@ public class TestCallingConventionC1 {
 
 
     // Same as test103, but with an inline class that's too big to return as fields.
-    @Test(compLevel = CompLevel.C1)
+    @Test(compLevel = CompLevel.C1_SIMPLE)
     public void test104() {
         // when this method is compiled by C1, the Test104Value class is not yet loaded.
         test104_v = new Test104Value(); // invokestatic "Test104Value.<init>()QTest104Value;"

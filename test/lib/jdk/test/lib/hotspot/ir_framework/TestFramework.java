@@ -25,8 +25,6 @@ package jdk.test.lib.hotspot.ir_framework;
 
 import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
-import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.util.ClassFileInstaller;
 import sun.hotspot.WhiteBox;
 
@@ -34,8 +32,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -64,9 +60,9 @@ import java.util.stream.Collectors;
  * Note that even though the framework uses the Whitebox API internally, it is not required to build and enabel it in the
  * JTreg test if the test itself is not utilizing any Whitebox features directly.
  * <p>
- * To specify additional flags, use {@link #runWithFlags(String...)}, {@link #addFlags(String...)},
- * {@link #addScenarios(Scenario...)}, or {@link #runWithScenarios(Scenario...)} where the scenarios can also be used
- * to run different flag combinations (instead of specifying multiple JTreg {@code @run} entries).
+ * To specify additional flags, use {@link #runWithFlags(String...)}, {@link #addFlags(String...)}, or
+ * {@link #addScenarios(Scenario...)} where the scenarios can also be used to run different flag combinations
+ * (instead of specifying multiple JTreg {@code @run} entries).
  * <p>
  * After annotating your test code with the framework specific annotations, the framework needs to be invoked from the
  * {@code main()} method of your JTreg test. There are two ways to do so. The first way is by calling the various
@@ -125,28 +121,20 @@ public class TestFramework {
     static final boolean VERBOSE = Boolean.getBoolean("Verbose");
     static final boolean TESTLIST = !System.getProperty("Test", "").isEmpty();
     static final boolean EXCLUDELIST = !System.getProperty("Exclude", "").isEmpty();
-    static final String TEST_VM_FLAGS_START = "##### TestFrameworkPrepareFlags - used by TestFramework #####";
-    static final String TEST_VM_FLAGS_DELIMITER = " ";
-    static final String TEST_VM_FLAGS_END = "----- END -----";
+    private static final boolean REPORT_STDOUT = Boolean.getBoolean("ReportStdout");
+
     static final String RERUN_HINT = """
                                        #############################################################
                                         - To only run the failed tests use -DTest, -DExclude,
                                           and/or -DScenarios.
-                                        - To also get the standard output of the test VM run with\s
+                                        - To also get the standard output of the test VM run with
                                           -DReportStdout=true or for even more fine-grained logging
                                           use -DVerbose=true.
                                        #############################################################
                                      """ + System.lineSeparator();
 
-    private static final int WARMUP_ITERATIONS = Integer.getInteger("Warmup", -1);
-    private static final boolean PREFER_COMMAND_LINE_FLAGS = Boolean.getBoolean("PreferCommandLineFlags");
-    private static final boolean EXCLUDE_RANDOM = Boolean.getBoolean("ExcludeRandom");
-    private static final boolean REPORT_STDOUT = Boolean.getBoolean("ReportStdout");
-    private static final boolean VERIFY_VM = Boolean.getBoolean("VerifyVM") && Platform.isDebugBuild();
-
     private boolean irVerificationPossible = Boolean.parseBoolean(System.getProperty("VerifyIR", "true"));
     private boolean shouldVerifyIR; // Should we perform IR matching?
-    private static String lastTestVMOutput;
     private static boolean toggleBool;
 
     private final Class<?> testClass;
@@ -155,8 +143,6 @@ public class TestFramework {
     private Set<Integer> scenarioIndices;
     private List<String> flags;
     private int defaultWarmup = -1;
-    private TestFrameworkSocket socket;
-    private Scenario scenario;
 
     /*
      * Public interface methods
@@ -190,23 +176,6 @@ public class TestFramework {
     }
 
     /**
-     * Default flags that are added used for the test VM.
-     */
-    private static String[] getDefaultFlags() {
-        return new String[] {"-XX:-BackgroundCompilation", "-XX:CompileCommand=quiet"};
-    }
-
-    /**
-     * Additional verification flags that are used if -DVerifyVM=true is with a debug build.
-     */
-    private static String[] getVerifyFlags() {
-        return new String[] {
-                "-XX:+UnlockDiagnosticVMOptions", "-XX:+VerifyOops", "-XX:+VerifyStack", "-XX:+VerifyLastFrame",
-                "-XX:+VerifyBeforeGC", "-XX:+VerifyAfterGC", "-XX:+VerifyDuringGC", "-XX:+VerifyAdapterSharing"
-        };
-    }
-
-    /**
      * Tests the class from which this method was invoked from.
      */
     public static void run() {
@@ -232,96 +201,18 @@ public class TestFramework {
      *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the JTreg VM and  Javaoptions flags over
      *            the specified {@code flags} of this method.</li>
      *     <li><p>If you want to run your entire JTreg test with additional flags, use this method.</li>
+     *     <li><p>If you want to run your entire JTreg test with additional flags but for another test class then the one
+     *            from which this method was called from, use {@link #addFlags(String...)}, use this method.</li>
      *     <li><p>If you want to run your JTreg test with multiple flag combinations, use
-     *            {@link #runWithScenarios(Scenario...)}</li>
+     *            {@link #addScenarios(Scenario...)}</li>
      * </ul>
      *
      * @param flags VM flags to be used for the test VM.
      */
     public static void runWithFlags(String... flags) {
         StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runWithFlags(walker.getCallerClass(), flags);
-    }
-
-    /**
-     * Tests {@code testClass}. The test VM is called with the specified {@code flags}.
-     * <ul>
-     *     <li><p>The {@code flags} override any set VM or Javaoptions flags by JTreg by default.<p>
-     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the JTreg VM and  Javaoptions flags over
-     *            the specified {@code flags} of this method.</li>
-     *     <li><p>If you want to run your entire JTreg test with additional flags, use this method.</li>
-     *     <li><p>If you want to run your JTreg test with multiple flag combinations, use
-     *            {@link #runWithScenarios(Scenario...)}</li>
-     * </ul>
-     *
-     * @param testClass the class to be tested by the framework.
-     * @param flags VM flags to be used for the test VM.
-     *
-     * @see #runWithFlags(String...)
-     */
-    public static void runWithFlags(Class<?> testClass, String... flags) {
-        TestFramework framework = new TestFramework(testClass);
+        TestFramework framework = new TestFramework(walker.getCallerClass());
         framework.addFlags(flags);
-        framework.start();
-    }
-
-    /**
-     * Tests {@code testClass} which uses {@code helperClasses} that can specify additional compile command annotations
-     * ({@link ForceCompile @ForceCompile}, {@link DontCompile @DontCompile}, {@link ForceInline @ForceInline},
-     * {@link DontInline @DontInline}) to be applied while testing {@code testClass} (also see description of
-     * {@link TestFramework}).
-     *
-     * <p>
-     * If a class is used by the test class that does not specify any compile command annotations, you do not
-     * need to include it in {@code helperClasses}. If no helper class specifies any compile commands, consider
-     * using {@link #run()} or {@link #run(Class)}.
-     *
-     * @param testClass the class to be tested by the framework.
-     * @param helperClasses helper classes containing compile command annotations ({@link ForceCompile},
-     *                      {@link DontCompile}, {@link ForceInline}, {@link DontInline}) to be applied
-     *                      while testing {@code testClass} (also see description of {@link TestFramework}).
-     */
-    public static void runWithHelperClasses(Class<?> testClass, Class<?>... helperClasses) {
-        TestFramework framework = new TestFramework(testClass);
-        framework.addHelperClasses(helperClasses);
-        framework.start();
-    }
-
-    /**
-     * Tests the class from which this method was invoked from. A test VM is called for each scenario in {@code scenarios}
-     * by using the specified flags in the scenario.
-     * <ul>
-     *     <li><p>If there is only one scenario, consider using {@link #runWithFlags(String...)}.</li>
-     *     <li><p>The scenario flags override any VM or Javaoptions set by JTreg by default.<p>
-     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the
-     *            scenario flags.</li>
-     * </ul>
-     *
-     * @param scenarios scenarios which specify specific flags for the test VM.
-     */
-    public static void runWithScenarios(Scenario... scenarios) {
-        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-        runWithScenarios(walker.getCallerClass(), scenarios);
-    }
-
-    /**
-     * Tests {@code testClass} A test VM is called for each scenario in {@code scenarios} by using the specified flags
-     * in the scenario.
-     * <ul>
-     *     <li><p>If there is only one scenario, consider using {@link #runWithFlags(String...)}.</li>
-     *     <li><p>The scenario flags override any VM or Javaoptions set by JTreg by default.<p>
-     *            Use {@code -DPreferCommandLineFlags=true} if you want to prefer the Java and VM options over the
-     *            scenario flags.</li>
-     * </ul>
-     *
-     * @param testClass the class to be tested by the framework.
-     * @param scenarios scenarios which specify specific flags for the test VM.
-     *
-     * @see #runWithScenarios(Scenario...)
-     */
-    public static void runWithScenarios(Class<?> testClass, Scenario... scenarios) {
-        TestFramework framework = new TestFramework(testClass);
-        framework.addScenarios(scenarios);
         framework.start();
     }
 
@@ -414,12 +305,12 @@ public class TestFramework {
             try {
                 start(null);
             } catch (TestVMException e) {
-                System.err.println(System.lineSeparator() + e.getExceptionInfo());
+                System.err.println(System.lineSeparator() + e.getExceptionInfo() + RERUN_HINT);
                 throw e;
             } catch (IRViolationException e) {
                 System.out.println("Compilation(s) of failed match(es):");
                 System.out.println(e.getCompilations());
-                System.err.println(System.lineSeparator() + e.getExceptionInfo());
+                System.err.println(System.lineSeparator() + e.getExceptionInfo() + System.lineSeparator() + RERUN_HINT);
                 throw e;
             }
         } else {
@@ -429,7 +320,7 @@ public class TestFramework {
 
     /**
      * Set a new default warm-up (overriding the framework default of 2000 at
-     * {@link TestFrameworkExecution#WARMUP_ITERATIONS}) to be applied for all tests that do not specify an explicit
+     * {@link TestVM#WARMUP_ITERATIONS}) to be applied for all tests that do not specify an explicit
      * warm-up with {@link Warmup @Warmup}.
      *
      * @param defaultWarmup a new non-negative default warm-up.
@@ -448,7 +339,7 @@ public class TestFramework {
      * @return the last test VM output.
      */
     public static String getLastTestVMOutput() {
-        return lastTestVMOutput;
+        return TestVMProcess.getLastTestVMOutput();
     }
 
     /*
@@ -465,7 +356,7 @@ public class TestFramework {
      * @throws TestRunException if compilation level is {@link CompLevel#SKIP} or {@link CompLevel#WAIT_FOR_COMPILATION}.
      */
     public static void compile(Method m, CompLevel compLevel) {
-        TestFrameworkExecution.compile(m, compLevel);
+        TestVM.compile(m, compLevel);
     }
 
     /**
@@ -474,7 +365,7 @@ public class TestFramework {
      * @param m the method to be deoptimized.
      */
     public static void deoptimize(Method m) {
-        TestFrameworkExecution.deoptimize(m);
+        TestVM.deoptimize(m);
     }
 
     /**
@@ -485,7 +376,7 @@ public class TestFramework {
      *         {@code false} otherwise.
      */
     public static boolean isCompiled(Method m) {
-        return TestFrameworkExecution.isCompiled(m);
+        return TestVM.isCompiled(m);
     }
 
     /**
@@ -496,7 +387,7 @@ public class TestFramework {
      *         {@code false} otherwise.
      */
     public static boolean isC1Compiled(Method m) {
-        return TestFrameworkExecution.isC1Compiled(m);
+        return TestVM.isC1Compiled(m);
     }
 
     /**
@@ -507,7 +398,7 @@ public class TestFramework {
      *         {@code false} otherwise.
      */
     public static boolean isC2Compiled(Method m) {
-        return TestFrameworkExecution.isC2Compiled(m);
+        return TestVM.isC2Compiled(m);
     }
 
     /**
@@ -519,7 +410,7 @@ public class TestFramework {
      *         {@code false} otherwise.
      */
     public static boolean isCompiledAtLevel(Method m, CompLevel compLevel) {
-        return TestFrameworkExecution.isCompiledAtLevel(m, compLevel);
+        return TestVM.isCompiledAtLevel(m, compLevel);
     }
 
     /**
@@ -529,7 +420,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is not compiled at any level.
      */
     public static void assertCompiled(Method m) {
-        TestFrameworkExecution.assertCompiled(m);
+        TestVM.assertCompiled(m);
     }
 
     /**
@@ -539,7 +430,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is compiled at any level.
      */
     public static void assertNotCompiled(Method m) {
-        TestFrameworkExecution.assertNotCompiled(m);
+        TestVM.assertNotCompiled(m);
     }
 
     /**
@@ -549,7 +440,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is not compiled with C1.
      */
     public static void assertCompiledByC1(Method m) {
-        TestFrameworkExecution.assertCompiledByC1(m);
+        TestVM.assertCompiledByC1(m);
     }
 
     /**
@@ -559,7 +450,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is not compiled with C2.
      */
     public static void assertCompiledByC2(Method m) {
-        TestFrameworkExecution.assertCompiledByC2(m);
+        TestVM.assertCompiledByC2(m);
     }
 
     /**
@@ -570,7 +461,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is not compiled at {@code compLevel}.
      */
     public static void assertCompiledAtLevel(Method m, CompLevel compLevel) {
-        TestFrameworkExecution.assertCompiledAtLevel(m, compLevel);
+        TestVM.assertCompiledAtLevel(m, compLevel);
     }
 
     /**
@@ -580,7 +471,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is was not deoptimized after being C1 compiled.
      */
     public static void assertDeoptimizedByC1(Method m) {
-        TestFrameworkExecution.assertDeoptimizedByC1(m);
+        TestVM.assertDeoptimizedByC1(m);
     }
 
     /**
@@ -590,7 +481,7 @@ public class TestFramework {
      * @throws TestRunException if {@code m} is was not deoptimized after being C2 compiled.
      */
     public static void assertDeoptimizedByC2(Method m) {
-        TestFrameworkExecution.assertDeoptimizedByC2(m);
+        TestVM.assertDeoptimizedByC2(m);
     }
 
     /**
@@ -689,10 +580,9 @@ public class TestFramework {
                 System.out.println((scenario != null ? "Scenario #" + scenario.getIndex() + " - " : "")
                                    + "Compilation(s) of failed matche(s):");
                 System.out.println(irException.getCompilations());
-                builder.append(errorMsg).append(System.lineSeparator()).append(irException.getExceptionInfo())
-                       .append(e.getMessage());
-            } else if (e instanceof TestVMException) {
-                builder.append(errorMsg).append(System.lineSeparator()).append(((TestVMException) e).getExceptionInfo());
+                builder.append(errorMsg).append(System.lineSeparator()).append(irException.getExceptionInfo());
+            } else if (e instanceof TestVMException testVMException) {
+                builder.append(errorMsg).append(System.lineSeparator()).append(testVMException.getExceptionInfo());
             } else {
                 // Print stack trace otherwise
                 StringWriter errors = new StringWriter();
@@ -731,8 +621,6 @@ public class TestFramework {
             return;
         }
         shouldVerifyIR = irVerificationPossible;
-        socket = TestFrameworkSocket.getSocket();
-        this.scenario = scenario;
         try {
             // Use TestFramework flags and scenario flags for new VMs.
             List<String> additionalFlags = new ArrayList<>();
@@ -745,20 +633,29 @@ public class TestFramework {
                 System.out.println("Scenario #" + scenario.getIndex() + scenarioFlagsString + ":");
                 additionalFlags.addAll(scenarioFlags);
             }
-            socket.start();
+            String frameworkAndScenarioFlags = additionalFlags.isEmpty() ?
+                    "" : " - [" + String.join(", ", additionalFlags) + "]";
+
             if (shouldVerifyIR) {
+                // Only need to use flag VM if an IR verification is possibly done.
                 System.out.println("Run Flag VM:");
-                runFlagVM(additionalFlags);
+                FlagVMProcess flagVMProcess = new FlagVMProcess(testClass, additionalFlags);
+                shouldVerifyIR = flagVMProcess.shouldVerifyIR();
+                if (shouldVerifyIR) {
+                    // Add more flags for the test VM which are required to do IR verification.
+                    additionalFlags.addAll(flagVMProcess.getTestVMFlags());
+                } // else: Flag VM found a reason to not do IR verification.
             } else {
                 System.out.println("Skip Flag VM due to not performing IR verification.");
             }
 
-            String flagsString = additionalFlags.isEmpty() ? "" : " - [" + String.join(", ", additionalFlags) + "]";
-            System.out.println("Run Test VM" + flagsString + ":");
+            System.out.println("Run Test VM" + frameworkAndScenarioFlags + ":");
             runTestVM(additionalFlags);
         } finally {
+            if (scenario != null) {
+                scenario.setTestVMOutput(TestVMProcess.getLastTestVMOutput());
+            }
             System.out.println();
-            socket.close();
         }
     }
 
@@ -780,85 +677,13 @@ public class TestFramework {
         return true;
     }
 
-    private void runFlagVM(List<String> additionalFlags) {
-        ArrayList<String> cmds = prepareFlagVMFlags(additionalFlags);
-        OutputAnalyzer oa;
-        try {
-            // Run "flag" VM with White Box access to determine the test VM flags and if IR verification should be done.
-            oa = ProcessTools.executeTestJvm(cmds);
-        } catch (Exception e) {
-            throw new TestRunException("Failed to execute TestFramework flag VM", e);
-        }
-        checkFlagVMExitCode(oa);
-    }
-
-    /**
-     * The "flag" VM needs White Box access to prepare all test VM flags. It sends these as encoding over a socket to the
-     * driver VM which afterwards parses the flags and adds them to the test VM.
-     */
-    private ArrayList<String> prepareFlagVMFlags(List<String> additionalFlags) {
-        ArrayList<String> cmds = new ArrayList<>();
-        cmds.add("-Dtest.jdk=" + Utils.TEST_JDK);
-        // Set java.library.path so JNI tests which rely on jtreg nativepath setting work
-        cmds.add("-Djava.library.path=" + Utils.TEST_NATIVE_PATH);
-        cmds.add("-cp");
-        cmds.add(Utils.TEST_CLASS_PATH);
-        cmds.add("-Xbootclasspath/a:.");
-        cmds.add("-XX:+UnlockDiagnosticVMOptions");
-        cmds.add("-XX:+WhiteBoxAPI");
-        cmds.add(socket.getPortPropertyFlag());
-        // TestFramework and scenario flags might have an influence on the later used test VM flags. Add them as well.
-        cmds.addAll(additionalFlags);
-        cmds.add(TestFrameworkPrepareFlags.class.getCanonicalName());
-        cmds.add(testClass.getCanonicalName());
-        return cmds;
-    }
-
-    private void checkFlagVMExitCode(OutputAnalyzer oa) {
-        String flagVMOutput = oa.getOutput();
-        int exitCode = oa.getExitValue();
-        if (VERBOSE && exitCode == 0) {
-            System.out.println("--- OUTPUT TestFramework flag VM ---");
-            System.out.println(flagVMOutput);
-        }
-
-        if (exitCode != 0) {
-            System.err.println("--- OUTPUT TestFramework flag VM ---");
-            System.err.println(flagVMOutput);
-            throw new RuntimeException("TestFramework flag VM exited with " + exitCode);
-        }
-    }
-
     private void runTestVM(List<String> additionalFlags) {
-        List<String> cmds = prepareTestVMFlags(additionalFlags);
-        socket.start();
-
-        OutputAnalyzer oa;
-        ProcessBuilder process = ProcessTools.createJavaProcessBuilder(cmds);
-        try {
-            // Calls 'main' of TestFrameworkExecution to run all specified tests with commands 'cmds'.
-            // Use executeProcess instead of executeTestJvm as we have already added the JTreg VM and
-            // Java options in prepareTestVMFlags().
-            oa = ProcessTools.executeProcess(process);
-        } catch (Exception e) {
-            throw new TestFrameworkException("Error while executing Test VM", e);
-        }
-        JVMOutput output = new JVMOutput(oa, scenario, process);
-        lastTestVMOutput = oa.getOutput();
-        if (scenario != null) {
-            scenario.setTestVMOutput(lastTestVMOutput);
-        }
-        String socketOutput = "";
-        if (shouldVerifyIR || TESTLIST || EXCLUDELIST) {
-            // Socket has only output to read if IR verification is done and/or if a test list was provided by user
-            socketOutput = socket.getOutputPrintStdout();
-        }
-        checkTestVMExitCode(output);
+        TestVMProcess testVMProcess = new TestVMProcess(additionalFlags, testClass, helperClasses, defaultWarmup);
         if (shouldVerifyIR) {
             try {
-                new IRMatcher(output.getHotspotPidFileName(), socketOutput, testClass);
+                new IRMatcher(testVMProcess.getHotspotPidFileName(), testVMProcess.getIrEncoding(), testClass);
             } catch (IRViolationException e) {
-                e.setExceptionInfo(output.getExceptionInfo(scenario != null));
+                e.addCommandLine(testVMProcess.getCommandLine());
                 throw e;
             }
         } else {
@@ -870,175 +695,9 @@ public class TestFramework {
         }
     }
 
-    private List<String> prepareTestVMFlags(List<String> additionalFlags) {
-        ArrayList<String> cmds = new ArrayList<>();
-        // Set java.library.path so JNI tests which rely on jtreg nativepath setting work
-        cmds.add("-Djava.library.path=" + Utils.TEST_NATIVE_PATH);
-        // Need White Box access in test VM.
-        cmds.add("-Xbootclasspath/a:.");
-        cmds.add("-XX:+UnlockDiagnosticVMOptions");
-        cmds.add("-XX:+WhiteBoxAPI");
-        String[] jtregVMFlags = Utils.getTestJavaOpts();
-        if (!PREFER_COMMAND_LINE_FLAGS) {
-            cmds.addAll(Arrays.asList(jtregVMFlags));
-        }
-        cmds.addAll(additionalFlags);
-        cmds.addAll(getTestVMFlags());
-
-        if (PREFER_COMMAND_LINE_FLAGS) {
-            // Prefer flags set via the command line over the ones set by scenarios.
-            cmds.addAll(Arrays.asList(jtregVMFlags));
-        }
-
-        if (WARMUP_ITERATIONS < 0 && defaultWarmup != -1) {
-            // Only use the set warmup for the framework if not overridden by a valid -DWarmup property set by a test.
-            cmds.add("-DWarmup=" + defaultWarmup);
-        }
-
-        // Add server property flag that enables test VM to print encoding for IR verification last and debug messages.
-        cmds.add(socket.getPortPropertyFlag());
-
-        cmds.add(TestFrameworkExecution.class.getName());
-        cmds.add(testClass.getName());
-        if (helperClasses != null) {
-            helperClasses.forEach(c -> cmds.add(c.getName()));
-        }
-        return cmds;
-    }
-
-    /**
-     * Parse the test VM flags as prepared by the flag VM. Additionally check the property flag DShouldDoIRVerification
-     * to determine if IR matching should be done or not.
-     */
-    private List<String> getTestVMFlags() {
-        List<String> flagList = new ArrayList<>();
-
-        if (VERIFY_VM) {
-            flagList.addAll(Arrays.asList(getVerifyFlags()));
-        }
-
-        flagList.addAll(Arrays.asList(getDefaultFlags()));
-
-        if (shouldVerifyIR) {
-            String flags = socket.getOutput();
-            if (VERBOSE) {
-                System.out.println("Read sent data from flag VM from socket:");
-                System.out.println(flags);
-            }
-            String patternString = "(?<=" + TestFramework.TEST_VM_FLAGS_START + "\\R)" + "(.*DShouldDoIRVerification=(true|false).*)\\R"
-                                   + "(?=" + IREncodingPrinter.END + ")";
-            Pattern pattern = Pattern.compile(patternString);
-            Matcher matcher = pattern.matcher(flags);
-            check(matcher.find(), "Invalid flag encoding emitted by flag VM");
-            // Maybe we run with flags that make IR verification impossible
-            shouldVerifyIR = Boolean.parseBoolean(matcher.group(2));
-            flagList.addAll(Arrays.asList(matcher.group(1).split(TEST_VM_FLAGS_DELIMITER)));
-        }
-        return flagList;
-    }
-
-    private void checkTestVMExitCode(JVMOutput vmOutput) {
-        final int exitCode = vmOutput.getExitCode();
-        if (EXCLUDE_RANDOM || REPORT_STDOUT || (VERBOSE && exitCode == 0)) {
-            System.out.println("--- OUTPUT TestFramework test VM ---");
-            System.out.println(vmOutput.getOutput());
-        }
-
-        if (exitCode != 0) {
-            throwTestVMException(vmOutput);
-        }
-    }
-
-    private void throwTestVMException(JVMOutput vmOutput) {
-        String stdErr = vmOutput.getStderr();
-        if (stdErr.contains("TestFormat.reportIfAnyFailures")) {
-            Pattern pattern = Pattern.compile("Violations \\(\\d+\\)[\\s\\S]*(?=/============/)");
-            Matcher matcher = pattern.matcher(stdErr);
-            TestFramework.check(matcher.find(), "Must find violation matches");
-            throw new TestFormatException(System.lineSeparator() + System.lineSeparator() + matcher.group());
-        } else if (stdErr.contains("NoTestsRunException")) {
-            shouldVerifyIR = false;
-            throw new NoTestsRunException(">>> No tests run due to empty set specified with -DTest and/or -DExclude. " +
-                                          "Make sure to define a set of at least one @Test method");
-        } else {
-            throw new TestVMException(vmOutput.getExceptionInfo(scenario != null));
-        }
-    }
-
     static void check(boolean test, String failureMessage) {
         if (!test) {
             throw new TestFrameworkException(failureMessage);
-        }
-    }
-}
-
-/**
- * Class to encapsulate information about the test VM output, the run process and the scenario.
- */
-class JVMOutput {
-    private final Scenario scenario;
-    private final OutputAnalyzer oa;
-    private final ProcessBuilder process;
-    private final String hotspotPidFileName;
-
-    JVMOutput(OutputAnalyzer oa, Scenario scenario, ProcessBuilder process) {
-        this.oa = oa;
-        this.scenario = scenario;
-        this.process = process;
-        this.hotspotPidFileName = String.format("hotspot_pid%d.log", oa.pid());
-    }
-
-    public Scenario getScenario() {
-        return scenario;
-    }
-
-    public String getCommandLine() {
-        return "Command Line:" + System.lineSeparator() + String.join(" ", process.command())
-               + System.lineSeparator();
-    }
-
-    public int getExitCode() {
-        return oa.getExitValue();
-    }
-
-    public String getOutput() {
-        return oa.getOutput();
-    }
-
-    public String getStdout() {
-        return oa.getStdout();
-    }
-
-    public String getStderr() {
-        return oa.getStderr();
-    }
-
-    public String getHotspotPidFileName() {
-        return hotspotPidFileName;
-    }
-
-    /**
-     * Get more detailed information about the exception in a pretty format.
-     */
-    public String getExceptionInfo(boolean stripRerunHint) {
-        int exitCode = getExitCode();
-        String stdErr = getStderr();
-        String rerunHint = "";
-        String stdOut = "";
-        if (exitCode == 134) {
-            stdOut = System.lineSeparator() + System.lineSeparator() + "Standard Output" + System.lineSeparator()
-                     + "---------------" + System.lineSeparator() + getOutput();
-        } else if (!stripRerunHint) {
-            rerunHint = TestFramework.RERUN_HINT;
-        }
-        if (exitCode == 0) {
-            // IR exception
-            return getCommandLine() + rerunHint;
-        } else {
-            return "TestFramework test VM exited with code " + exitCode + System.lineSeparator() + stdOut
-                   + System.lineSeparator() + getCommandLine() + System.lineSeparator() + System.lineSeparator()
-                   + "Error Output" + System.lineSeparator() + "------------" + System.lineSeparator() + stdErr
-                   + System.lineSeparator() + System.lineSeparator() + rerunHint;
         }
     }
 }

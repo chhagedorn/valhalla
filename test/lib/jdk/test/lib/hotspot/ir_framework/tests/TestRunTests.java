@@ -45,14 +45,14 @@ public class TestRunTests {
             throw new RuntimeException("Should not reach");
         } catch (IRViolationException e) {
             String[] matches = { "test(int)", "test2(int)", "Failed IR Rules (2)"};
-            Arrays.stream(matches).forEach(m -> Asserts.assertTrue(e.getMessage().contains(m)));
-            Asserts.assertEQ(e.getMessage().split("STANDALONE mode", -1).length - 1, 2);
+            Arrays.stream(matches).forEach(m -> Asserts.assertTrue(e.getExceptionInfo().contains(m)));
+            Asserts.assertEQ(e.getExceptionInfo().split("STANDALONE mode", -1).length - 1, 2);
         }
-        TestFramework.runWithFlags(SkipCompilation.class, "-XX:-UseCompiler");
-        TestFramework.runWithFlags(SkipCompilation.class, "-Xint");
-        TestFramework.runWithFlags(SkipC2Compilation.class, "-XX:TieredStopAtLevel=1");
-        TestFramework.runWithFlags(SkipC2Compilation.class, "-XX:TieredStopAtLevel=2");
-        TestFramework.runWithFlags(SkipC2Compilation.class, "-XX:TieredStopAtLevel=3");
+        new TestFramework(SkipCompilation.class).addFlags("-XX:-UseCompiler").start();
+        new TestFramework(SkipCompilation.class).addFlags("-Xint").start();
+        new TestFramework(SkipC2Compilation.class).addFlags("-XX:TieredStopAtLevel=1").start();
+        new TestFramework(SkipC2Compilation.class).addFlags("-XX:TieredStopAtLevel=2").start();
+        new TestFramework(SkipC2Compilation.class).addFlags("-XX:TieredStopAtLevel=3").start();
     }
     public int iFld;
 

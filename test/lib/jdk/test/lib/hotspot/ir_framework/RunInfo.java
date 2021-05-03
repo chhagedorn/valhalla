@@ -86,7 +86,7 @@ public class RunInfo extends AbstractInfo {
      * be called if <i>one</i> test method is specified in the custom run test ({@link Run#test()}). Otherwise, use
      * {@link #isCompilationSkipped(String)}.
      *
-     * @return {@code true} if the framework compiled the test;
+     * @return {@code true} if the framework skipped compilation of the test;
      *         {@code false} otherwise.
      * @throws TestRunException if called for a custom run test that specifies multiple test methods in {@link Run#test()}.
      */
@@ -102,7 +102,7 @@ public class RunInfo extends AbstractInfo {
      * in ({@link Run#test()}). Otherwise, use {@link #isCompilationSkipped()}.
      *
      * @param testName the test method for which the method object should be returned.
-     * @return {@code true} if the framework compiled the test;
+     * @return {@code true} if the framework skipped compilation of the test;
      *         {@code false} otherwise.
      * @throws TestRunException if there is no test method with the name {@code testName} or if called with only
      *         <i>one</i> associated test method.
@@ -123,7 +123,7 @@ public class RunInfo extends AbstractInfo {
      */
     public boolean isTestC1Compiled() {
         checkSingleTest("isTestC1Compiled");
-        return TestFrameworkExecution.isC1Compiled(testMethod);
+        return TestVM.isC1Compiled(testMethod);
     }
 
     /**
@@ -139,7 +139,7 @@ public class RunInfo extends AbstractInfo {
      */
     public boolean isTestC1Compiled(String testName) {
         checkMultipleTests("isTestC1Compiled");
-        return TestFrameworkExecution.isC1Compiled(getMethod(testName));
+        return TestVM.isC1Compiled(getMethod(testName));
     }
 
     /**
@@ -153,7 +153,7 @@ public class RunInfo extends AbstractInfo {
      */
     public boolean isTestC2Compiled() {
         checkSingleTest("isTestC2Compiled");
-        return TestFrameworkExecution.isC2Compiled(testMethod);
+        return TestVM.isC2Compiled(testMethod);
     }
 
     /**
@@ -169,7 +169,7 @@ public class RunInfo extends AbstractInfo {
      */
     public boolean isTestC2Compiled(String testName) {
         checkMultipleTests("isTestC2Compiled");
-        return TestFrameworkExecution.isC2Compiled(getMethod(testName));
+        return TestVM.isC2Compiled(getMethod(testName));
     }
 
     /**
@@ -184,7 +184,7 @@ public class RunInfo extends AbstractInfo {
      */
     public boolean isTestCompiledAtLevel(CompLevel compLevel) {
         checkSingleTest("isTestCompiledAtLevel");
-        return TestFrameworkExecution.isCompiledAtLevel(testMethod, compLevel);
+        return TestVM.isCompiledAtLevel(testMethod, compLevel);
     }
 
     /**
@@ -201,7 +201,7 @@ public class RunInfo extends AbstractInfo {
      */
     public boolean isTestCompiledAtLevel(String testName, CompLevel compLevel) {
         checkMultipleTests("isTestCompiledAtLevel");
-        return TestFrameworkExecution.isCompiledAtLevel(getMethod(testName), compLevel);
+        return TestVM.isCompiledAtLevel(getMethod(testName), compLevel);
     }
 
     private void checkSingleTest(String calledMethod) {

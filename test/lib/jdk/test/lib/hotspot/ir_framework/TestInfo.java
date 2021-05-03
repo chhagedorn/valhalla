@@ -54,7 +54,7 @@ public class TestInfo extends AbstractInfo {
      * Return a boolean indicating if the framework skipped a compilation after the warm-up due to VM flags not
      * allowing a compilation on the requested level in {@link Test#compLevel()}.
      *
-     * @return {@code true} if the framework compiled the test;
+     * @return {@code true} if the framework skipped compilation of the test;
      *         {@code false} otherwise.
      */
     public boolean isCompilationSkipped() {
@@ -68,7 +68,7 @@ public class TestInfo extends AbstractInfo {
      *         {@code false} otherwise.
      */
     public boolean isC1Compiled() {
-        return TestFrameworkExecution.isC1Compiled(testMethod);
+        return TestVM.isC1Compiled(testMethod);
     }
 
     /**
@@ -78,7 +78,7 @@ public class TestInfo extends AbstractInfo {
      *         {@code false} otherwise.
      */
     public boolean isC2Compiled() {
-        return TestFrameworkExecution.isC2Compiled(testMethod);
+        return TestVM.isC2Compiled(testMethod);
     }
 
     /**
@@ -89,6 +89,6 @@ public class TestInfo extends AbstractInfo {
      *         {@code false} otherwise.
      */
     public boolean isCompiledAtLevel(CompLevel compLevel) {
-        return TestFrameworkExecution.isCompiledAtLevel(testMethod, compLevel);
+        return TestVM.isCompiledAtLevel(testMethod, compLevel);
     }
 }

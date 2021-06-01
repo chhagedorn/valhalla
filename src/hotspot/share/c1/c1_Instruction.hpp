@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -879,6 +879,7 @@ LEAF(LoadField, AccessField)
 LEAF(StoreField, AccessField)
  private:
   Value _value;
+  ciField* _enclosing_field;   // enclosing field (the flattened one) for nested fields
 
  public:
   // creation
@@ -888,6 +889,8 @@ LEAF(StoreField, AccessField)
   // accessors
   Value value() const                            { return _value; }
   bool needs_write_barrier() const               { return check_flag(NeedsWriteBarrierFlag); }
+  ciField* enclosing_field() const               { return _enclosing_field; }
+  void set_enclosing_field(ciField* field)       { _enclosing_field = field; }
 
   // generic
   virtual void input_values_do(ValueVisitor* f)   { AccessField::input_values_do(f); f->visit(&_value); }
@@ -1311,13 +1314,12 @@ LEAF(Invoke, StateSplit)
   Value           _recv;
   Values*         _args;
   BasicTypeList*  _signature;
-  int             _vtable_index;
   ciMethod*       _target;
 
  public:
   // creation
   Invoke(Bytecodes::Code code, ValueType* result_type, Value recv, Values* args,
-         int vtable_index, ciMethod* target, ValueStack* state_before, bool null_free);
+         ciMethod* target, ValueStack* state_before, bool null_free);
 
   // accessors
   Bytecodes::Code code() const                   { return _code; }
@@ -1325,7 +1327,6 @@ LEAF(Invoke, StateSplit)
   bool has_receiver() const                      { return receiver() != NULL; }
   int number_of_arguments() const                { return _args->length(); }
   Value argument_at(int i) const                 { return _args->at(i); }
-  int vtable_index() const                       { return _vtable_index; }
   BasicTypeList* signature() const               { return _signature; }
   ciMethod* target() const                       { return _target; }
 

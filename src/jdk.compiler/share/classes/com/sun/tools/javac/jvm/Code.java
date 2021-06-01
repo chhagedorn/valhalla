@@ -399,6 +399,17 @@ public class Code {
 
     /** Emit a ldc (or ldc_w) instruction, taking into account operand size
     */
+    public void emitLdc(LoadableConstant constant, int od) {
+        if (od <= 255) {
+            emitop1(ldc1, od, constant);
+        }
+        else {
+            emitop2(ldc2, od, constant);
+        }
+    }
+
+    /** Emit a ldc (or ldc_w) instruction, taking into account operand size
+     */
     public void emitLdc(LoadableConstant constant) {
         int od = poolWriter.putConstant(constant);
         if (od <= 255) {
@@ -2251,7 +2262,7 @@ public class Code {
     }
 
     private static class Mneumonics {
-        private final static String[] mnem = new String[ByteCodeCount];
+        private static final String[] mnem = new String[ByteCodeCount];
         static {
             mnem[nop] = "nop";
             mnem[aconst_null] = "aconst_null";

@@ -181,10 +181,10 @@ LIR_Address* LIRGenerator::generate_address(LIR_Opr base, LIR_Opr index,
     if (large_disp != 0) {
       LIR_Opr tmp = new_pointer_register();
       if (Assembler::operand_valid_for_add_sub_immediate(large_disp)) {
-        __ add(tmp, tmp, LIR_OprFact::intptrConst(large_disp));
+        __ add(index, LIR_OprFact::intptrConst(large_disp), tmp);
         index = tmp;
       } else {
-        __ move(tmp, LIR_OprFact::intptrConst(large_disp));
+        __ move(LIR_OprFact::intptrConst(large_disp), tmp);
         __ add(tmp, index, tmp);
         index = tmp;
       }
@@ -198,7 +198,7 @@ LIR_Address* LIRGenerator::generate_address(LIR_Opr base, LIR_Opr index,
   }
 
   // at this point we either have base + index or base + displacement
-  if (large_disp == 0) {
+  if (large_disp == 0 && index->is_register()) {
     return new LIR_Address(base, index, type);
   } else {
     assert(Address::offset_ok_for_immed(large_disp, 0), "must be");
@@ -981,10 +981,6 @@ void LIRGenerator::do_update_CRC32(Intrinsic* x) {
         index = tmp;
       }
 
-      if (is_updateBytes) {
-        base_op = access_resolve(ACCESS_READ, base_op);
-      }
-
       if (offset) {
         LIR_Opr tmp = new_pointer_register();
         __ add(base_op, LIR_OprFact::intConst(offset), tmp);
@@ -1061,10 +1057,6 @@ void LIRGenerator::do_update_CRC32C(Intrinsic* x) {
         LIR_Opr tmp = new_register(T_LONG);
         __ convert(Bytecodes::_i2l, index, tmp);
         index = tmp;
-      }
-
-      if (is_updateBytes) {
-        base_op = access_resolve(ACCESS_READ, base_op);
       }
 
       if (offset) {
@@ -1157,26 +1149,28 @@ void LIRGenerator::do_NewInstance(NewInstance* x) {
   CodeEmitInfo* info = state_for(x, x->state());
   LIR_Opr reg = result_register_for(x->type());
   new_instance(reg, x->klass(), x->is_unresolved(),
-                       FrameMap::r2_oop_opr,
-                       FrameMap::r5_oop_opr,
-                       FrameMap::r4_oop_opr,
-                       LIR_OprFact::illegalOpr,
-                       FrameMap::r3_metadata_opr, info);
+               /* allow_inline */ false,
+               FrameMap::r2_oop_opr,
+               FrameMap::r5_oop_opr,
+               FrameMap::r4_oop_opr,
+               LIR_OprFact::illegalOpr,
+               FrameMap::r3_metadata_opr, info);
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
 }
 
 void LIRGenerator::do_NewInlineTypeInstance(NewInlineTypeInstance* x) {
-  // Mapping to do_NewInstance (same code)
-  CodeEmitInfo* info = state_for(x, x->state());
+  // Mapping to do_NewInstance (same code) but use state_before for reexecution.
+  CodeEmitInfo* info = state_for(x, x->state_before());
   x->set_to_object_type();
   LIR_Opr reg = result_register_for(x->type());
-  new_instance(reg, x->klass(), x->is_unresolved(),
-             FrameMap::r2_oop_opr,
-             FrameMap::r5_oop_opr,
-             FrameMap::r4_oop_opr,
-             LIR_OprFact::illegalOpr,
-             FrameMap::r3_metadata_opr, info);
+  new_instance(reg, x->klass(), false,
+               /* allow_inline */ true,
+               FrameMap::r2_oop_opr,
+               FrameMap::r5_oop_opr,
+               FrameMap::r4_oop_opr,
+               LIR_OprFact::illegalOpr,
+               FrameMap::r3_metadata_opr, info);
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
 
@@ -1419,7 +1413,12 @@ void LIRGenerator::do_If(If* x) {
     __ safepoint(LIR_OprFact::illegalOpr, state_for(x, x->state_before()));
   }
 
-  __ cmp(lir_cond(cond), left, right);
+  if (x->substitutability_check()) {
+    substitutability_check(x, *xin, *yin);
+  } else {
+    __ cmp(lir_cond(cond), left, right);
+  }
+
   // Generate branch profiling. Profiling code doesn't kill flags.
   profile_branch(x, cond);
   move_to_phi(x->state());
@@ -1451,7 +1450,7 @@ void LIRGenerator::volatile_field_load(LIR_Address* address, LIR_Opr result,
   // membar it's possible for a simple Dekker test to fail if loads
   // use LD;DMB but stores use STLR.  This can happen if C2 compiles
   // the stores in one method and C1 compiles the loads in another.
-  if (!CompilerConfig::is_c1_only_no_aot_or_jvmci()) {
+  if (!CompilerConfig::is_c1_only_no_jvmci()) {
     __ membar();
   }
   __ volatile_load_mem_reg(address, result, info);

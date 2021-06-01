@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012 Red Hat, Inc.
+ * Copyright (c) 2021, Azul Systems, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +30,8 @@
 #include "ci/ciReplay.hpp"
 #include "classfile/altHashing.hpp"
 #include "classfile/classFileStream.hpp"
+#include "classfile/classLoader.hpp"
+#include "classfile/classLoadInfo.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/javaThreadStatus.hpp"
@@ -284,13 +287,14 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
   ResourceMark rm(THREAD);
   ClassFileStream st((u1*)buf, bufLen, NULL, ClassFileStream::verify);
   Handle class_loader (THREAD, JNIHandles::resolve(loaderRef));
-  Klass* k = SystemDictionary::resolve_from_stream(class_name,
+  Handle protection_domain;
+  ClassLoadInfo cl_info(protection_domain);
+  Klass* k = SystemDictionary::resolve_from_stream(&st, class_name,
                                                    class_loader,
-                                                   Handle(),
-                                                   &st,
+                                                   cl_info,
                                                    CHECK_NULL);
 
-  if (log_is_enabled(Debug, class, resolve) && k != NULL) {
+  if (log_is_enabled(Debug, class, resolve)) {
     trace_class_resolution(k);
   }
 
@@ -333,7 +337,7 @@ JNI_ENTRY(jclass, jni_FindClass(JNIEnv *env, const char *name))
       // When invoked from JNI_OnLoad, NativeLibraries::getFromClass returns
       // a non-NULL Class object.  When invoked from JNI_OnUnload,
       // it will return NULL to indicate no context.
-      oop mirror = (oop) result.get_jobject();
+      oop mirror = result.get_oop();
       if (mirror != NULL) {
         Klass* fromClass = java_lang_Class::as_Klass(mirror);
         loader = Handle(THREAD, fromClass->class_loader());
@@ -889,7 +893,7 @@ static void jni_invoke_static(JNIEnv *env, JavaValue* result, jobject receiver, 
 
   // Convert result
   if (is_reference_type(result->get_type())) {
-    result->set_jobject(JNIHandles::make_local(THREAD, (oop) result->get_jobject()));
+    result->set_jobject(JNIHandles::make_local(THREAD, result->get_oop()));
   }
 }
 
@@ -906,7 +910,7 @@ static void jni_invoke_nonstatic(JNIEnv *env, JavaValue* result, jobject receive
   {
     Method* m = Method::resolve_jmethod_id(method_id);
     number_of_parameters = m->size_of_parameters();
-    Klass* holder = m->method_holder();
+    InstanceKlass* holder = m->method_holder();
     if (call_type != JNI_VIRTUAL) {
         selected_method = m;
     } else if (!m->has_itable_index()) {
@@ -951,7 +955,7 @@ static void jni_invoke_nonstatic(JNIEnv *env, JavaValue* result, jobject receive
 
   // Convert result
   if (is_reference_type(result->get_type())) {
-    result->set_jobject(JNIHandles::make_local(THREAD, (oop) result->get_jobject()));
+    result->set_jobject(JNIHandles::make_local(THREAD, result->get_oop()));
   }
 }
 
@@ -1123,7 +1127,7 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
   // Throw a NoSuchMethodError exception if we have an instance of a
   // primitive java.lang.Class
   if (java_lang_Class::is_primitive(mirror)) {
-    ResourceMark rm;
+    ResourceMark rm(THREAD);
     THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), err_msg("%s%s.%s%s", is_static ? "static " : "", klass->signature_name(), name_str, sig));
   }
 
@@ -1147,7 +1151,7 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
     }
   }
   if (m == NULL || (m->is_static() != is_static)) {
-    ResourceMark rm;
+    ResourceMark rm(THREAD);
     THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), err_msg("%s%s.%s%s", is_static ? "static " : "", klass->signature_name(), name_str, sig));
   }
   return m->jmethod_id();
@@ -2821,7 +2825,7 @@ JNI_ENTRY(jint, jni_MonitorEnter(JNIEnv *env, jobject jobj))
   }
 
   Handle obj(thread, JNIHandles::resolve_non_null(jobj));
-  ObjectSynchronizer::jni_enter(obj, CHECK_(JNI_ERR));
+  ObjectSynchronizer::jni_enter(obj, thread);
   ret = JNI_OK;
   return ret;
 JNI_END
@@ -3217,268 +3221,6 @@ JNI_ENTRY(jobject, jni_GetModule(JNIEnv* env, jclass clazz))
   return Modules::get_module(clazz, THREAD);
 JNI_END
 
-
-JNI_ENTRY(void*, jni_GetFlattenedArrayElements(JNIEnv* env, jarray array, jboolean* isCopy))
-  if (isCopy != NULL) {
-    *isCopy = JNI_FALSE;
-  }
-  arrayOop ar = arrayOop(JNIHandles::resolve_non_null(array));
-  if (!ar->is_array()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not an array");
-  }
-  if (!ar->is_flatArray()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not a flattened array");
-  }
-  FlatArrayKlass* vak = FlatArrayKlass::cast(ar->klass());
-  if (vak->contains_oops()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Flattened array contains oops");
-  }
-  oop a = lock_gc_or_pin_object(thread, array);
-  flatArrayOop vap = flatArrayOop(a);
-  void* ret = vap->value_at_addr(0, vak->layout_helper());
-  return ret;
-JNI_END
-
-JNI_ENTRY(void, jni_ReleaseFlattenedArrayElements(JNIEnv* env, jarray array, void* elem, jint mode))
-  unlock_gc_or_unpin_object(thread, array);
-JNI_END
-
-JNI_ENTRY(jsize, jni_GetFlattenedArrayElementSize(JNIEnv* env, jarray array)) {
-  arrayOop a = arrayOop(JNIHandles::resolve_non_null(array));
-  if (!a->is_array()) {
-    THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "Not an array");
-  }
-  if (!a->is_flatArray()) {
-    THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "Not a flattened array");
-  }
-  FlatArrayKlass* vak = FlatArrayKlass::cast(a->klass());
-  jsize ret = vak->element_byte_size();
-  return ret;
-}
-JNI_END
-
-JNI_ENTRY(jclass, jni_GetFlattenedArrayElementClass(JNIEnv* env, jarray array))
-  arrayOop a = arrayOop(JNIHandles::resolve_non_null(array));
-  if (!a->is_array()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not an array");
-  }
-  if (!a->is_flatArray()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not a flattened array");
-  }
-  FlatArrayKlass* vak = FlatArrayKlass::cast(a->klass());
-  InlineKlass* vk = vak->element_klass();
-  return (jclass) JNIHandles::make_local(vk->java_mirror());
-JNI_END
-
-JNI_ENTRY(jsize, jni_GetFieldOffsetInFlattenedLayout(JNIEnv* env, jclass clazz, const char *name, const char *signature, jboolean* is_inlined))
-  oop mirror = JNIHandles::resolve_non_null(clazz);
-  Klass* k = java_lang_Class::as_Klass(mirror);
-  if (!k->is_inline_klass()) {
-    ResourceMark rm;
-        THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), err_msg("%s has not flattened layout", k->external_name()));
-  }
-  InlineKlass* vk = InlineKlass::cast(k);
-
-  TempNewSymbol fieldname = SymbolTable::probe(name, (int)strlen(name));
-  TempNewSymbol signame = SymbolTable::probe(signature, (int)strlen(signature));
-  if (fieldname == NULL || signame == NULL) {
-    ResourceMark rm;
-    THROW_MSG_0(vmSymbols::java_lang_NoSuchFieldError(), err_msg("%s.%s %s", vk->external_name(), name, signature));
-  }
-
-  assert(vk->is_initialized(), "If a flattened array has been created, the element klass must have been initialized");
-
-  fieldDescriptor fd;
-  if (!vk->is_instance_klass() ||
-      !InstanceKlass::cast(vk)->find_field(fieldname, signame, false, &fd)) {
-    ResourceMark rm;
-    THROW_MSG_0(vmSymbols::java_lang_NoSuchFieldError(), err_msg("%s.%s %s", vk->external_name(), name, signature));
-  }
-
-  int offset = fd.offset() - vk->first_field_offset();
-  if (is_inlined != NULL) {
-    *is_inlined = fd.is_inlined();
-  }
-  return (jsize)offset;
-JNI_END
-
-JNI_ENTRY(jobject, jni_CreateSubElementSelector(JNIEnv* env, jarray array))
-  oop ar = JNIHandles::resolve_non_null(array);
-  if (!ar->is_array()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not an array");
-  }
-  if (!ar->is_flatArray()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not a flattened array");
-  }
-  flatArrayHandle ar_h(THREAD, flatArrayOop(ar));
-  Klass* ses_k = SystemDictionary::resolve_or_null(vmSymbols::jdk_internal_vm_jni_SubElementSelector(),
-        Handle(THREAD, SystemDictionary::java_system_loader()), Handle(), CHECK_NULL);
-  InstanceKlass* ses_ik = InstanceKlass::cast(ses_k);
-  ses_ik->initialize(CHECK_NULL);
-  Klass* elementKlass = ArrayKlass::cast(ar_h()->klass())->element_klass();
-  oop ses = ses_ik->allocate_instance(CHECK_NULL);
-  Handle ses_h(THREAD, ses);
-  jdk_internal_vm_jni_SubElementSelector::setArrayElementType(ses_h(), elementKlass->java_mirror());
-  jdk_internal_vm_jni_SubElementSelector::setSubElementType(ses_h(), elementKlass->java_mirror());
-  jdk_internal_vm_jni_SubElementSelector::setOffset(ses_h(), 0);
-  jdk_internal_vm_jni_SubElementSelector::setIsInlined(ses_h(), true);   // by definition, top element of a flattened array is inlined
-  jdk_internal_vm_jni_SubElementSelector::setIsInlineType(ses_h(), true); // by definition, top element of a flattened array is an inline type
-  return JNIHandles::make_local(ses_h());
-JNI_END
-
-JNI_ENTRY(jobject, jni_GetSubElementSelector(JNIEnv* env, jobject selector, jfieldID fieldID))
-  oop slct = JNIHandles::resolve_non_null(selector);
-  if (slct->klass()->name() != vmSymbols::jdk_internal_vm_jni_SubElementSelector()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Not a SubElementSelector");
-  }
-  jboolean is_inlined = jdk_internal_vm_jni_SubElementSelector::getIsInlined(slct);
-  if (!is_inlined) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "SubElement is not inlined");
-  }
-  oop semirror = jdk_internal_vm_jni_SubElementSelector::getSubElementType(slct);
-  Klass* k = java_lang_Class::as_Klass(semirror);
-  if (!k->is_inline_klass()) {
-    ResourceMark rm;
-        THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), err_msg("%s is not an inline type", k->external_name()));
-  }
-  InlineKlass* vk = InlineKlass::cast(k);
-  assert(vk->is_initialized(), "If a flattened array has been created, the element klass must have been initialized");
-  int field_offset = jfieldIDWorkaround::from_instance_jfieldID(vk, fieldID);
-  fieldDescriptor fd;
-  if (!vk->find_field_from_offset(field_offset, false, &fd)) {
-    THROW_NULL(vmSymbols::java_lang_NoSuchFieldError());
-  }
-  Handle arrayElementMirror(THREAD, jdk_internal_vm_jni_SubElementSelector::getArrayElementType(slct));
-  // offset of the SubElement is offset of the original SubElement plus the offset of the field inside the element
-  int offset = fd.offset() - vk->first_field_offset() + jdk_internal_vm_jni_SubElementSelector::getOffset(slct);
-  InstanceKlass* sesklass = InstanceKlass::cast(JNIHandles::resolve_non_null(selector)->klass());
-  oop res = sesklass->allocate_instance(CHECK_NULL);
-  Handle res_h(THREAD, res);
-  jdk_internal_vm_jni_SubElementSelector::setArrayElementType(res_h(), arrayElementMirror());
-  InstanceKlass* holder = fd.field_holder();
-  BasicType bt = Signature::basic_type(fd.signature());
-  if (is_java_primitive(bt)) {
-    jdk_internal_vm_jni_SubElementSelector::setSubElementType(res_h(), java_lang_Class::primitive_mirror(bt));
-  } else {
-    Klass* fieldKlass = SystemDictionary::resolve_or_fail(fd.signature(), Handle(THREAD, holder->class_loader()),
-        Handle(THREAD, holder->protection_domain()), true, CHECK_NULL);
-    jdk_internal_vm_jni_SubElementSelector::setSubElementType(res_h(),fieldKlass->java_mirror());
-  }
-  jdk_internal_vm_jni_SubElementSelector::setOffset(res_h(), offset);
-  jdk_internal_vm_jni_SubElementSelector::setIsInlined(res_h(), fd.is_inlined());
-  jdk_internal_vm_jni_SubElementSelector::setIsInlineType(res_h(), fd.is_inline_type());
-  return JNIHandles::make_local(res_h());
-JNI_END
-
-JNI_ENTRY(jobject, jni_GetObjectSubElement(JNIEnv* env, jarray array, jobject selector, int index))
-  flatArrayOop ar =  (flatArrayOop)JNIHandles::resolve_non_null(array);
-  oop slct = JNIHandles::resolve_non_null(selector);
-  FlatArrayKlass* vak = FlatArrayKlass::cast(ar->klass());
-  if (jdk_internal_vm_jni_SubElementSelector::getArrayElementType(slct) != vak->element_klass()->java_mirror()) {
-    THROW_MSG_NULL(vmSymbols::java_lang_IllegalArgumentException(), "Array/Selector mismatch");
-  }
-  oop res = NULL;
-  if (!jdk_internal_vm_jni_SubElementSelector::getIsInlined(slct)) {
-    int offset = (address)ar->base() - cast_from_oop<address>(ar) + index * vak->element_byte_size()
-                      + jdk_internal_vm_jni_SubElementSelector::getOffset(slct);
-    res = HeapAccess<ON_UNKNOWN_OOP_REF>::oop_load_at(ar, offset);
-  } else {
-    Handle slct_h(THREAD, slct);
-    InlineKlass* fieldKlass = InlineKlass::cast(java_lang_Class::as_Klass(jdk_internal_vm_jni_SubElementSelector::getSubElementType(slct)));
-    res = fieldKlass->allocate_instance_buffer(CHECK_NULL);
-    // The array might have been moved by the GC, refreshing the arrayOop
-    ar =  (flatArrayOop)JNIHandles::resolve_non_null(array);
-    address addr = (address)ar->value_at_addr(index, vak->layout_helper())
-              + jdk_internal_vm_jni_SubElementSelector::getOffset(slct_h());
-    fieldKlass->inline_copy_payload_to_new_oop(addr, res);
-  }
-  return JNIHandles::make_local(res);
-JNI_END
-
-JNI_ENTRY(void, jni_SetObjectSubElement(JNIEnv* env, jarray array, jobject selector, int index, jobject value))
-  flatArrayOop ar =  (flatArrayOop)JNIHandles::resolve_non_null(array);
-  oop slct = JNIHandles::resolve_non_null(selector);
-  FlatArrayKlass* vak = FlatArrayKlass::cast(ar->klass());
-  if (jdk_internal_vm_jni_SubElementSelector::getArrayElementType(slct) != vak->element_klass()->java_mirror()) {
-    THROW_MSG(vmSymbols::java_lang_IllegalArgumentException(), "Array/Selector mismatch");
-  }
-  oop val = JNIHandles::resolve(value);
-  if (val == NULL) {
-    if (jdk_internal_vm_jni_SubElementSelector::getIsInlineType(slct)) {
-      THROW_MSG(vmSymbols::java_lang_ArrayStoreException(), "null cannot be stored in a flattened array");
-    }
-  } else {
-    if (!val->is_a(java_lang_Class::as_Klass(jdk_internal_vm_jni_SubElementSelector::getSubElementType(slct)))) {
-      THROW_MSG(vmSymbols::java_lang_ArrayStoreException(), "type mismatch");
-    }
-  }
-  if (!jdk_internal_vm_jni_SubElementSelector::getIsInlined(slct)) {
-    int offset = (address)ar->base() - cast_from_oop<address>(ar) + index * vak->element_byte_size()
-                  + jdk_internal_vm_jni_SubElementSelector::getOffset(slct);
-    HeapAccess<ON_UNKNOWN_OOP_REF>::oop_store_at(ar, offset, JNIHandles::resolve(value));
-  } else {
-    InlineKlass* fieldKlass = InlineKlass::cast(java_lang_Class::as_Klass(jdk_internal_vm_jni_SubElementSelector::getSubElementType(slct)));
-    address addr = (address)ar->value_at_addr(index, vak->layout_helper())
-                  + jdk_internal_vm_jni_SubElementSelector::getOffset(slct);
-    fieldKlass->inline_copy_oop_to_payload(JNIHandles::resolve_non_null(value), addr);
-  }
-JNI_END
-
-#define DEFINE_GETSUBELEMENT(ElementType,Result,ElementBasicType) \
-\
-JNI_ENTRY(ElementType, \
-          jni_Get##Result##SubElement(JNIEnv *env, jarray array, jobject selector, int index)) \
-  flatArrayOop ar = (flatArrayOop)JNIHandles::resolve_non_null(array); \
-  oop slct = JNIHandles::resolve_non_null(selector); \
-  FlatArrayKlass* vak = FlatArrayKlass::cast(ar->klass()); \
-  if (jdk_internal_vm_jni_SubElementSelector::getArrayElementType(slct) != vak->element_klass()->java_mirror()) { \
-    THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "Array/Selector mismatch"); \
-  } \
-  if (jdk_internal_vm_jni_SubElementSelector::getSubElementType(slct) != java_lang_Class::primitive_mirror(ElementBasicType)) { \
-    THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "Wrong SubElement type"); \
-  } \
-  address addr = (address)ar->value_at_addr(index, vak->layout_helper()) \
-               + jdk_internal_vm_jni_SubElementSelector::getOffset(slct); \
-  ElementType result = *(ElementType*)addr; \
-  return result; \
-JNI_END
-
-DEFINE_GETSUBELEMENT(jboolean, Boolean,T_BOOLEAN)
-DEFINE_GETSUBELEMENT(jbyte, Byte, T_BYTE)
-DEFINE_GETSUBELEMENT(jshort, Short,T_SHORT)
-DEFINE_GETSUBELEMENT(jchar, Char,T_CHAR)
-DEFINE_GETSUBELEMENT(jint, Int,T_INT)
-DEFINE_GETSUBELEMENT(jlong, Long,T_LONG)
-DEFINE_GETSUBELEMENT(jfloat, Float,T_FLOAT)
-DEFINE_GETSUBELEMENT(jdouble, Double,T_DOUBLE)
-
-#define DEFINE_SETSUBELEMENT(ElementType,Result,ElementBasicType) \
-\
-JNI_ENTRY(void, \
-          jni_Set##Result##SubElement(JNIEnv *env, jarray array, jobject selector, int index, ElementType value)) \
-  flatArrayOop ar = (flatArrayOop)JNIHandles::resolve_non_null(array); \
-  oop slct = JNIHandles::resolve_non_null(selector); \
-  FlatArrayKlass* vak = FlatArrayKlass::cast(ar->klass()); \
-  if (jdk_internal_vm_jni_SubElementSelector::getArrayElementType(slct) != vak->element_klass()->java_mirror()) { \
-    THROW_MSG(vmSymbols::java_lang_IllegalArgumentException(), "Array/Selector mismatch"); \
-  } \
-  if (jdk_internal_vm_jni_SubElementSelector::getSubElementType(slct) != java_lang_Class::primitive_mirror(ElementBasicType)) { \
-    THROW_MSG(vmSymbols::java_lang_IllegalArgumentException(), "Wrong SubElement type"); \
-  } \
-  address addr = (address)ar->value_at_addr(index, vak->layout_helper()) \
-               + jdk_internal_vm_jni_SubElementSelector::getOffset(slct); \
-  *(ElementType*)addr = value; \
-JNI_END
-
-DEFINE_SETSUBELEMENT(jboolean, Boolean,T_BOOLEAN)
-DEFINE_SETSUBELEMENT(jbyte, Byte, T_BYTE)
-DEFINE_SETSUBELEMENT(jshort, Short,T_SHORT)
-DEFINE_SETSUBELEMENT(jchar, Char,T_CHAR)
-DEFINE_SETSUBELEMENT(jint, Int,T_INT)
-DEFINE_SETSUBELEMENT(jlong, Long,T_LONG)
-DEFINE_SETSUBELEMENT(jfloat, Float,T_FLOAT)
-DEFINE_SETSUBELEMENT(jdouble, Double,T_DOUBLE)
-
 // Structure containing all jni functions
 struct JNINativeInterface_ jni_NativeInterface = {
     NULL,
@@ -3764,36 +3506,6 @@ struct JNINativeInterface_ jni_NativeInterface = {
 
     jni_GetModule,
 
-    // Flattened arrays features
-
-    jni_GetFlattenedArrayElements,
-    jni_ReleaseFlattenedArrayElements,
-    jni_GetFlattenedArrayElementClass,
-    jni_GetFlattenedArrayElementSize,
-    jni_GetFieldOffsetInFlattenedLayout,
-
-    jni_CreateSubElementSelector,
-    jni_GetSubElementSelector,
-    jni_GetObjectSubElement,
-    jni_SetObjectSubElement,
-
-    jni_GetBooleanSubElement,
-    jni_GetByteSubElement,
-    jni_GetShortSubElement,
-    jni_GetCharSubElement,
-    jni_GetIntSubElement,
-    jni_GetLongSubElement,
-    jni_GetFloatSubElement,
-    jni_GetDoubleSubElement,
-
-    jni_SetBooleanSubElement,
-    jni_SetByteSubElement,
-    jni_SetShortSubElement,
-    jni_SetCharSubElement,
-    jni_SetIntSubElement,
-    jni_SetLongSubElement,
-    jni_SetFloatSubElement,
-    jni_SetDoubleSubElement
 };
 
 
@@ -4032,6 +3744,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
 
     // Since this is not a JVM_ENTRY we have to set the thread state manually before leaving.
     ThreadStateTransition::transition(thread, _thread_in_vm, _thread_in_native);
+    MACOS_AARCH64_ONLY(thread->enable_wx(WXExec));
   } else {
     // If create_vm exits because of a pending exception, exit with that
     // exception.  In the future when we figure out how to reclaim memory,
@@ -4122,17 +3835,15 @@ static jint JNICALL jni_DestroyJavaVM_inner(JavaVM *vm) {
 
   // Since this is not a JVM_ENTRY we have to set the thread state manually before entering.
   JavaThread* thread = JavaThread::current();
+
+  // We are going to VM, change W^X state to the expected one.
+  MACOS_AARCH64_ONLY(WXMode oldmode = thread->enable_wx(WXWrite));
+
   ThreadStateTransition::transition_from_native(thread, _thread_in_vm);
-  if (Threads::destroy_vm()) {
-    // Should not change thread state, VM is gone
-    vm_created = 0;
-    res = JNI_OK;
-    return res;
-  } else {
-    ThreadStateTransition::transition(thread, _thread_in_vm, _thread_in_native);
-    res = JNI_ERR;
-    return res;
-  }
+  Threads::destroy_vm();
+  // Don't bother restoring thread state, VM is gone.
+  vm_created = 0;
+  return JNI_OK;
 }
 
 jint JNICALL jni_DestroyJavaVM(JavaVM *vm) {
@@ -4183,6 +3894,7 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
   thread->record_stack_base_and_size();
   thread->register_thread_stack_with_NMT();
   thread->initialize_thread_current();
+  MACOS_AARCH64_ONLY(thread->init_wx());
 
   if (!os::create_attached_thread(thread)) {
     thread->smr_delete();
@@ -4256,6 +3968,7 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
   // needed.
 
   ThreadStateTransition::transition(thread, _thread_in_vm, _thread_in_native);
+  MACOS_AARCH64_ONLY(thread->enable_wx(WXExec));
 
   // Perform any platform dependent FPU setup
   os::setup_fpu();
@@ -4307,6 +4020,9 @@ jint JNICALL jni_DetachCurrentThread(JavaVM *vm)  {
     return JNI_ERR;
   }
 
+  // We are going to VM, change W^X state to the expected one.
+  MACOS_AARCH64_ONLY(thread->enable_wx(WXWrite));
+
   // Safepoint support. Have to do call-back to safepoint code, if in the
   // middle of a safepoint operation
   ThreadStateTransition::transition_from_native(thread, _thread_in_vm);
@@ -4322,6 +4038,10 @@ jint JNICALL jni_DetachCurrentThread(JavaVM *vm)  {
   // maintenance work?)
   thread->exit(false, JavaThread::jni_detach);
   thread->smr_delete();
+
+  // Go to the execute mode, the initial state of the thread on creation.
+  // Use os interface as the thread is not a JavaThread anymore.
+  MACOS_AARCH64_ONLY(os::current_thread_enable_wx(WXExec));
 
   HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN(JNI_OK);
   return JNI_OK;

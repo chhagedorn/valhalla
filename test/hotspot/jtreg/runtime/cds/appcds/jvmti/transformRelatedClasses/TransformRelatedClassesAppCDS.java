@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.io.File;
 import java.util.ArrayList;
 import jdk.test.lib.Platform;
 import jdk.test.lib.process.OutputAnalyzer;
+import jdk.test.lib.helpers.ClassFileInstaller;
 
 // This class is intended to test 2 parent-child relationships:
 // 1. Base Class (parent) and Derived Class (child)
@@ -129,16 +130,18 @@ public class TransformRelatedClassesAppCDS extends TransformRelatedClasses {
             return new String[] {
                 "CustomLoaderApp",
                 "java/lang/Object id: 0",
-                parent + " id: 1 super: 0 source: " + customJar,
-                child +  " id: 2 super: 1 source: " + customJar,
+                "java/lang/IdentityObject id: 1",
+                parent + " id: 2 super: 0 interfaces: 1 source: " + customJar,
+                child +  " id: 3 super: 2 source: " + customJar,
             };
 
         case "Implementor-unregistered":
             return new String[] {
                 "CustomLoaderApp",
                 "java/lang/Object id: 0",
-                parent + " id: 1 super: 0 source: " + customJar,
-                child +  " id: 2 super: 0 interfaces: 1 source: " + customJar,
+                "java/lang/IdentityObject id: 1",
+                parent + " id: 2 super: 0 source: " + customJar,
+                child +  " id: 3 super: 0 interfaces: 1 2 source: " + customJar,
             };
 
         default:

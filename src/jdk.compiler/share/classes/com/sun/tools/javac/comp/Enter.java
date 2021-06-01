@@ -37,6 +37,7 @@ import com.sun.tools.javac.code.Kinds.KindSelector;
 import com.sun.tools.javac.code.Scope.*;
 import com.sun.tools.javac.code.Symbol.*;
 import com.sun.tools.javac.code.Type.*;
+import com.sun.tools.javac.code.Type.ClassType.Flavor;
 import com.sun.tools.javac.main.Option.PkgInfo;
 import com.sun.tools.javac.resources.CompilerProperties.Errors;
 import com.sun.tools.javac.resources.CompilerProperties.Warnings;
@@ -471,13 +472,11 @@ public class Enter extends JCTree.Visitor {
         c.flags_field = chk.checkFlags(tree.pos(), tree.mods.flags, c, tree);
         c.sourcefile = env.toplevel.sourcefile;
         c.members_field = WriteableScope.create(c);
-        if (c.projection != null) {
-            // Do not carry around symbols from prior round.
-            c.projection.members_field = WriteableScope.create(c.projection);
-        }
         c.clearAnnotationMetadata();
 
         ClassType ct = (ClassType)c.type;
+        ct.flavor = ct.flavor.metamorphose((c.flags_field & PRIMITIVE_CLASS) != 0);
+
         if (owner.kind != PCK && (c.flags_field & STATIC) == 0) {
             // We are seeing a local or inner class.
             // Set outer_field of this class to closest enclosing class

@@ -96,7 +96,7 @@ public class TypeEnter implements Completer {
 
     /** A switch to determine whether we check for package/class conflicts
      */
-    final static boolean checkClash = true;
+    static final boolean checkClash = true;
 
     private final Names names;
     private final Enter enter;
@@ -681,7 +681,7 @@ public class TypeEnter implements Completer {
             // Determine supertype.
             Type supertype;
             JCExpression extending;
-            final boolean isValueType = (tree.mods.flags & Flags.PRIMITIVE_CLASS) != 0;
+            final boolean isPrimitiveClass = (tree.mods.flags & Flags.PRIMITIVE_CLASS) != 0;
 
             if (tree.extending != null) {
                 extending = clearTypeParams(tree.extending);
@@ -708,6 +708,9 @@ public class TypeEnter implements Completer {
                 iface = clearTypeParams(iface);
                 Type it = attr.attribBase(iface, baseEnv, false, true, true);
                 if (it.hasTag(CLASS)) {
+                    if (isPrimitiveClass && it.tsym == syms.cloneableType.tsym) {
+                        log.error(tree, Errors.PrimitiveClassMustNotImplementCloneable(ct));
+                    }
                     interfaces.append(it);
                     if (all_interfaces != null) all_interfaces.append(it);
                 } else {
@@ -733,16 +736,6 @@ public class TypeEnter implements Completer {
                 ct.all_interfaces_field = (all_interfaces == null)
                         ? ct.interfaces_field : all_interfaces.toList();
             }
-            if (ct.isPrimitiveClass()) {
-                ClassSymbol cSym = (ClassSymbol) ct.tsym;
-                if (cSym.projection != null) {
-                    ClassType projectedType = (ClassType) cSym.projection.type;
-                    projectedType.supertype_field = ct.supertype_field;
-                    projectedType.interfaces_field = ct.interfaces_field;
-                    projectedType.all_interfaces_field = ct.all_interfaces_field;
-                }
-            }
-
             /* it could be that there are already some symbols in the permitted list, for the case
              * where there are subtypes in the same compilation unit but the permits list is empty
              * so don't overwrite the permitted list if it is not empty

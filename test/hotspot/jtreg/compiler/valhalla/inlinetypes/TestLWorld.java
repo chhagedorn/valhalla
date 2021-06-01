@@ -50,7 +50,12 @@ import test.java.lang.invoke.lib.InstructionHelper;
 public class TestLWorld {
 
     public static void main(String[] args) {
-
+        // Make sure Test140Value is loaded but not linked
+        Class<?> class1 = Test140Value.class;
+        // Make sure Test141Value is linked but not initialized
+        Class<?> class2 = Test141Value.class;
+        class2.getDeclaredFields();
+        
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[2].addFlags("-DVerifyIR=false");
         scenarios[3].addFlags("-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
@@ -3793,5 +3798,68 @@ public class TestLWorld {
     public void test138_verifier() {
         Asserts.assertTrue(test138(rI, false));
         Asserts.assertTrue(test138(rI, true));
+    }
+
+    static primitive class Test139Value {
+        Object obj = null;
+        MyValueEmpty empty = MyValueEmpty.default;
+    }
+
+    static primitive class Test139Wrapper {
+        Test139Value value = Test139Value.default;
+    }
+
+    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    public MyValueEmpty test139() {
+        Test139Wrapper w = new Test139Wrapper();
+        return w.value.empty;
+    }
+
+    @DontCompile
+    public void test139_verifier(boolean warmup) {
+        MyValueEmpty empty = test139();
+        Asserts.assertEquals(empty, MyValueEmpty.default);
+    }
+
+    // Test calling a method on a loaded but not linked inline type
+    final primitive class Test140Value {
+        final int x = 42;
+        public int get() {
+            return x;
+        }
+    }
+
+    @Test
+    @Warmup(0)
+    public int test140() {
+        Test140Value vt = Test140Value.default;
+        return vt.get();
+    }
+
+    @DontCompile
+    public void test140_verifier(boolean warmup) {
+        int result = test140();
+        Asserts.assertEquals(result, 0);
+    }
+
+    // Test calling a method on a linked but not initialized inline type
+    final primitive class Test141Value {
+        final int x = 42;
+        public int get() {
+            return x;
+        }
+    }
+
+    @Test
+    @Warmup(0)
+    public int test141() {
+        Test141Value vt = Test141Value.default;
+        return vt.get();
+    }
+
+    @DontCompile
+    public void test141_verifier(boolean warmup) {
+        int result = test141();
+        Asserts.assertEquals(result, 0);
     }
 }

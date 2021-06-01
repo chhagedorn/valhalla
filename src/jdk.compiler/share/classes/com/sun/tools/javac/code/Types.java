@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collector;
 
 import javax.tools.JavaFileObject;
@@ -101,6 +102,18 @@ public class Types {
     List<Warner> warnStack = List.nil();
     final Name capturedName;
 
+    /**
+     * If true, the ClassWriter will split a primitive class declaration into two class files
+     * P.ref.class and P.val.class (P.class for pure primitive classes)
+     *
+     * This is the default behavior, can be eoverridden with -XDunifiedValRefClass
+     *
+     * If false, we emit a single class for a primtive class 'P' and the reference projection and
+     * value projection types are encoded in descriptors as LP; and QP; resperctively.
+     */
+
+    public boolean splitPrimitiveClass;
+
     public final Warner noWarnings;
 
     // <editor-fold defaultstate="collapsed" desc="Instantiating">
@@ -126,6 +139,7 @@ public class Types {
         noWarnings = new Warner(null);
         Options options = Options.instance(context);
         allowValueBasedClasses = options.isSet("allowValueBasedClasses");
+        splitPrimitiveClass = options.isUnset("unifiedValRefClass");
     }
     // </editor-fold>
 
@@ -274,7 +288,7 @@ public class Types {
                     formals = formals.tail;
                 }
                 if (outer1 == outer && !changed) return t;
-                else return new ClassType(outer1, typarams1.toList(), t.tsym, t.getMetadata()) {
+                else return new ClassType(outer1, typarams1.toList(), t.tsym, t.getMetadata(), t.getFlavor()) {
                     @Override
                     protected boolean needsStripping() {
                         return true;
@@ -957,14 +971,17 @@ public class Types {
         return overridden.toList();
     }
     //where
-        private Filter<Symbol> bridgeFilter = new Filter<Symbol>() {
-            public boolean accepts(Symbol t) {
+        // Use anonymous class instead of lambda expression intentionally,
+        // because the variable `names` has modifier: final.
+        private Predicate<Symbol> bridgeFilter = new Predicate<Symbol>() {
+            public boolean test(Symbol t) {
                 return t.kind == MTH &&
                         t.name != names.init &&
                         t.name != names.clinit &&
                         (t.flags() & SYNTHETIC) == 0;
             }
         };
+
         private boolean pendingBridges(ClassSymbol origin, TypeSymbol s) {
             //a symbol will be completed from a classfile if (a) symbol has
             //an associated file object with CLASS kind and (b) the symbol has
@@ -990,7 +1007,7 @@ public class Types {
     * Scope filter used to skip methods that should be ignored (such as methods
     * overridden by j.l.Object) during function interface conversion interface check
     */
-    class DescriptorFilter implements Filter<Symbol> {
+    class DescriptorFilter implements Predicate<Symbol> {
 
        TypeSymbol origin;
 
@@ -999,7 +1016,7 @@ public class Types {
        }
 
        @Override
-       public boolean accepts(Symbol sym) {
+       public boolean test(Symbol sym) {
            return sym.kind == MTH &&
                    (sym.flags() & (ABSTRACT | DEFAULT)) == ABSTRACT &&
                    !overridesObjectMethod(origin, sym) &&
@@ -1008,7 +1025,7 @@ public class Types {
     }
 
     public boolean isPrimitiveClass(Type t) {
-        return t != null && t.tsym != null && (t.tsym.flags_field & Flags.PRIMITIVE_CLASS) != 0;
+        return t != null && t.isPrimitiveClass();
     }
 
     // <editor-fold defaultstate="collapsed" desc="isSubtype">
@@ -1090,10 +1107,10 @@ public class Types {
      * Is t a subtype of s?<br>
      * (not defined for Method and ForAll types)
      */
-    final public boolean isSubtype(Type t, Type s) {
+    public final boolean isSubtype(Type t, Type s) {
         return isSubtype(t, s, true);
     }
-    final public boolean isSubtypeNoCapture(Type t, Type s) {
+    public final boolean isSubtypeNoCapture(Type t, Type s) {
         return isSubtype(t, s, false);
     }
     public boolean isSubtype(Type t, Type s, boolean capture) {
@@ -1208,6 +1225,7 @@ public class Types {
                 // If t is an intersection, sup might not be a class type
                 if (!sup.hasTag(CLASS)) return isSubtypeNoCapture(sup, s);
                 return sup.tsym == s.tsym
+                    && (t.tsym != s.tsym || t.isReferenceProjection() == s.isReferenceProjection())
                      // Check type variable containment
                     && (!s.isParameterized() || containsTypeRecursive(s, sup))
                     && isSubtypeNoCapture(sup.getEnclosingType(),
@@ -1453,9 +1471,18 @@ public class Types {
                     return tMap.isEmpty();
                 }
                 return t.tsym == s.tsym
-                    && visit(t.getEnclosingType(), s.getEnclosingType())
+                    && t.isReferenceProjection() == s.isReferenceProjection()
+                    && visit(getEnclosingType(t), getEnclosingType(s))
                     && containsTypeEquivalent(t.getTypeArguments(), s.getTypeArguments());
             }
+                // where
+                private Type getEnclosingType(Type t) {
+                    Type et = t.getEnclosingType();
+                    if (et.isReferenceProjection()) {
+                        et = et.valueProjection();
+                    }
+                    return et;
+                }
 
             @Override
             public Boolean visitArrayType(ArrayType t, Type s) {
@@ -1713,14 +1740,6 @@ public class Types {
     }
     // where
         private boolean areDisjoint(ClassSymbol ts, ClassSymbol ss) {
-            /* The disjointsness checks below are driven by subtyping. At the language level
-               a reference projection type and its value projection type are not related by
-               subtyping, thereby necessitating special handling.
-            */
-            if ((ss.isReferenceProjection() && ss.valueProjection() == ts) ||
-                (ss.isPrimitiveClass() && ss.referenceProjection() == ts)) {
-                return false;
-            }
             if (isSubtype(erasure(ts.type), erasure(ss.type))) {
                 return false;
             }
@@ -2200,27 +2219,39 @@ public class Types {
      * this method could yield surprising answers when invoked on arrays. For example when
      * invoked with t being byte [] and sym being t.sym itself, asSuper would answer null.
      *
+     * Further caveats in Valhalla: There are two "hazards" we need to watch out for when using
+     * this method.
+     *
+     * 1. Since Foo.ref and Foo.val share the same symbol, that of Foo.class, a call to
+     *    asSuper(Foo.ref.type, Foo.val.type.tsym) would return non-null. This MAY NOT BE correct
+     *    depending on the call site. Foo.val is NOT a super type of Foo.ref either in the language
+     *    model or in the VM's world view. An example of such an hazardous call used to exist in
+     *    Gen.visitTypeCast. When we emit code for  (Foo) Foo.ref.instance a check for whether we
+     *    really need the cast cannot/shouldn't be gated on
+     *
+     *        asSuper(tree.expr.type, tree.clazz.type.tsym) == null)
+     *
+     *    but use !types.isSubtype(tree.expr.type, tree.clazz.type) which operates in terms of
+     *    types. When we operate in terms of symbols, there is a loss of type information leading
+     *    to a hazard. Whether a call to asSuper should be transformed into a isSubtype call is
+     *    tricky. isSubtype returns just a boolean while asSuper returns richer information which
+     *    may be required at the call site. Also where the concerned symbol corresponds to a
+     *    generic class, an asSuper call cannot be conveniently rewritten as an isSubtype call
+     *    (see that asSuper(ArrayList<String>.type, List<T>.tsym) != null while
+     *    isSubType(ArrayList<String>.type, List<T>.type) is false;) So care needs to be exercised.
+     *
+     * 2. Given a primitive class Foo, a call to asSuper(Foo.type, SuperclassOfFoo.tsym) and/or
+     *    a call to asSuper(Foo.type, SuperinterfaceOfFoo.tsym) would answer null. In many places
+     *    that is NOT what we want. An example of such a hazardous call used to occur in
+     *    Attr.visitForeachLoop when checking to make sure the for loop's control variable of a type
+     *    that implements Iterable: viz: types.asSuper(exprType, syms.iterableType.tsym);
+     *    These hazardous calls should be rewritten as
+     *    types.asSuper(exprType.referenceProjectionOrSelf(), syms.iterableType.tsym); instead.
+     *
      * @param t a type
      * @param sym a symbol
      */
     public Type asSuper(Type t, Symbol sym) {
-        return asSuper(t, sym, false);
-    }
-
-    /**
-     * Return the (most specific) base type of t that starts with the
-     * given symbol.  If none exists, return null.
-     *
-     * Caveat Emptor: Since javac represents the class of all arrays with a singleton
-     * symbol Symtab.arrayClass, which by being a singleton cannot hold any discriminant,
-     * this method could yield surprising answers when invoked on arrays. For example when
-     * invoked with t being byte [] and sym being t.sym itself, asSuper would answer null.
-     *
-     * @param t a type
-     * @param sym a symbol
-     * @param checkReferenceProjection if true, first compute reference projection of t
-     */
-    public Type asSuper(Type t, Symbol sym, boolean checkReferenceProjection) {
         /* Some examples:
          *
          * (Enum<E>, Comparable) => Comparable<E>
@@ -2230,28 +2261,28 @@ public class Types {
          *     Iterable<capture#160 of ? extends c.s.s.d.DocTree>
          */
 
-        /* For a (value or identity) class V, whether it implements an interface I, boils down to whether
-           V.ref is a subtype of I. OIOW, whether asSuper(V.ref, sym) != null. (Likewise for an abstract
-           superclass)
-        */
-        if (checkReferenceProjection)
-            t = t.isPrimitiveClass() ? t.referenceProjection() : t;
+        if (isPrimitiveClass(t)) {
+            // No man may be an island, but the bell tolls for a value.
+            return t.tsym == sym ? t : null;
+        }
 
         if (sym.type == syms.objectType) { //optimization
-            if (!isPrimitiveClass(t))
-                return syms.objectType;
+            return syms.objectType;
         }
         if (sym == syms.identityObjectType.tsym) {
-            // IdentityObject is super interface of every concrete identity class other than jlO
-            if (t.isPrimitiveClass() || t.tsym == syms.objectType.tsym)
+            // IdentityObject is a super interface of every concrete identity class other than jlO
+            if (t.tsym == syms.objectType.tsym)
                 return null;
             if (t.hasTag(ARRAY))
                 return syms.identityObjectType;
             if (t.hasTag(CLASS) && !t.isReferenceProjection() && !t.tsym.isInterface() && !t.tsym.isAbstract()) {
                 return syms.identityObjectType;
+            }
+            if (implicitIdentityType(t)) {
+                return syms.identityObjectType;
             } // else fall through and look for explicit coded super interface
         } else if (sym == syms.primitiveObjectType.tsym) {
-            if (t.isPrimitiveClass() || t.isReferenceProjection())
+            if (t.isReferenceProjection())
                 return syms.primitiveObjectType;
             if (t.hasTag(ARRAY) || t.tsym == syms.objectType.tsym)
                 return null;
@@ -2272,10 +2303,6 @@ public class Types {
             public Type visitClassType(ClassType t, Symbol sym) {
                 if (t.tsym == sym)
                     return t;
-
-                // No man may be an island, but the bell tolls for a value.
-                if (isPrimitiveClass(t))
-                    return null;
 
                 Symbol c = t.tsym;
                 if (!seenTypes.add(c)) {
@@ -2321,6 +2348,63 @@ public class Types {
                 return t;
             }
         };
+
+        // where
+        private boolean implicitIdentityType(Type t) {
+            /* An abstract class can be declared to implement either IdentityObject or PrimitiveObject;
+             * or, if it declares a field, an instance initializer, a non-empty constructor, or
+             * a synchronized method, it implicitly implements IdentityObject.
+             */
+            if (!t.tsym.isAbstract())
+                return false;
+
+            for (; t != Type.noType; t = supertype(t)) {
+
+                if (t == null || t.tsym == null || t.tsym.kind == ERR)
+                    return false;
+
+                if  (t.tsym == syms.objectType.tsym)
+                    return false;
+
+                if (!t.tsym.isAbstract()) {
+                    return !t.tsym.isPrimitiveClass();
+                }
+
+                if ((t.tsym.flags() & HASINITBLOCK) != 0) {
+                    return true;
+                }
+
+                // No instance fields and no arged constructors both mean inner classes cannot be inline supers.
+                Type encl = t.getEnclosingType();
+                if (encl != null && encl.hasTag(CLASS)) {
+                    return true;
+                }
+                for (Symbol s : t.tsym.members().getSymbols(NON_RECURSIVE)) {
+                    switch (s.kind) {
+                        case VAR:
+                            if ((s.flags() & STATIC) == 0) {
+                                return true;
+                            }
+                            break;
+                        case MTH:
+                            if ((s.flags() & SYNCHRONIZED) != 0) {
+                                return true;
+                            } else if (s.isConstructor()) {
+                                MethodSymbol m = (MethodSymbol)s;
+                                if (m.getParameters().size() > 0) {
+                                    return true;
+                                } else {
+                                    if ((m.flags() & (GENERATEDCONSTR | EMPTYNOARGCONSTR)) == 0) {
+                                        return true;
+                                    }
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+            return false;
+        }
 
     /**
      * Return the base type of t or any of its outer types that starts
@@ -2398,9 +2482,6 @@ public class Types {
         */
         if (t.isPrimitiveClass())
             t = t.referenceProjection();
-
-        if (sym.owner.isPrimitiveClass())
-            sym = sym.referenceProjection();
 
         return memberType.visit(t, sym);
         }
@@ -2555,15 +2636,26 @@ public class Types {
 
             @Override
             public Type visitClassType(ClassType t, Boolean recurse) {
-                Type erased = t.tsym.erasure(Types.this);
-                if (recurse) {
-                    erased = new ErasedClassType(erased.getEnclosingType(),erased.tsym,
-                            t.getMetadata().without(Kind.ANNOTATIONS));
-                    return erased;
-                } else {
-                    return combineMetadata(erased, t);
+                // erasure(projection(primitive)) = projection(erasure(primitive))
+                Type erased = eraseClassType(t, recurse);
+                if (erased.hasTag(CLASS) && t.flavor != erased.getFlavor()) {
+                    erased = new ClassType(erased.getEnclosingType(),
+                            List.nil(), erased.tsym,
+                            erased.getMetadata(), t.flavor);
                 }
+                return erased;
             }
+                // where
+                private Type eraseClassType(ClassType t, Boolean recurse) {
+                    Type erased = t.tsym.erasure(Types.this);
+                    if (recurse) {
+                        erased = new ErasedClassType(erased.getEnclosingType(), erased.tsym,
+                                t.getMetadata().without(Kind.ANNOTATIONS));
+                        return erased;
+                    } else {
+                        return combineMetadata(erased, t);
+                    }
+                }
 
             @Override
             public Type visitTypeVar(TypeVar t, Boolean recurse) {
@@ -2613,8 +2705,6 @@ public class Types {
             bounds = bounds.prepend(syms.objectType);
         }
         long flags = ABSTRACT | PUBLIC | SYNTHETIC | COMPOUND | ACYCLIC;
-        if (isPrimitiveClass(bounds.head))
-            flags |= PRIMITIVE_CLASS;
         ClassSymbol bc =
             new ClassSymbol(flags,
                             Type.moreInfo
@@ -2886,7 +2976,7 @@ public class Types {
                 Type outer1 = classBound(t.getEnclosingType());
                 if (outer1 != t.getEnclosingType())
                     return new ClassType(outer1, t.getTypeArguments(), t.tsym,
-                                         t.getMetadata());
+                                         t.getMetadata(), t.getFlavor());
                 else
                     return t;
             }
@@ -3057,12 +3147,12 @@ public class Types {
 
         class Entry {
             final MethodSymbol cachedImpl;
-            final Filter<Symbol> implFilter;
+            final Predicate<Symbol> implFilter;
             final boolean checkResult;
             final int prevMark;
 
             public Entry(MethodSymbol cachedImpl,
-                    Filter<Symbol> scopeFilter,
+                    Predicate<Symbol> scopeFilter,
                     boolean checkResult,
                     int prevMark) {
                 this.cachedImpl = cachedImpl;
@@ -3071,14 +3161,14 @@ public class Types {
                 this.prevMark = prevMark;
             }
 
-            boolean matches(Filter<Symbol> scopeFilter, boolean checkResult, int mark) {
+            boolean matches(Predicate<Symbol> scopeFilter, boolean checkResult, int mark) {
                 return this.implFilter == scopeFilter &&
                         this.checkResult == checkResult &&
                         this.prevMark == mark;
             }
         }
 
-        MethodSymbol get(MethodSymbol ms, TypeSymbol origin, boolean checkResult, Filter<Symbol> implFilter) {
+        MethodSymbol get(MethodSymbol ms, TypeSymbol origin, boolean checkResult, Predicate<Symbol> implFilter) {
             SoftReference<Map<TypeSymbol, Entry>> ref_cache = _map.get(ms);
             Map<TypeSymbol, Entry> cache = ref_cache != null ? ref_cache.get() : null;
             if (cache == null) {
@@ -3098,7 +3188,7 @@ public class Types {
             }
         }
 
-        private MethodSymbol implementationInternal(MethodSymbol ms, TypeSymbol origin, boolean checkResult, Filter<Symbol> implFilter) {
+        private MethodSymbol implementationInternal(MethodSymbol ms, TypeSymbol origin, boolean checkResult, Predicate<Symbol> implFilter) {
             for (Type t = origin.type; t.hasTag(CLASS) || t.hasTag(TYPEVAR); t = supertype(t)) {
                 t = skipTypeVars(t, false);
                 TypeSymbol c = t.tsym;
@@ -3123,7 +3213,7 @@ public class Types {
 
     private ImplementationCache implCache = new ImplementationCache();
 
-    public MethodSymbol implementation(MethodSymbol ms, TypeSymbol origin, boolean checkResult, Filter<Symbol> implFilter) {
+    public MethodSymbol implementation(MethodSymbol ms, TypeSymbol origin, boolean checkResult, Predicate<Symbol> implFilter) {
         return implCache.get(ms, origin, checkResult, implFilter);
     }
     // </editor-fold>
@@ -3144,17 +3234,17 @@ public class Types {
                 this.scope = scope;
             }
 
-            Filter<Symbol> combine(Filter<Symbol> sf) {
-                return s -> !s.owner.isInterface() && (sf == null || sf.accepts(s));
+            Predicate<Symbol> combine(Predicate<Symbol> sf) {
+                return s -> !s.owner.isInterface() && (sf == null || sf.test(s));
             }
 
             @Override
-            public Iterable<Symbol> getSymbols(Filter<Symbol> sf, LookupKind lookupKind) {
+            public Iterable<Symbol> getSymbols(Predicate<Symbol> sf, LookupKind lookupKind) {
                 return scope.getSymbols(combine(sf), lookupKind);
             }
 
             @Override
-            public Iterable<Symbol> getSymbolsByName(Name name, Filter<Symbol> sf, LookupKind lookupKind) {
+            public Iterable<Symbol> getSymbolsByName(Name name, Predicate<Symbol> sf, LookupKind lookupKind) {
                 return scope.getSymbolsByName(name, combine(sf), lookupKind);
             }
 
@@ -3284,12 +3374,9 @@ public class Types {
 
             @Override
             public boolean equals(Object obj) {
-                if (obj instanceof Entry) {
-                    Entry e = (Entry)obj;
-                    return e.msym == msym && isSameType(site, e.site);
-                } else {
-                    return false;
-                }
+                return (obj instanceof Entry entry)
+                        && entry.msym == msym
+                        && isSameType(site, entry.site);
             }
 
             @Override
@@ -3314,7 +3401,7 @@ public class Types {
         CandidatesCache.Entry e = candidatesCache.new Entry(site, ms);
         List<MethodSymbol> candidates = candidatesCache.get(e);
         if (candidates == null) {
-            Filter<Symbol> filter = new MethodFilter(ms, site);
+            Predicate<Symbol> filter = new MethodFilter(ms, site);
             List<MethodSymbol> candidates2 = List.nil();
             for (Symbol s : membersClosure(site, false).getSymbols(filter)) {
                 if (!site.tsym.isInterface() && !s.owner.isInterface()) {
@@ -3347,7 +3434,7 @@ public class Types {
         return methodsMin.toList();
     }
     // where
-            private class MethodFilter implements Filter<Symbol> {
+            private class MethodFilter implements Predicate<Symbol> {
 
                 Symbol msym;
                 Type site;
@@ -3357,7 +3444,8 @@ public class Types {
                     this.site = site;
                 }
 
-                public boolean accepts(Symbol s) {
+                @Override
+                public boolean test(Symbol s) {
                     return s.kind == MTH &&
                             s.name == msym.name &&
                             (s.flags() & SYNTHETIC) == 0 &&
@@ -3972,11 +4060,9 @@ public class Types {
             }
             @Override
             public boolean equals(Object obj) {
-                if (!(obj instanceof TypePair))
-                    return false;
-                TypePair typePair = (TypePair)obj;
-                return isSameType(t1, typePair.t1)
-                    && isSameType(t2, typePair.t2);
+                return (obj instanceof TypePair typePair)
+                        && isSameType(t1, typePair.t1)
+                        && isSameType(t2, typePair.t2);
             }
         }
         Set<TypePair> mergeCache = new HashSet<>();
@@ -4017,7 +4103,7 @@ public class Types {
             // There is no spec detailing how type annotations are to
             // be inherited.  So set it to noAnnotations for now
             return new ClassType(class1.getEnclosingType(), merged.toList(),
-                                 class1.tsym);
+                                 class1.tsym, TypeMetadata.EMPTY, class1.getFlavor());
         }
 
     /**
@@ -4202,18 +4288,13 @@ public class Types {
             return buf.toList();
         }
 
-        private Type arraySuperType = null;
+        private Type arraySuperType;
         private Type arraySuperType() {
             // initialized lazily to avoid problems during compiler startup
             if (arraySuperType == null) {
-                synchronized (this) {
-                    if (arraySuperType == null) {
-                        // JLS 10.8: all arrays implement Cloneable and Serializable.
-                        List<Type> ifaces =
-                                List.of(syms.serializableType, syms.cloneableType, syms.identityObjectType);
-                        arraySuperType = makeIntersectionType(ifaces, true);
-                    }
-                }
+                // JLS 10.8: all arrays implement Cloneable and Serializable.
+                arraySuperType = makeIntersectionType(List.of(syms.serializableType,
+                        syms.cloneableType, syms.identityObjectType), true);
             }
             return arraySuperType;
         }
@@ -4450,6 +4531,8 @@ public class Types {
      * Return the primitive type corresponding to a boxed type.
      */
     public Type unboxedType(Type t) {
+        if (t.hasTag(ERROR))
+            return Type.noType;
         for (int i=0; i<syms.boxedName.length; i++) {
             Name box = syms.boxedName[i];
             if (box != null &&
@@ -4579,7 +4662,7 @@ public class Types {
 
         if (captured)
             return new ClassType(cls.getEnclosingType(), S, cls.tsym,
-                                 cls.getMetadata());
+                                 cls.getMetadata(), cls.getFlavor());
         else
             return t;
     }
@@ -5011,8 +5094,8 @@ public class Types {
         }
 
         public boolean equals(Object obj) {
-            return (obj instanceof UniqueType) &&
-                types.isSameType(type, ((UniqueType)obj).type);
+            return (obj instanceof UniqueType uniqueType) &&
+                    types.isSameType(type, uniqueType.type);
         }
 
         public boolean encodeTypeSig() {
@@ -5040,7 +5123,7 @@ public class Types {
      * Void if a second argument is not needed.
      */
     public static abstract class DefaultTypeVisitor<R,S> implements Type.Visitor<R,S> {
-        final public R visit(Type t, S s)               { return t.accept(this, s); }
+        public final R visit(Type t, S s)               { return t.accept(this, s); }
         public R visitClassType(ClassType t, S s)       { return visitType(t, s); }
         public R visitWildcardType(WildcardType t, S s) { return visitType(t, s); }
         public R visitArrayType(ArrayType t, S s)       { return visitType(t, s); }
@@ -5067,7 +5150,7 @@ public class Types {
      * Void if a second argument is not needed.
      */
     public static abstract class DefaultSymbolVisitor<R,S> implements Symbol.Visitor<R,S> {
-        final public R visit(Symbol s, S arg)                   { return s.accept(this, arg); }
+        public final R visit(Symbol s, S arg)                   { return s.accept(this, arg); }
         public R visitClassSymbol(ClassSymbol s, S arg)         { return visitSymbol(s, arg); }
         public R visitMethodSymbol(MethodSymbol s, S arg)       { return visitSymbol(s, arg); }
         public R visitOperatorSymbol(OperatorSymbol s, S arg)   { return visitSymbol(s, arg); }
@@ -5120,7 +5203,7 @@ public class Types {
      * visitor; use Void if no return type is needed.
      */
     public static abstract class UnaryVisitor<R> extends SimpleVisitor<R,Void> {
-        final public R visit(Type t) { return t.accept(this, null); }
+        public final R visit(Type t) { return t.accept(this, null); }
     }
 
     /**
@@ -5134,7 +5217,7 @@ public class Types {
      * not needed.
      */
     public static class MapVisitor<S> extends DefaultTypeVisitor<Type,S> {
-        final public Type visit(Type t) { return t.accept(this, null); }
+        public final Type visit(Type t) { return t.accept(this, null); }
         public Type visitType(Type t, S s) { return t; }
     }
 
@@ -5170,8 +5253,8 @@ public class Types {
         Attribute.Compound c = sym.attribute(syms.retentionType.tsym);
         if (c != null) {
             Attribute value = c.member(names.value);
-            if (value != null && value instanceof Attribute.Enum) {
-                Name levelName = ((Attribute.Enum)value).value.name;
+            if (value != null && value instanceof Attribute.Enum attributeEnum) {
+                Name levelName = attributeEnum.value.name;
                 if (levelName == names.SOURCE) vis = RetentionPolicy.SOURCE;
                 else if (levelName == names.CLASS) vis = RetentionPolicy.CLASS;
                 else if (levelName == names.RUNTIME) vis = RetentionPolicy.RUNTIME;
@@ -5342,6 +5425,10 @@ public class Types {
                         : c.name);
             } else {
                 append(externalize(c.flatname));
+            }
+            if (types.splitPrimitiveClass && ct.isReferenceProjection()) {
+                append('$');
+                append(types.names.ref);
             }
             if (ct.getTypeArguments().nonEmpty()) {
                 append('<');

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@
  *     test-classes/CustomLoadee3.java
  *     test-classes/SameNameUnrelatedLoaders.java
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run driver SameNameInTwoLoadersTest
  */
 
@@ -83,7 +83,8 @@ public class SameNameInTwoLoadersTest {
         return new String[] {
             "SameNameUnrelatedLoaders",
             "java/lang/Object id: 1",
-            "CustomLoadee id: 10 super: 1 source: " + customJar,
+            "java/lang/IdentityObject id: 2",
+            "CustomLoadee id: 10 super: 1 interfaces: 2 source: " + customJar,
         };
     }
 }

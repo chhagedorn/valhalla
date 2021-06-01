@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1134,9 +1134,15 @@ public class Lower extends TreeTranslator {
         switch (sym.kind) {
         case TYP:
             if (sym.owner.kind != PCK) {
+                // Make sure not to lose type fidelity due to symbol sharing between projections
+                boolean requireReferenceProjection =
+                        tree.hasTag(SELECT) && ((JCFieldAccess) tree).name == names.ref && tree.type.isReferenceProjection();
                 // Convert type idents to
                 // <flat name> or <package name> . <flat name>
                 Name flatname = Convert.shortName(sym.flatName());
+                if (types.splitPrimitiveClass && requireReferenceProjection) {
+                    flatname = flatname.append('$', names.ref);
+                }
                 while (base != null &&
                        TreeInfo.symbol(base) != null &&
                        TreeInfo.symbol(base).kind != PCK) {
@@ -1149,9 +1155,15 @@ public class Lower extends TreeTranslator {
                 } else if (base == null) {
                     tree = make.at(tree.pos).Ident(sym);
                     ((JCIdent) tree).name = flatname;
+                    if (requireReferenceProjection) {
+                        tree.setType(tree.type.referenceProjection());
+                    }
                 } else {
                     ((JCFieldAccess) tree).selected = base;
                     ((JCFieldAccess) tree).name = flatname;
+                    if (requireReferenceProjection) {
+                        tree.setType(tree.type.referenceProjection());
+                    }
                 }
             }
             break;
@@ -1613,11 +1625,10 @@ public class Lower extends TreeTranslator {
         JCTree resource = resources.head;
         JCExpression resourceUse;
         boolean resourceNonNull;
-        if (resource instanceof JCVariableDecl) {
-            JCVariableDecl var = (JCVariableDecl) resource;
-            resourceUse = make.Ident(var.sym).setType(resource.type);
-            resourceNonNull = var.init != null && TreeInfo.skipParens(var.init).hasTag(NEWCLASS);
-            stats.add(var);
+        if (resource instanceof JCVariableDecl variableDecl) {
+            resourceUse = make.Ident(variableDecl.sym).setType(resource.type);
+            resourceNonNull = variableDecl.init != null && TreeInfo.skipParens(variableDecl.init).hasTag(NEWCLASS);
+            stats.add(variableDecl);
         } else {
             Assert.check(resource instanceof JCExpression);
             VarSymbol syntheticTwrVar =
@@ -1710,7 +1721,7 @@ public class Lower extends TreeTranslator {
 
     private JCStatement makeResourceCloseInvocation(JCExpression resource) {
         // convert to AutoCloseable if needed
-        if (types.asSuper(resource.type, syms.autoCloseableType.tsym, true) == null) {
+        if (types.asSuper(resource.type.referenceProjectionOrSelf(), syms.autoCloseableType.tsym) == null) {
             resource = convert(resource, syms.autoCloseableType);
         }
 
@@ -3096,12 +3107,15 @@ public class Lower extends TreeTranslator {
         if (haveValue == type.isPrimitiveClass())
             return tree;
         if (haveValue) {
-            // widening coversion is a NOP for the VM due to subtyping relationship at class file
-            return tree;
-        } else {
-            // For narrowing conversion, insert a cast which should trigger a null check
-            return (T) make.TypeCast(type, tree);
+            // widening coversion is a NOP for the VM due to subtyping relationship at class file level
+            // where we bifurcate a primitive class into two class files.
+            if (types.splitPrimitiveClass)
+                return tree;
         }
+        // For narrowing conversion, insert a cast which should trigger a null check
+        // For widening conversions, insert a cast if emitting a unified class file.
+        return (T) make.TypeCast(type, tree);
+
     }
 
 
@@ -3504,8 +3518,8 @@ public class Lower extends TreeTranslator {
         private void visitIterableForeachLoop(JCEnhancedForLoop tree) {
             make_at(tree.expr.pos());
             Type iteratorTarget = syms.objectType;
-            Type iterableType = types.asSuper(types.cvarUpperBound(tree.expr.type),
-                                              syms.iterableType.tsym, true);
+            Type iterableType = types.asSuper(types.cvarUpperBound(tree.expr.type.referenceProjectionOrSelf()),
+                                              syms.iterableType.tsym);
             if (iterableType.getTypeArguments().nonEmpty())
                 iteratorTarget = types.erasure(iterableType.getTypeArguments().head);
             Type eType = types.skipTypeVars(tree.expr.type, false);
@@ -3517,7 +3531,7 @@ public class Lower extends TreeTranslator {
                                            eType,
                                            List.nil());
             VarSymbol itvar = new VarSymbol(SYNTHETIC, names.fromString("i" + target.syntheticNameChar()),
-                                            types.erasure(types.asSuper(iterator.type.getReturnType(), syms.iteratorType.tsym)),
+                                            types.erasure(types.asSuper(iterator.type.getReturnType().referenceProjectionOrSelf(), syms.iteratorType.tsym)),
                                             currentMethodSym);
 
              JCStatement init = make.
@@ -3979,7 +3993,7 @@ public class Lower extends TreeTranslator {
                 types.isDirectSuperInterface(tree.selected.type.tsym, currentClass)) {
             //default super call!! Not a classic qualified super call
             TypeSymbol supSym = tree.selected.type.tsym;
-            Assert.checkNonNull(types.asSuper(currentClass.type, supSym));
+            Assert.checkNonNull(types.asSuper(currentClass.type.referenceProjectionOrSelf(), supSym));
             result = tree;
         }
         else if (tree.name == names._this || tree.name == names._super) {

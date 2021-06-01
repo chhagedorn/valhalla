@@ -24,14 +24,12 @@
 
 #include "precompiled.hpp"
 #include "jvm.h"
-#include "aot/aotLoader.hpp"
 #include "classfile/classFileParser.hpp"
 #include "classfile/classFileStream.hpp"
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderData.inline.hpp"
 #include "classfile/classLoadInfo.hpp"
 #include "classfile/defaultMethods.hpp"
-#include "classfile/dictionary.hpp"
 #include "classfile/fieldLayoutBuilder.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/moduleEntry.hpp"
@@ -1294,8 +1292,7 @@ static void parse_annotations(const ConstantPool* const cp,
                               const u1* buffer, int limit,
                               AnnotationCollector* coll,
                               ClassLoaderData* loader_data,
-                              const bool can_access_vm_annotations,
-                              TRAPS) {
+                              const bool can_access_vm_annotations) {
 
   assert(cp != NULL, "invariant");
   assert(buffer != NULL, "invariant");
@@ -1472,8 +1469,7 @@ void ClassFileParser::parse_field_attributes(const ClassFileStream* const cfs,
                           runtime_visible_annotations_length,
                           parsed_annotations,
                           _loader_data,
-                          _can_access_vm_annotations,
-                          CHECK);
+                          _can_access_vm_annotations);
         cfs->skip_u1_fast(runtime_visible_annotations_length);
       } else if (attribute_name == vmSymbols::tag_runtime_invisible_annotations()) {
         if (runtime_invisible_annotations_exists) {
@@ -2882,8 +2878,7 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
                           runtime_visible_annotations_length,
                           &parsed_annotations,
                           _loader_data,
-                          _can_access_vm_annotations,
-                          CHECK_NULL);
+                          _can_access_vm_annotations);
         cfs->skip_u1_fast(runtime_visible_annotations_length);
       } else if (method_attribute_name == vmSymbols::tag_runtime_invisible_annotations()) {
         if (runtime_invisible_annotations_exists) {
@@ -3719,7 +3714,7 @@ u2 ClassFileParser::parse_classfile_record_attribute(const ClassFileStream* cons
   return calculate_attr_size;
 }
 
-void ClassFileParser::parse_classfile_synthetic_attribute(TRAPS) {
+void ClassFileParser::parse_classfile_synthetic_attribute() {
   set_class_synthetic_flag(true);
 }
 
@@ -3918,9 +3913,9 @@ void ClassFileParser::parse_classfile_attributes(const ClassFileStream* const cf
           attribute_length, THREAD);
         return;
       }
-      parse_classfile_synthetic_attribute(CHECK);
+      parse_classfile_synthetic_attribute();
     } else if (tag == vmSymbols::tag_deprecated()) {
-      // Check for Deprecatd tag - 4276120
+      // Check for Deprecated tag - 4276120
       if (attribute_length != 0) {
         classfile_parse_error(
           "Invalid Deprecated classfile attribute length %u in class file %s",
@@ -3956,8 +3951,7 @@ void ClassFileParser::parse_classfile_attributes(const ClassFileStream* const cf
                           runtime_visible_annotations_length,
                           parsed_annotations,
                           _loader_data,
-                          _can_access_vm_annotations,
-                          CHECK);
+                          _can_access_vm_annotations);
         cfs->skip_u1_fast(runtime_visible_annotations_length);
       } else if (tag == vmSymbols::tag_runtime_invisible_annotations()) {
         if (runtime_invisible_annotations_exists) {
@@ -4227,8 +4221,7 @@ void ClassFileParser::create_combined_annotations(TRAPS) {
 // Transfer ownership of metadata allocated to the InstanceKlass.
 void ClassFileParser::apply_parsed_class_metadata(
                                             InstanceKlass* this_klass,
-                                            int java_fields_count,
-                                            TRAPS) {
+                                            int java_fields_count) {
   assert(this_klass != NULL, "invariant");
 
   _cp->set_pool_holder(this_klass);
@@ -5527,7 +5520,7 @@ static void check_methods_for_intrinsics(const InstanceKlass* ik,
   if (klass_id != vmSymbolID::NO_SID) {
     for (int j = 0; j < methods->length(); ++j) {
       Method* method = methods->at(j);
-      method->init_intrinsic_id();
+      method->init_intrinsic_id(klass_id);
 
       if (CheckIntrinsics) {
         // Check if an intrinsic is defined for method 'method',
@@ -5569,6 +5562,11 @@ static void check_methods_for_intrinsics(const InstanceKlass* ik,
         if (vmIntrinsics::_compiledLambdaForm == id) {
           // The _compiledLamdbdaForm intrinsic is a special marker for bytecode
           // generated for the JVM from a LambdaForm and therefore no method
+          // is defined for it.
+          continue;
+        }
+        if (vmIntrinsics::_blackhole == id) {
+          // The _blackhole intrinsic is a special marker. No explicit method
           // is defined for it.
           continue;
         }
@@ -5620,25 +5618,6 @@ InstanceKlass* ClassFileParser::create_instance_klass(bool changed_by_loadhook,
   fill_instance_klass(ik, changed_by_loadhook, cl_inst_info, CHECK_NULL);
 
   assert(_klass == ik, "invariant");
-
-
-  if (ik->should_store_fingerprint()) {
-    ik->store_fingerprint(_stream->compute_fingerprint());
-  }
-
-  ik->set_has_passed_fingerprint_check(false);
-  if (UseAOT && ik->supers_have_passed_fingerprint_checks()) {
-    uint64_t aot_fp = AOTLoader::get_saved_fingerprint(ik);
-    uint64_t fp = ik->has_stored_fingerprint() ? ik->get_stored_fingerprint() : _stream->compute_fingerprint();
-    if (aot_fp != 0 && aot_fp == fp) {
-      // This class matches with a class saved in an AOT library
-      ik->set_has_passed_fingerprint_check(true);
-    } else {
-      ResourceMark rm;
-      log_info(class, fingerprint)("%s :  expected = " PTR64_FORMAT " actual = " PTR64_FORMAT,
-                                 ik->external_name(), aot_fp, _stream->compute_fingerprint());
-    }
-  }
 
   if (ik->is_inline_klass()) {
     InlineKlass* vk = InlineKlass::cast(ik);
@@ -5735,11 +5714,11 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik,
 
   // this transfers ownership of a lot of arrays from
   // the parser onto the InstanceKlass*
-  apply_parsed_class_metadata(ik, _java_fields_count, CHECK);
+  apply_parsed_class_metadata(ik, _java_fields_count);
 
   // can only set dynamic nest-host after static nest information is set
   if (cl_inst_info.dynamic_nest_host() != NULL) {
-    ik->set_nest_host(cl_inst_info.dynamic_nest_host(), THREAD);
+    ik->set_nest_host(cl_inst_info.dynamic_nest_host());
   }
 
   // note that is not safe to use the fields in the parser from this point on
@@ -6004,8 +5983,8 @@ void ClassFileParser::update_class_name(Symbol* new_class_name) {
 // For an unsafe anonymous class that is in the unnamed package, move it to its host class's
 // package by prepending its host class's package name to its class name and setting
 // its _class_name field.
-void ClassFileParser::prepend_host_package_name(const InstanceKlass* unsafe_anonymous_host, TRAPS) {
-  ResourceMark rm(THREAD);
+void ClassFileParser::prepend_host_package_name(Thread* current, const InstanceKlass* unsafe_anonymous_host) {
+  ResourceMark rm(current);
   assert(strrchr(_class_name->as_C_string(), JVM_SIGNATURE_SLASH) == NULL,
          "Unsafe anonymous class should not be in a package");
   TempNewSymbol host_pkg_name =
@@ -6041,7 +6020,7 @@ void ClassFileParser::fix_unsafe_anonymous_class_name(TRAPS) {
   const jbyte* anon_last_slash = UTF8::strrchr((const jbyte*)_class_name->base(),
                                                _class_name->utf8_length(), JVM_SIGNATURE_SLASH);
   if (anon_last_slash == NULL) {  // Unnamed package
-    prepend_host_package_name(_unsafe_anonymous_host, CHECK);
+    prepend_host_package_name(THREAD, _unsafe_anonymous_host);
   } else {
     if (!_unsafe_anonymous_host->is_same_class_package(_unsafe_anonymous_host->class_loader(), _class_name)) {
       ResourceMark rm(THREAD);
@@ -6303,18 +6282,6 @@ void ClassFileParser::parse_stream(const ClassFileStream* const stream,
   // Version numbers
   _minor_version = stream->get_u2_fast();
   _major_version = stream->get_u2_fast();
-
-  if (DumpSharedSpaces && _major_version < JAVA_6_VERSION) {
-    ResourceMark rm;
-    warning("Pre JDK 6 class not supported by CDS: %u.%u %s",
-            _major_version,  _minor_version, _class_name->as_C_string());
-    Exceptions::fthrow(
-      THREAD_AND_LOCATION,
-      vmSymbols::java_lang_UnsupportedClassVersionError(),
-      "Unsupported major.minor version for dump time %u.%u",
-      _major_version,
-      _minor_version);
-  }
 
   // Check version numbers - we check this even with verifier off
   verify_class_version(_major_version, _minor_version, _class_name, CHECK);
@@ -6657,7 +6624,7 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
     set_invalid_inline_super();
   }
 
-  if (!is_inline_type() && invalid_inline_super() && (_super_klass == NULL || !_super_klass->invalid_inline_super())
+  if (EnableValhalla && !is_inline_type() && invalid_inline_super() && (_super_klass == NULL || !_super_klass->invalid_inline_super())
       && !_implements_identityObject && class_name() != vmSymbols::java_lang_IdentityObject()) {
     _temp_local_interfaces->append(vmClasses::IdentityObject_klass());
     _has_injected_identityObject = true;
@@ -6714,8 +6681,7 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
                                                     _major_version,
                                                     loader,
                                                     _class_name,
-                                                    _local_interfaces,
-                                                    CHECK);
+                                                    _local_interfaces);
 
   // Size of Java itable (in words)
   _itable_size = is_interface() ? 0 :
@@ -6725,20 +6691,22 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
   assert(_parsed_annotations != NULL, "invariant");
 
 
-  for (AllFieldStream fs(_fields, cp); !fs.done(); fs.next()) {
-    if (Signature::basic_type(fs.signature()) == T_INLINE_TYPE  && !fs.access_flags().is_static()) {
-      // Pre-load inline class
-      Klass* klass = SystemDictionary::resolve_inline_type_field_or_fail(&fs,
-          Handle(THREAD, _loader_data->class_loader()),
-          _protection_domain, true, CHECK);
-      assert(klass != NULL, "Sanity check");
-      if (!klass->access_flags().is_inline_type()) {
-        assert(klass->is_instance_klass(), "Sanity check");
-        ResourceMark rm(THREAD);
-          THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
-                    err_msg("Class %s expects class %s to be an inline type, but it is not",
-                    _class_name->as_C_string(),
-                    InstanceKlass::cast(klass)->external_name()));
+  if (EnableValhalla) {
+    for (AllFieldStream fs(_fields, cp); !fs.done(); fs.next()) {
+      if (Signature::basic_type(fs.signature()) == T_INLINE_TYPE && !fs.access_flags().is_static()) {
+        // Pre-load inline class
+        Klass* klass = SystemDictionary::resolve_inline_type_field_or_fail(&fs,
+            Handle(THREAD, _loader_data->class_loader()),
+            _protection_domain, true, CHECK);
+        assert(klass != NULL, "Sanity check");
+        if (!klass->access_flags().is_inline_type()) {
+          assert(klass->is_instance_klass(), "Sanity check");
+          ResourceMark rm(THREAD);
+            THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
+                      err_msg("Class %s expects class %s to be an inline type, but it is not",
+                      _class_name->as_C_string(),
+                      InstanceKlass::cast(klass)->external_name()));
+        }
       }
     }
   }

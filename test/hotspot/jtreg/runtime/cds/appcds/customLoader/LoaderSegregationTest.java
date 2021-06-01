@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@
  *          test-classes/OnlyUnregistered.java
  *          ../test-classes/Util.java
  * @build sun.hotspot.WhiteBox
- * @run driver ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller sun.hotspot.WhiteBox
  * @run driver LoaderSegregationTest
  */
 
@@ -77,17 +77,18 @@ public class LoaderSegregationTest {
         String classlist[] = new String[] {
             "LoaderSegregation",
             "java/lang/Object id: 1",
+            "java/lang/IdentityObject id: 2",
 
             // These are the UNREGISTERED classes: they have "source:"
             // but they don't have "loader:".
-            "CustomLoadee id: 2 super: 1 source: " + customJarPath,
+            "CustomLoadee id: 3 super: 1 interfaces: 2 source: " + customJarPath,
 
-            "CustomInterface2_ia id: 3 super: 1 source: " + customJarPath,
-            "CustomInterface2_ib id: 4 super: 1 source: " + customJarPath,
-            "CustomLoadee2 id: 5 super: 1 interfaces: 3 4 source: " + customJarPath,
+            "CustomInterface2_ia id: 4 super: 1 source: " + customJarPath,
+            "CustomInterface2_ib id: 5 super: 1 source: " + customJarPath,
+            "CustomLoadee2 id: 6 super: 1 interfaces: 2 4 5 source: " + customJarPath,
 
-            "CustomLoadee3 id: 6 super: 1 source: " + customJarPath,
-            "CustomLoadee3Child id: 7 super: 6 source: " + customJarPath,
+            "CustomLoadee3 id: 7 super: 1 interfaces: 2 source: " + customJarPath,
+            "CustomLoadee3Child id: 8 super: 7 source: " + customJarPath,
 
             // At dump time, the following BUILTIN classes are loaded after the UNREGISTERED
             // classes from above. However, at dump time, they cannot use the UNREGISTERED classes are their
@@ -99,7 +100,7 @@ public class LoaderSegregationTest {
             // Check that BUILTIN and UNREGISTERED classes can be loaded only by their
             // corresponding type of loaders.
             "OnlyBuiltin",
-            "OnlyUnregistered id: 9 super: 1 source: " + customJarPath,
+            "OnlyUnregistered id: 10 super: 1 interfaces: 2 source: " + customJarPath,
         };
 
         OutputAnalyzer output;

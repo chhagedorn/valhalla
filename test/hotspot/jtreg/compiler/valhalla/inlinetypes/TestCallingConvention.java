@@ -45,6 +45,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 
 @ForceCompileClassInitializer
 public class TestCallingConvention {
+        case 4: return new String[] {"-XX:-UseTLAB"};
 
     static {
         try {

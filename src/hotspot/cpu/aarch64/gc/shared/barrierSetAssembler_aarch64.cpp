@@ -27,6 +27,7 @@
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/barrierSetNMethod.hpp"
+#include "gc/shared/barrierSetRuntime.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "interpreter/interp_masm.hpp"
 #include "memory/universe.hpp"
@@ -46,6 +47,8 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
   bool in_heap = (decorators & IN_HEAP) != 0;
   bool in_native = (decorators & IN_NATIVE) != 0;
   bool is_not_null = (decorators & IS_NOT_NULL) != 0;
+
+  assert(type != T_INLINE_TYPE, "Not supported yet");
   switch (type) {
   case T_OBJECT:
   case T_ARRAY: {
@@ -85,10 +88,11 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   bool in_native = (decorators & IN_NATIVE) != 0;
   bool is_not_null = (decorators & IS_NOT_NULL) != 0;
 
+  assert(type != T_INLINE_TYPE, "Not supported yet");
   switch (type) {
   case T_OBJECT:
   case T_ARRAY: {
-   if (in_heap) {
+    if (in_heap) {
       if (val == noreg) {
         assert(!is_not_null, "inconsistent access");
         if (UseCompressedOops) {
@@ -132,9 +136,17 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   }
 }
 
-void BarrierSetAssembler::obj_equals(MacroAssembler* masm,
-                                     Register obj1, Register obj2) {
-  __ cmp(obj1, obj2);
+void BarrierSetAssembler::value_copy(MacroAssembler* masm, DecoratorSet decorators,
+                                     Register src, Register dst, Register value_klass) {
+  // value_copy implementation is fairly complex, and there are not any
+  // "short-cuts" to be made from asm. What there is, appears to have the same
+  // cost in C++, so just "call_VM_leaf" for now rather than maintain hundreds
+  // of hand-rolled instructions...
+  if (decorators & IS_DEST_UNINITIALIZED) {
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, BarrierSetRuntime::value_copy_is_dest_uninitialized), src, dst, value_klass);
+  } else {
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, BarrierSetRuntime::value_copy), src, dst, value_klass);
+  }
 }
 
 void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Register jni_env,
@@ -312,4 +324,3 @@ void BarrierSetAssembler::c2i_entry_barrier(MacroAssembler* masm) {
   __ far_jump(RuntimeAddress(SharedRuntime::get_handle_wrong_method_stub()));
   __ bind(method_live);
 }
-

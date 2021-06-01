@@ -28,6 +28,7 @@
 #include "code/vmreg.inline.hpp"
 #include "compiler/abstractCompiler.hpp"
 #include "compiler/disassembler.hpp"
+#include "compiler/oopMap.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/oopMapCache.hpp"
@@ -299,7 +300,7 @@ void frame::deoptimize(JavaThread* thread) {
     // Also, if the method is synchronized, we first need to acquire the lock.
     // Don't patch the return pc to delay deoptimization until we enter the method body (the check
     // addedin LIRGenerator::do_Base will detect the pending deoptimization by checking the original_pc).
-#ifdef ASSERT
+#if defined ASSERT && !defined AARCH64   // Stub call site does not look like NativeCall on AArch64
     NativeCall* call = nativeCall_before(this->pc());
     address dest = call->destination();
     assert(dest == Runtime1::entry_for(Runtime1::buffer_inline_args_no_receiver_id) ||
@@ -590,7 +591,6 @@ void frame::print_C_frame(outputStream* st, char* buf, int buflen, address pc) {
 //
 // First letter indicates type of the frame:
 //    J: Java frame (compiled)
-//    A: Java frame (aot compiled)
 //    j: Java frame (interpreted)
 //    V: VM frame (C/C++)
 //    v: Other frames running VM generated code (e.g. stubs, adapters, etc.)
@@ -632,9 +632,7 @@ void frame::print_on_error(outputStream* st, char* buf, int buflen, bool verbose
       CompiledMethod* cm = (CompiledMethod*)_cb;
       Method* m = cm->method();
       if (m != NULL) {
-        if (cm->is_aot()) {
-          st->print("A %d ", cm->compile_id());
-        } else if (cm->is_nmethod()) {
+        if (cm->is_nmethod()) {
           nmethod* nm = cm->as_nmethod();
           st->print("J %d%s", nm->compile_id(), (nm->is_osr_method() ? "%" : ""));
           st->print(" %s", nm->compiler_name());
@@ -987,7 +985,7 @@ class CompiledArgumentOopFinder: public SignatureIterator {
     // In LP64-land, the high-order bits are valid but unhelpful.
     assert(_offset < _arg_size, "out of bounds");
     VMReg reg = _regs[_offset].first();
-    oop *loc = _fr.oopmapreg_to_location(reg, _reg_map);
+    oop *loc = _fr.oopmapreg_to_oop_location(reg, _reg_map);
     assert(loc != NULL, "missing register map entry");
     _f->do_oop(loc);
   }
@@ -1038,7 +1036,7 @@ oop frame::retrieve_receiver(RegisterMap* reg_map) {
 
   // First consult the ADLC on where it puts parameter 0 for this signature.
   VMReg reg = SharedRuntime::name_for_receiver();
-  oop* oop_adr = caller.oopmapreg_to_location(reg, reg_map);
+  oop* oop_adr = caller.oopmapreg_to_oop_location(reg, reg_map);
   if (oop_adr == NULL) {
     guarantee(oop_adr != NULL, "bad register save location");
     return NULL;
@@ -1249,9 +1247,8 @@ void frame::describe(FrameValues& values, int frame_no) {
     // For now just label the frame
     CompiledMethod* cm = (CompiledMethod*)cb();
     values.describe(-1, info_address,
-                    FormatBuffer<1024>("#%d nmethod " INTPTR_FORMAT " for method %s%s%s", frame_no,
+                    FormatBuffer<1024>("#%d nmethod " INTPTR_FORMAT " for method J %s%s", frame_no,
                                        p2i(cm),
-                                       (cm->is_aot() ? "A ": "J "),
                                        cm->method()->name_and_sig_as_C_string(),
                                        (_deopt_state == is_deoptimized) ?
                                        " (deoptimized)" :
@@ -1278,17 +1275,6 @@ void frame::describe(FrameValues& values, int frame_no) {
 }
 
 #endif
-
-
-//-----------------------------------------------------------------------------------
-// StackFrameStream implementation
-
-StackFrameStream::StackFrameStream(JavaThread *thread, bool update, bool process_frames) : _reg_map(thread, update, process_frames) {
-  assert(thread->has_last_Java_frame(), "sanity check");
-  _fr = thread->last_frame();
-  _is_done = false;
-}
-
 
 #ifndef PRODUCT
 

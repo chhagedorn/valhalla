@@ -90,7 +90,6 @@ class TypeVect;
 class Unique_Node_List;
 class InlineTypeBaseNode;
 class nmethod;
-class WarmCallInfo;
 class Node_Stack;
 struct Final_Reshape_Counts;
 
@@ -295,6 +294,7 @@ class Compile : public Phase {
   bool                  _print_inlining;        // True if we should print inlining for this compilation
   bool                  _print_intrinsics;      // True if we should print intrinsics for this compilation
 #ifndef PRODUCT
+  uint                  _igv_idx;               // Counter for IGV node identifiers
   bool                  _trace_opto_output;
   bool                  _print_ideal;
   bool                  _parsed_irreducible_loop; // True if ciTypeFlow detected irreducible loops during parsing
@@ -383,7 +383,6 @@ class Compile : public Phase {
   // Parsing, optimization
   PhaseGVN*             _initial_gvn;           // Results of parse-time PhaseGVN
   Unique_Node_List*     _for_igvn;              // Initial work-list for next round of Iterative GVN
-  WarmCallInfo*         _warm_calls;            // Sorted work-list for heat-based inlining.
 
   GrowableArray<CallGenerator*> _late_inlines;        // List of CallGenerators to be revisited after main parsing has finished.
   GrowableArray<CallGenerator*> _string_late_inlines; // same but for string operations
@@ -616,6 +615,7 @@ class Compile : public Phase {
   }
 
 #ifndef PRODUCT
+  uint          next_igv_idx()                  { return _igv_idx++; }
   bool          trace_opto_output() const       { return _trace_opto_output; }
   bool          print_ideal() const             { return _print_ideal; }
   bool              parsed_irreducible_loop() const { return _parsed_irreducible_loop; }
@@ -658,7 +658,7 @@ class Compile : public Phase {
 #endif
   }
 
-  void print_method(CompilerPhaseType cpt, const char *name, int level = 1, int idx = 0);
+  void print_method(CompilerPhaseType cpt, const char *name, int level = 1);
   void print_method(CompilerPhaseType cpt, int level = 1, int idx = 0);
   void print_method(CompilerPhaseType cpt, Node* n, int level = 3);
 
@@ -943,13 +943,9 @@ class Compile : public Phase {
 
   void              identify_useful_nodes(Unique_Node_List &useful);
   void              update_dead_node_list(Unique_Node_List &useful);
-  void              remove_useless_nodes (Unique_Node_List &useful);
+  void              disconnect_useless_nodes(Unique_Node_List &useful, Unique_Node_List* worklist);
 
   void              remove_useless_node(Node* dead);
-
-  WarmCallInfo*     warm_calls() const          { return _warm_calls; }
-  void          set_warm_calls(WarmCallInfo* l) { _warm_calls = l; }
-  WarmCallInfo* pop_warm_call();
 
   // Record this CallGenerator for inlining at the end of parsing.
   void              add_late_inline(CallGenerator* cg)        {
@@ -1138,6 +1134,7 @@ class Compile : public Phase {
   uint compute_truth_table(Unique_Node_List& partition, Unique_Node_List& inputs);
   uint eval_macro_logic_op(uint func, uint op1, uint op2, uint op3);
   Node* xform_to_MacroLogicV(PhaseIterGVN &igvn, const TypeVect* vt, Unique_Node_List& partitions, Unique_Node_List& inputs);
+  void check_no_dead_use() const NOT_DEBUG_RETURN;
 
  public:
 
@@ -1179,7 +1176,7 @@ class Compile : public Phase {
                               Node* ctrl = NULL);
 
   // Convert integer value to a narrowed long type dependent on ctrl (for example, a range check)
-  static Node* constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* itype, Node* ctrl);
+  static Node* constrained_convI2L(PhaseGVN* phase, Node* value, const TypeInt* itype, Node* ctrl, bool carry_dependency = false);
 
   Node* optimize_acmp(PhaseGVN* phase, Node* a, Node* b);
 
@@ -1216,9 +1213,10 @@ class Compile : public Phase {
   bool has_exception_backedge() const { return _exception_backedge; }
 #endif
 
-  static bool
-  push_thru_add(PhaseGVN* phase, Node* z, const TypeInteger* tz, const TypeInteger*& rx, const TypeInteger*& ry,
-                BasicType bt);
+  static bool push_thru_add(PhaseGVN* phase, Node* z, const TypeInteger* tz, const TypeInteger*& rx, const TypeInteger*& ry,
+                            BasicType bt);
+
+  static Node* narrow_value(BasicType bt, Node* value, const Type* type, PhaseGVN* phase, bool transform_res);
 };
 
 #endif // SHARE_OPTO_COMPILE_HPP

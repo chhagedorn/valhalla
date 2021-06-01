@@ -25,7 +25,7 @@ package compiler.lib.ir_framework;
 
 import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
-import jdk.test.lib.util.ClassFileInstaller;
+import jdk.test.lib.helpers.ClassFileInstaller;
 import sun.hotspot.WhiteBox;
 
 import java.io.PrintWriter;

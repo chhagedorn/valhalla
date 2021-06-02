@@ -23,8 +23,12 @@
 
 package compiler.valhalla.inlinetypes;
 
+import compiler.lib.ir_framework.CompLevel;
+import compiler.lib.ir_framework.Run;
+import compiler.lib.ir_framework.Scenario;
+import compiler.lib.ir_framework.Test;
 import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
+
 
 /*
  * @test

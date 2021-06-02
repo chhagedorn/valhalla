@@ -25,7 +25,7 @@ package compiler.valhalla.inlinetypes;
 
 import jdk.internal.misc.Unsafe;
 import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
+import compiler.lib.ir_framework.*;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;

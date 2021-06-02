@@ -24,7 +24,7 @@
 package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
+import compiler.lib.ir_framework.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
 import static compiler.valhalla.inlinetypes.InlineTypes.rD;

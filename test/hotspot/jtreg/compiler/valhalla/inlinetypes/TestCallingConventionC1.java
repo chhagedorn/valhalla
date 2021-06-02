@@ -23,8 +23,8 @@
 
 package compiler.valhalla.inlinetypes;
 
+import compiler.lib.ir_framework.*;
 import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
 import sun.hotspot.WhiteBox;
 
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;

@@ -24,8 +24,8 @@
 package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Utils;
-import jdk.test.lib.hotspot.ir_framework.Scenario;
-import jdk.test.lib.hotspot.ir_framework.TestFramework;
+import compiler.lib.ir_framework.Scenario;
+import compiler.lib.ir_framework.TestFramework;
 
 public class InlineTypes {
     public static final int  rI = Utils.getRandomInstance().nextInt() % 1000;

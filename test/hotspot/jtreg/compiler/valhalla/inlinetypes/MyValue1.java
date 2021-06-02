@@ -23,10 +23,10 @@
 
 package compiler.valhalla.inlinetypes;
 
-import jdk.test.lib.hotspot.ir_framework.DontCompile;
-import jdk.test.lib.hotspot.ir_framework.DontInline;
-import jdk.test.lib.hotspot.ir_framework.ForceCompileClassInitializer;
-import jdk.test.lib.hotspot.ir_framework.ForceInline;
+import compiler.lib.ir_framework.DontCompile;
+import compiler.lib.ir_framework.DontInline;
+import compiler.lib.ir_framework.ForceCompileClassInitializer;
+import compiler.lib.ir_framework.ForceInline;
 
 @ForceCompileClassInitializer
 public final primitive class MyValue1 extends MyAbstract {

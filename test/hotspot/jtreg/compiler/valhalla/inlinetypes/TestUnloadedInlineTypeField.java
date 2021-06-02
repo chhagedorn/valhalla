@@ -23,11 +23,13 @@
 
 package compiler.valhalla.inlinetypes;
 
+import compiler.lib.ir_framework.Run;
+import compiler.lib.ir_framework.RunInfo;
+import compiler.lib.ir_framework.Scenario;
+import compiler.lib.ir_framework.Test;
 import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
+
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
-import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
 
 /*
  * @test

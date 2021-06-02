@@ -23,15 +23,18 @@
 
 package compiler.valhalla.inlinetypes;
 
-import java.lang.invoke.*;
+import compiler.lib.ir_framework.*;
+import jdk.test.lib.Asserts;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 
-import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.ALLOC;
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.STORE;
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
-import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 
 /*
  * @test
@@ -966,14 +969,14 @@ public class TestNullableInlineTypes {
     }
 
     // Test NPE when casting constant null to inline type
-    @Test()
+    @Test
     public MyValue1 test40() throws Throwable {
         Object NULL = null;
         return (MyValue1)NULL;
     }
 
-    @DontCompile
-    public void test40_verifier(boolean warmup) throws Throwable {
+    @Run(test = "test40")
+    public void test40_verifier() throws Throwable {
         try {
             test40();
             throw new RuntimeException("NullPointerException expected");

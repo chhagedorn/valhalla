@@ -23,16 +23,16 @@
 
 package compiler.valhalla.inlinetypes;
 
+import compiler.lib.ir_framework.*;
 import jdk.test.lib.Asserts;
 
-import java.lang.invoke.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 
-import jdk.test.lib.hotspot.ir_framework.*;
-import static compiler.valhalla.inlinetypes.InlineTypes.rI;
-import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
 import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+import static compiler.valhalla.inlinetypes.InlineTypes.*;
 
 /*
  * @test
@@ -45,7 +45,6 @@ import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 
 @ForceCompileClassInitializer
 public class TestCallingConvention {
-        case 4: return new String[] {"-XX:-UseTLAB"};
 
     static {
         try {

@@ -23,14 +23,12 @@
 
 package compiler.valhalla.inlinetypes;
 
+import compiler.lib.ir_framework.*;
 import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
+
+import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
-import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
-
-import java.lang.reflect.Method;
 
 /*
  * @test

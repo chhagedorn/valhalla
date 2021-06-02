@@ -23,7 +23,7 @@
 
 package compiler.valhalla.inlinetypes;
 
-import jdk.test.lib.hotspot.ir_framework.ForceInline;
+import compiler.lib.ir_framework.ForceInline;
 
 // Inline type definition with too many fields to return in registers
 final primitive class MyValue4 extends MyAbstract {

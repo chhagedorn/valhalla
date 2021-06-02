@@ -23,18 +23,18 @@
 
 package compiler.valhalla.inlinetypes;
 
-import java.lang.invoke.*;
+import compiler.lib.ir_framework.*;
+import jdk.test.lib.Asserts;
+import test.java.lang.invoke.lib.InstructionHelper;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import jdk.test.lib.Asserts;
-import jdk.test.lib.hotspot.ir_framework.*;
-import static compiler.valhalla.inlinetypes.InlineTypes.rI;
-import static compiler.valhalla.inlinetypes.InlineTypes.rL;
-import static compiler.valhalla.inlinetypes.InlineTypes.rD;
 import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
-
-import test.java.lang.invoke.lib.InstructionHelper;
+import static compiler.valhalla.inlinetypes.InlineTypes.*;
 
 /*
  * @test
@@ -55,7 +55,7 @@ public class TestLWorld {
         // Make sure Test141Value is linked but not initialized
         Class<?> class2 = Test141Value.class;
         class2.getDeclaredFields();
-        
+
         Scenario[] scenarios = InlineTypes.DEFAULT_SCENARIOS;
         scenarios[2].addFlags("-DVerifyIR=false");
         scenarios[3].addFlags("-XX:-MonomorphicArrayCheck", "-XX:FlatArrayElementMaxSize=-1");
@@ -101,7 +101,7 @@ public class TestLWorld {
         return (MyValue1)o;
     }
 
-    @Test()
+    @Test
     public MyValue1 test1() {
         MyValue1 vt = testValue1;
         vt = (MyValue1)test1_dontinline1(vt);
@@ -145,7 +145,7 @@ public class TestLWorld {
         return (Object)staticValueField4;
     }
 
-    @Test()
+    @Test
     public long test2(MyValue1 vt1, Object vt2) {
         objectField1 = vt1;
         objectField2 = (MyValue1)vt2;
@@ -178,7 +178,7 @@ public class TestLWorld {
     }
 
     // Test merging inline types and objects
-    @Test()
+    @Test
     public Object test3(int state) {
         Object res = null;
         if (state == 0) {
@@ -224,7 +224,7 @@ public class TestLWorld {
     }
 
     // Test merging inline types and objects in loops
-    @Test()
+    @Test
     public Object test4(int iters) {
         Object res = Integer.valueOf(rI);
         for (int i = 0; i < iters; ++i) {
@@ -384,7 +384,7 @@ public class TestLWorld {
         return (MyValue1)o;
     }
 
-    @Test()
+    @Test
     public MyValue1 test11() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         vt = (MyValue1)test11_dontinline1(vt);
@@ -417,7 +417,7 @@ public class TestLWorld {
         return (MyInterface)staticValueField4;
     }
 
-    @Test()
+    @Test
     public long test12(MyValue1 vt1, MyInterface vt2) {
         interfaceField1 = vt1;
         interfaceField2 = (MyValue1)vt2;
@@ -463,7 +463,7 @@ public class TestLWorld {
     }
 
     // Test merging inline types and interfaces
-    @Test()
+    @Test
     public MyInterface test13(int state) {
         MyInterface res = null;
         if (state == 0) {
@@ -501,7 +501,7 @@ public class TestLWorld {
     }
 
     // Test merging inline types and interfaces in loops
-    @Test()
+    @Test
     public MyInterface test14(int iters) {
         MyInterface res = new MyObject1(rI);
         for (int i = 0; i < iters; ++i) {
@@ -646,7 +646,7 @@ public class TestLWorld {
     private static final Integer[] testIntegerArray = new Integer[42];
 
     // Test load from (flattened) inline type array disguised as object array
-    @Test()
+    @Test
     public Object test21(Object[] oa, int index) {
         return oa[index];
     }
@@ -658,7 +658,7 @@ public class TestLWorld {
     }
 
     // Test load from (flattened) inline type array disguised as interface array
-    @Test()
+    @Test
     public Object test22Interface(MyInterface[] ia, int index) {
         return ia[index];
     }
@@ -670,7 +670,7 @@ public class TestLWorld {
     }
 
     // Test load from (flattened) inline type array disguised as abstract array
-    @Test()
+    @Test
     public Object test22Abstract(MyAbstract[] ia, int index) {
         return ia[index];
     }
@@ -687,7 +687,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test23(Object[] oa, MyValue1 vt, int index) {
         test23_inline(oa, vt, index);
     }
@@ -713,7 +713,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test24(Object[] oa, MyValue1 vt, int index) {
         test24_inline(oa, vt, index);
     }
@@ -734,7 +734,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test25(Object[] oa, MyValue1 vt, int index) {
         test25_inline(oa, vt, index);
     }
@@ -756,7 +756,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test26Interface(MyInterface[] ia, MyValue1 vt, int index) {
       test26Interface_inline(ia, vt, index);
     }
@@ -782,7 +782,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test27Interface(MyInterface[] ia, MyValue1 vt, int index) {
         test27Interface_inline(ia, vt, index);
     }
@@ -804,7 +804,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test26Abstract(MyAbstract[] ia, MyValue1 vt, int index) {
       test26Abstract_inline(ia, vt, index);
     }
@@ -830,7 +830,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test27Abstract(MyAbstract[] ia, MyValue1 vt, int index) {
         test27Abstract_inline(ia, vt, index);
     }
@@ -852,7 +852,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test28(Object[] oa, Object o, int index) {
         test28_inline(oa, o, index);
     }
@@ -878,7 +878,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test29(Object[] oa, Object o, int index) {
         test29_inline(oa, o, index);
     }
@@ -900,7 +900,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test30(Object[] oa, Object o, int index) {
         test30_inline(oa, o, index);
     }
@@ -922,7 +922,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test31Interface(MyInterface[] ia, MyInterface i, int index) {
         test31Interface_inline(ia, i, index);
     }
@@ -948,7 +948,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test32Interface(MyInterface[] ia, MyInterface i, int index) {
         test32Interface_inline(ia, i, index);
     }
@@ -970,7 +970,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test31Abstract(MyAbstract[] ia, MyAbstract i, int index) {
         test31Abstract_inline(ia, i, index);
     }
@@ -996,7 +996,7 @@ public class TestLWorld {
         ia[index] = i;
     }
 
-    @Test()
+    @Test
     public void test32Abstract(MyAbstract[] ia, MyAbstract i, int index) {
         test32Abstract_inline(ia, i, index);
     }
@@ -1018,7 +1018,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test33(Object[] oa, Object o, int index) {
         test33_inline(oa, o, index);
     }
@@ -1042,7 +1042,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test34(Object[] oa, int index) {
         test34_inline(oa, null, index);
     }
@@ -1073,7 +1073,7 @@ public class TestLWorld {
             return_();
         });
 
-    @Test()
+    @Test
     public void test35(MyValue1[] va, int index) throws Throwable {
         setArrayElementNull.invoke(this, va, index);
     }
@@ -1091,7 +1091,7 @@ public class TestLWorld {
     }
 
     // Test writing an inline type to a null inline type array
-    @Test()
+    @Test
     public void test36(MyValue1[] va, MyValue1 vt, int index) {
         va[index] = vt;
     }
@@ -1113,7 +1113,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test37(MyValue1[] va, Object o, int index) {
         test37_inline(va, o, index);
     }
@@ -1141,7 +1141,7 @@ public class TestLWorld {
         return new MyValue1[42];
     }
 
-    @Test()
+    @Test
     public Object[] test38(Object[] oa, Object o, int i1, int i2, int num) {
         Object[] result = null;
         switch (num) {
@@ -1213,7 +1213,7 @@ public class TestLWorld {
     }
 
     // Same as above but merging into Object instead of Object[]
-    @Test()
+    @Test
     public Object test39(Object oa, Object o, int i1, int i2, int num) {
         Object result = null;
         switch (num) {
@@ -1298,7 +1298,7 @@ public class TestLWorld {
     }
 
     // Test instanceof with inline types and arrays
-    @Test()
+    @Test
     public long test40(Object o, int index) {
         if (o instanceof MyValue1) {
           return ((MyValue1)o).hashInterpreted();
@@ -1339,7 +1339,7 @@ public class TestLWorld {
         Asserts.assertEQ(o, rI);
     }
 
-    @Test()
+    @Test
     public void test41() {
         MyValue1[] vals = new MyValue1[] {testValue1};
         test41_dontinline(vals[0].oa[0]);
@@ -1355,7 +1355,7 @@ public class TestLWorld {
     private static final MyValue1.ref test42VT1 = MyValue1.createWithFieldsInline(rI, rL);
     private static final MyValue1.ref test42VT2 = MyValue1.createWithFieldsInline(rI + 1, rL + 1);
 
-    @Test()
+    @Test
     public void test42() {
         MyValue1[] vals = new MyValue1[] {(MyValue1) test42VT1, (MyValue1) test42VT2};
         Asserts.assertEQ(vals[0].hash(), test42VT1.hash());
@@ -1368,7 +1368,7 @@ public class TestLWorld {
     }
 
     // Test for bug in Escape Analysis
-    @Test()
+    @Test
     public long test43(boolean deopt, Method m) {
         MyValue1[] vals = new MyValue1[] {(MyValue1) test42VT1, (MyValue1) test42VT2};
 
@@ -1400,7 +1400,7 @@ public class TestLWorld {
             return_();
         });
 
-    @Test()
+    @Test
     public void test44(MyValue1[] va, int index, MyValue2 v) throws Throwable {
         setArrayElementIncompatible.invoke(this, va, index, v);
     }
@@ -1423,7 +1423,7 @@ public class TestLWorld {
         oa[index] = o;
     }
 
-    @Test()
+    @Test
     public void test45(MyValue1[] va, int index, MyValue2 v) throws Throwable {
         test45_inline(va, v, index);
     }
@@ -1581,7 +1581,7 @@ public class TestLWorld {
     }
 
     // Same as test2 but with field holder being an inline type
-    @Test()
+    @Test
     public long test51(Test51Value holder, MyValue1 vt1, Object vt2) {
         return holder.test(holder, vt1, vt2);
     }
@@ -1598,7 +1598,7 @@ public class TestLWorld {
     }
 
     // Access non-flattened, uninitialized inline type field with inline type holder
-    @Test()
+    @Test
     public void test52(Test51Value holder) {
         if ((Object)holder.valueField5 != null) {
             throw new RuntimeException("Should be null");
@@ -1612,7 +1612,7 @@ public class TestLWorld {
     }
 
     // Merging inline types of different types
-    @Test()
+    @Test
     public Object test53(Object o, boolean b) {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         return b ? vt : o;
@@ -1625,7 +1625,7 @@ public class TestLWorld {
         Asserts.assertEQ(result.hash(), hash());
     }
 
-    @Test()
+    @Test
     public Object test54(boolean b) {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         return b ? vt : testValue2;
@@ -1639,7 +1639,7 @@ public class TestLWorld {
         Asserts.assertEQ(result2.hash(), testValue2.hash());
     }
 
-    @Test()
+    @Test
     public Object test55(boolean b) {
         MyValue1 vt1 = MyValue1.createWithFieldsInline(rI, rL);
         MyValue2 vt2 = MyValue2.createWithFieldsInline(rI, rD);
@@ -1655,7 +1655,7 @@ public class TestLWorld {
     }
 
     // Test synchronization on inline types
-    @Test()
+    @Test
     public void test56(Object vt) {
         synchronized (vt) {
             throw new RuntimeException("test56 failed: synchronization on inline type should not succeed");
@@ -1679,7 +1679,7 @@ public class TestLWorld {
         }
     }
 
-    @Test()
+    @Test
     public void test57(MyValue1 vt) {
         test57_inline(vt);
     }
@@ -1701,7 +1701,7 @@ public class TestLWorld {
         }
     }
 
-    @Test()
+    @Test
     public void test58() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         test58_inline(vt);
@@ -1717,7 +1717,7 @@ public class TestLWorld {
         }
     }
 
-    @Test()
+    @Test
     public void test59(Object o, boolean b) {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         Object sync = b ? vt : o;
@@ -1739,7 +1739,7 @@ public class TestLWorld {
         }
     }
 
-    @Test()
+    @Test
     public void test60(boolean b) {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         Object sync = b ? vt : testValue2;
@@ -1765,7 +1765,7 @@ public class TestLWorld {
     }
 
     // Test catching the IllegalMonitorStateException in compiled code
-    @Test()
+    @Test
     public void test61(Object vt) {
         boolean thrown = false;
         try {
@@ -1785,7 +1785,7 @@ public class TestLWorld {
         test61(testValue1);
     }
 
-    @Test()
+    @Test
     public void test62(Object o) {
         try {
             synchronized (o) { }
@@ -1802,7 +1802,7 @@ public class TestLWorld {
     }
 
     // Test synchronization without any instructions in the synchronized block
-    @Test()
+    @Test
     public void test63(Object o) {
         synchronized (o) { }
     }
@@ -1824,7 +1824,7 @@ public class TestLWorld {
         return vt;
     }
 
-    @Test()
+    @Test
     public MyInterface test64Interface(MyValue1 vt) {
         return test64Interface_helper(vt);
     }
@@ -1840,7 +1840,7 @@ public class TestLWorld {
         return vt;
     }
 
-    @Test()
+    @Test
     public MyAbstract test64Abstract(MyValue1 vt) {
         return test64Abstract_helper(vt);
     }
@@ -1851,7 +1851,7 @@ public class TestLWorld {
     }
 
     // Array store tests
-    @Test()
+    @Test
     public void test65(Object[] array, MyValue1 vt) {
         array[0] = vt;
     }
@@ -1863,7 +1863,7 @@ public class TestLWorld {
         Asserts.assertEQ(((MyValue1)array[0]).hash(), testValue1.hash());
     }
 
-    @Test()
+    @Test
     public void test66(Object[] array, MyValue1 vt) {
         array[0] = vt;
     }
@@ -1875,7 +1875,7 @@ public class TestLWorld {
         Asserts.assertEQ(array[0].hash(), testValue1.hash());
     }
 
-    @Test()
+    @Test
     public void test67(Object[] array, Object vt) {
         array[0] = vt;
     }
@@ -1887,7 +1887,7 @@ public class TestLWorld {
         Asserts.assertEQ(array[0].hash(), testValue1.hash());
     }
 
-    @Test()
+    @Test
     public void test68(Object[] array, Integer o) {
         array[0] = o;
     }
@@ -2574,7 +2574,7 @@ public class TestLWorld {
         return (MyValue1)o;
     }
 
-    @Test()
+    @Test
     public MyValue1 test97() {
         MyValue1 vt = MyValue1.createWithFieldsInline(rI, rL);
         vt = (MyValue1)test97_dontinline1(vt);
@@ -2607,7 +2607,7 @@ public class TestLWorld {
         return (MyAbstract)staticValueField4;
     }
 
-    @Test()
+    @Test
     public long test98(MyValue1 vt1, MyAbstract vt2) {
         abstractField1 = vt1;
         abstractField2 = (MyValue1)vt2;
@@ -2653,7 +2653,7 @@ public class TestLWorld {
     }
 
     // Test merging inline types and abstract classes
-    @Test()
+    @Test
     public MyAbstract test99(int state) {
         MyAbstract res = null;
         if (state == 0) {
@@ -2691,7 +2691,7 @@ public class TestLWorld {
     }
 
     // Test merging inline types and abstract classes in loops
-    @Test()
+    @Test
     public MyAbstract test100(int iters) {
         MyAbstract res = new MyObject2(rI);
         for (int i = 0; i < iters; ++i) {
@@ -3424,7 +3424,7 @@ public class TestLWorld {
     }
 
     // Verify that empty inline type field loads check for null holder
-    @Test()
+    @Test
     public MyValueEmpty test122(TestLWorld t) {
         return t.fEmpty3;
     }
@@ -3442,7 +3442,7 @@ public class TestLWorld {
     }
 
     // Verify that empty inline type field stores check for null holder
-    @Test()
+    @Test
     public void test123(TestLWorld t) {
         t.fEmpty3 = MyValueEmpty.default;
     }
@@ -3617,7 +3617,7 @@ public class TestLWorld {
         return MyValue1.createWithFieldsInline(rI, rL);
     }
 
-    @Test()
+    @Test
     public void test130() {
         Object obj = test130_inlinee();
         synchronized (obj) {
@@ -3641,7 +3641,7 @@ public class TestLWorld {
         return testValue1;
     }
 
-    @Test()
+    @Test
     public void test131() {
         Object obj = test131_inlinee();
         synchronized (obj) {
@@ -3660,7 +3660,7 @@ public class TestLWorld {
     }
 
     // Test locking on object that is known to be an inline type only after CCP
-    @Test()
+    @Test
     public void test132() {
         MyValue2 vt = MyValue2.createWithFieldsInline(rI, rD);
         Object obj = Integer.valueOf(42);
@@ -3687,7 +3687,7 @@ public class TestLWorld {
     }
 
     // Test conditional locking on inline type and non-escaping object
-    @Test()
+    @Test
     public void test133(boolean b) {
         Object obj = b ? Integer.valueOf(42) : MyValue2.createWithFieldsInline(rI, rD);
         synchronized (obj) {
@@ -3709,7 +3709,7 @@ public class TestLWorld {
     }
 
     // Variant with non-scalarized inline type
-    @Test()
+    @Test
     public static void test134(boolean b) {
         Object obj = null;
         if (b) {
@@ -3809,14 +3809,15 @@ public class TestLWorld {
         Test139Value value = Test139Value.default;
     }
 
-    @Test(failOn = ALLOC + LOAD + STORE + TRAP)
+    @Test
+    @IR(failOn = {ALLOC, LOAD, STORE, TRAP})
     public MyValueEmpty test139() {
         Test139Wrapper w = new Test139Wrapper();
         return w.value.empty;
     }
 
-    @DontCompile
-    public void test139_verifier(boolean warmup) {
+    @Run(test = "test139")
+    public void test139_verifier() {
         MyValueEmpty empty = test139();
         Asserts.assertEquals(empty, MyValueEmpty.default);
     }
@@ -3830,14 +3831,14 @@ public class TestLWorld {
     }
 
     @Test
-    @Warmup(0)
     public int test140() {
         Test140Value vt = Test140Value.default;
         return vt.get();
     }
 
-    @DontCompile
-    public void test140_verifier(boolean warmup) {
+    @Run(test = "test140")
+    @Warmup(0)
+    public void test140_verifier() {
         int result = test140();
         Asserts.assertEquals(result, 0);
     }
@@ -3851,14 +3852,14 @@ public class TestLWorld {
     }
 
     @Test
-    @Warmup(0)
     public int test141() {
         Test141Value vt = Test141Value.default;
         return vt.get();
     }
 
-    @DontCompile
-    public void test141_verifier(boolean warmup) {
+    @Run(test = "test141")
+    @Warmup(0)
+    public void test141_verifier() {
         int result = test141();
         Asserts.assertEquals(result, 0);
     }

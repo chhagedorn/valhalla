@@ -25,8 +25,8 @@ package compiler.valhalla.inlinetypes;
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.Utils;
-import jdk.test.lib.hotspot.ir_framework.DontInline;
-import jdk.test.lib.hotspot.ir_framework.ForceInline;
+import compiler.lib.ir_framework.DontInline;
+import compiler.lib.ir_framework.ForceInline;
 
 final primitive class MyValue3Inline {
     final float f7;

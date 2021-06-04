@@ -43,7 +43,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.*;
  * @library /test/lib /test/jdk/lib/testlibrary/bytecode /test/jdk/java/lang/invoke/common /
  * @requires (os.simpleArch == "x64" | os.simpleArch == "aarch64")
  * @build jdk.experimental.bytecode.BasicClassBuilder test.java.lang.invoke.lib.InstructionHelper
- * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestLWorld
+ * @run driver/timeout=450 compiler.valhalla.inlinetypes.TestLWorld
  */
 
 @ForceCompileClassInitializer

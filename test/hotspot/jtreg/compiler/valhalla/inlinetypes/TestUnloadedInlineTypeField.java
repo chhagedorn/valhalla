@@ -39,7 +39,7 @@ import static compiler.valhalla.inlinetypes.InlineTypes.rI;
  * @requires os.simpleArch == "x64"
  * @compile hack/GetUnresolvedInlineFieldWrongSignature.java
  * @compile TestUnloadedInlineTypeField.java
- * @run driver/timeout=120 compiler.valhalla.inlinetypes.TestUnloadedInlineTypeField
+ * @run driver/timeout=300 compiler.valhalla.inlinetypes.TestUnloadedInlineTypeField
  */
 
 public class TestUnloadedInlineTypeField {

@@ -250,11 +250,8 @@ public class TestVM {
     }
 
     private void setupTests() {
-        // TODO remove this once JDK-8273591 is fixed
-        if (!IGNORE_COMPILER_CONTROLS) {
-            for (Class<?> clazz : testClass.getDeclaredClasses()) {
-                checkAnnotationsInClass(clazz, "inner");
-            }
+        for (Class<?> clazz : testClass.getDeclaredClasses()) {
+            checkAnnotationsInClass(clazz, "inner");
         }
         if (DUMP_REPLAY) {
             addReplay();
@@ -366,7 +363,9 @@ public class TestVM {
             TestFormat.checkNoThrow(WHITE_BOX.enqueueInitializerForCompilation(c, level.getValue()),
                                     "Failed to enqueue <clinit> of " + c + " for compilation. Did you specify "
                                     + "@ForceCompileClassInitializer without providing a static class initialization? "
-                                    + "Make sure to provide any form of static initialization or remove the annotation.");
+                                    + "Make sure to provide any form of static initialization or remove the annotation. "
+                                    + "For debugging purposes, -DIgnoreCompilerControls=true can be used to temporarly "
+                                    + "ignore @ForceCompileClassInitializer annotations.");
         }
     }
 
@@ -506,7 +505,8 @@ public class TestVM {
                 if (testAnno != null) {
                     addDeclaredTest(m);
                 } else {
-                    TestFormat.checkNoThrow(!m.isAnnotationPresent(IR.class), "Found @IR annotation on non-@Test method " + m);
+                    TestFormat.checkNoThrow(!m.isAnnotationPresent(IR.class) && !m.isAnnotationPresent(IRs.class),
+                                            "Found @IR annotation on non-@Test method " + m);
                     TestFormat.checkNoThrow(!m.isAnnotationPresent(Warmup.class) || getAnnotation(m, Run.class) != null,
                                             "Found @Warmup annotation on non-@Test or non-@Run method " + m);
                 }
@@ -894,14 +894,14 @@ public class TestVM {
     }
 
     public static void assertDeoptimizedByC1(Method m) {
-        if (isStableDeopt(m, CompLevel.C1_SIMPLE)) {
+        if (notUnstableDeoptAssertion(m, CompLevel.C1_SIMPLE)) {
             TestRun.check(compiledByC1(m) != TriState.Yes || PER_METHOD_TRAP_LIMIT == 0 || !PROFILE_INTERPRETER,
                           m + " should have been deoptimized by C1");
         }
     }
 
     public static void assertDeoptimizedByC2(Method m) {
-        if (isStableDeopt(m, CompLevel.C2)) {
+        if (notUnstableDeoptAssertion(m, CompLevel.C2)) {
             TestRun.check(compiledByC2(m) != TriState.Yes || PER_METHOD_TRAP_LIMIT == 0 || !PROFILE_INTERPRETER,
                           m + " should have been deoptimized by C2");
         }
@@ -910,7 +910,7 @@ public class TestVM {
     /**
      * Some VM flags could make the deopt assertions unstable.
      */
-    public static boolean isStableDeopt(Method m, CompLevel level) {
+    private static boolean notUnstableDeoptAssertion(Method m, CompLevel level) {
         return (USE_COMPILER && !XCOMP && !IGNORE_COMPILER_CONTROLS && !TEST_C1 &&
                 (!EXCLUDE_RANDOM || WHITE_BOX.isMethodCompilable(m, level.getValue(), false)));
     }

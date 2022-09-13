@@ -23,230 +23,246 @@
 
 package compiler.lib.ir_framework;
 
-import compiler.lib.ir_framework.driver.irmatching.IRMatcher;
-import compiler.lib.ir_framework.shared.*;
+import compiler.lib.ir_framework.driver.irmatching.mapping.IRNodeMappings;
+import compiler.lib.ir_framework.driver.irmatching.regexes.DefaultRegexConstants;
+import compiler.lib.ir_framework.driver.irmatching.regexes.IdealIndependentDefaultRegexes;
+import compiler.lib.ir_framework.driver.irmatching.regexes.MachDefaultRegexes;
+import compiler.lib.ir_framework.driver.irmatching.regexes.OptoAssemblyDefaultRegexes;
+import compiler.lib.ir_framework.shared.CheckedTestFrameworkException;
+import compiler.lib.ir_framework.shared.TestFormatException;
 import jdk.test.lib.Platform;
 import jdk.test.whitebox.WhiteBox;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * This class provides default regex strings that can be used in {@link IR @IR} annotations to specify IR constraints.
+ * This class specifies IR node placeholder strings that can be used in {@link IR#failOn()} and/or {@link IR#counts()}
+ * attributes to define IR constraints. These placeholder strings are replaced with default regexes (defined in package
+ * {@link compiler.lib.ir_framework.driver.irmatching.regexes}) by the IR framework depending on the specified
+ * compile phases in {@link IR#phase()} and the provided mapping in
+ * {@link compiler.lib.ir_framework.driver.irmatching.mapping.IRNodeMappings}.
+ *
  * <p>
- * There are two types of default regexes:
+ * If an IR node is either missing a mapping in {@link IRNodeMappings} or does not provide a default regex for a
+ * specified compile phase in {@link IR#phase}, a {@link TestFormatException} is reported.
+ *
+ * <p>
+ * There are two types of IR nodes:
  * <ul>
- *     <li><p>Standalone regexes: Use them directly.</li>
- *     <li><p>Composite regexes: Their names contain "{@code _OF}" and expect another string in a list in
- *            {@link IR#failOn()} and {@link IR#counts()}. They cannot be use as standalone regex and will result in a
- *            {@link TestFormatException} when doing so.</li>
+ *     <li><p>Standalone IR nodes: The IR node placeholder string is directly replaced by a default regex.</li>
+ *     <li><p>Composite IR nodes:  The IR node placeholder string contains an additional {@link #COMPOSITE_PREFIX}.
+ *                                 Using this IR node expects another user provided string in the constraint list of
+ *                                 {@link IR#failOn()} and {@link IR#counts()}. They cannot be use as standalone IR nodes.
+ *                                 Trying to do so will result in a format violation error.</li>
  * </ul>
  *
- * @see IR
+ * @see IRNodeMappings
+ * @see DefaultRegexConstants
+ * @see IdealIndependentDefaultRegexes
+ * @see MachDefaultRegexes
+ * @see OptoAssemblyDefaultRegexes
  */
 public class IRNode {
-    private static final String START = "(\\d+(\\s){2}(";
-    private static final String MID = ".*)+(\\s){2}===.*";
-    private static final String END = ")";
-    private static final String COMPOSITE_PREFIX = "#PRE#"; // Prefix for regexes that require an additional user-defined string.
-    private static final String IS_REPLACED = "#IS_REPLACED#"; // Is replaced by an additional user-defined string.
-    private static final String STORE_OF_CLASS_POSTFIX = "(:|\\+)\\S* \\*" + END;
-    private static final String LOAD_OF_CLASS_POSTFIX = "(:|\\+)\\S* \\*" + END;
+    private static final String PREFIX = "_#";
+    private static final String POSTFIX = "#_";
+    private static final String COMPOSITE_PREFIX = PREFIX + "C#";
 
-    public static final String ALLOC = "(.*precise .*\\R((.*(?i:mov|xorl|nop|spill).*|\\s*|.*LGHI.*)\\R)*.*(?i:call,static).*wrapper for: _new_instance_Java" + END;
-    public static final String ALLOC_OF = COMPOSITE_PREFIX + "(.*precise .*" + IS_REPLACED + ":.*\\R((.*(?i:mov|xorl|nop|spill).*|\\s*|.*LGHI.*)\\R)*.*(?i:call,static).*wrapper for: _new_instance_Java" + END;
-    public static final String ALLOC_ARRAY = "(.*precise \\[.*\\R((.*(?i:mov|xor|nop|spill).*|\\s*|.*LGHI.*)\\R)*.*(?i:call,static).*wrapper for: _new_array_Java" + END;
-    public static final String ALLOC_ARRAY_OF = COMPOSITE_PREFIX + "(.*precise \\[.*" + IS_REPLACED + ":.*\\R((.*(?i:mov|xorl|nop|spill).*|\\s*|.*LGHI.*)\\R)*.*(?i:call,static).*wrapper for: _new_array_Java" + END;
-
-    public static final String CHECKCAST_ARRAY = "(((?i:cmp|CLFI|CLR).*precise \\[.*:|.*(?i:mov|or).*precise \\[.*:.*\\R.*(cmp|CMP|CLR))" + END;
-    public static final String CHECKCAST_ARRAY_OF = COMPOSITE_PREFIX + "(((?i:cmp|CLFI|CLR).*precise \\[.*" + IS_REPLACED + ":|.*(?i:mov|or).*precise \\[.*" + IS_REPLACED + ":.*\\R.*(cmp|CMP|CLR))" + END;
-    // Does not work on s390 (a rule containing this regex will be skipped on s390).
-    public static final String CHECKCAST_ARRAYCOPY = "(.*((?i:call_leaf_nofp,runtime)|CALL,\\s?runtime leaf nofp|BCTRL.*.leaf call).*checkcast_arraycopy.*" + END;
-
-    public static final String FIELD_ACCESS = "(.*Field: *" + END;
-
-    public static final String STORE = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + END;
-    public static final String STORE_B = START + "StoreB" + MID + END; // Store to boolean is also mapped to byte
-    public static final String STORE_C = START + "StoreC" + MID + END;
-    public static final String STORE_I = START + "StoreI" + MID + END; // Store to short is also mapped to int
-    public static final String STORE_L = START + "StoreL" + MID + END;
-    public static final String STORE_F = START + "StoreF" + MID + END;
-    public static final String STORE_D = START + "StoreD" + MID + END;
-    public static final String STORE_P = START + "StoreP" + MID + END;
-    public static final String STORE_N = START + "StoreN" + MID + END;
-    public static final String STORE_VECTOR = START + "StoreVector" + MID + END;
-    public static final String STORE_OF_CLASS = COMPOSITE_PREFIX + START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_B_OF_CLASS = COMPOSITE_PREFIX + START + "StoreB" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_C_OF_CLASS = COMPOSITE_PREFIX + START + "StoreC" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_I_OF_CLASS = COMPOSITE_PREFIX + START + "StoreI" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_L_OF_CLASS = COMPOSITE_PREFIX + START + "StoreL" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_F_OF_CLASS = COMPOSITE_PREFIX + START + "StoreF" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_D_OF_CLASS = COMPOSITE_PREFIX + START + "StoreD" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_P_OF_CLASS = COMPOSITE_PREFIX + START + "StoreP" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_N_OF_CLASS = COMPOSITE_PREFIX + START + "StoreN" + MID + "@\\S*" + IS_REPLACED + STORE_OF_CLASS_POSTFIX;
-    public static final String STORE_OF_FIELD = COMPOSITE_PREFIX + START + "Store(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=" + IS_REPLACED + ",.*" + END;
-
-    public static final String LOAD = START + "Load(B|UB|S|US|I|L|F|D|P|N)" + MID + END;
-    public static final String LOAD_B = START + "LoadB" + MID + END;
-    public static final String LOAD_UB = START + "LoadUB" + MID + END; // Load from boolean
-    public static final String LOAD_S = START + "LoadS" + MID + END;
-    public static final String LOAD_US = START + "LoadUS" + MID + END; // Load from char
-    public static final String LOAD_I = START + "LoadI" + MID + END;
-    public static final String LOAD_L = START + "LoadL" + MID + END;
-    public static final String LOAD_F = START + "LoadF" + MID + END;
-    public static final String LOAD_D = START + "LoadD" + MID + END;
-    public static final String LOAD_P = START + "LoadP" + MID + END;
-    public static final String LOAD_N = START + "LoadN" + MID + END;
-    public static final String LOAD_VECTOR = START + "LoadVector" + MID + END;
-    public static final String LOAD_OF_CLASS = COMPOSITE_PREFIX + START + "Load(B|UB|S|US|I|L|F|D|P|N)" + MID + "@\\S*"+  IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_B_OF_CLASS = COMPOSITE_PREFIX + START + "LoadB" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_UB_OF_CLASS = COMPOSITE_PREFIX + START + "LoadUB" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_S_OF_CLASS = COMPOSITE_PREFIX + START + "LoadS" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_US_OF_CLASS = COMPOSITE_PREFIX + START + "LoadUS" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_I_OF_CLASS = COMPOSITE_PREFIX + START + "LoadI" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_L_OF_CLASS = COMPOSITE_PREFIX + START + "LoadL" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_F_OF_CLASS = COMPOSITE_PREFIX + START + "LoadF" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_D_OF_CLASS = COMPOSITE_PREFIX + START + "LoadD" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_P_OF_CLASS = COMPOSITE_PREFIX + START + "LoadP" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_N_OF_CLASS = COMPOSITE_PREFIX + START + "LoadN" + MID + "@\\S*" + IS_REPLACED + LOAD_OF_CLASS_POSTFIX;
-    public static final String LOAD_OF_FIELD = COMPOSITE_PREFIX + START + "Load(B|C|S|I|L|F|D|P|N)" + MID + "@.*name=" + IS_REPLACED + ",.*" + END;
-    public static final String LOAD_KLASS  = START + "LoadK" + MID + END;
-
-    public static final String LOOP   = START + "Loop" + MID + END;
-    public static final String COUNTEDLOOP = START + "CountedLoop\\b" + MID + END;
-    public static final String COUNTEDLOOP_MAIN = START + "CountedLoop\\b" + MID + "main" + END;
-    public static final String OUTERSTRIPMINEDLOOP = START + "OuterStripMinedLoop\\b" + MID + END;
-    public static final String LONGCOUNTEDLOOP = START + "LongCountedLoop\\b" + MID + END;
-    public static final String IF = START + "If\\b" + MID + END;
-
-    public static final String CALL = START + "Call.*Java" + MID + END;
-    public static final String CALL_OF_METHOD = COMPOSITE_PREFIX + START + "Call.*Java" + MID + IS_REPLACED + " " +  END;
-    public static final String DYNAMIC_CALL_OF_METHOD = COMPOSITE_PREFIX + START + "CallDynamicJava" + MID + IS_REPLACED + " " + END;
-    public static final String STATIC_CALL_OF_METHOD = COMPOSITE_PREFIX + START + "CallStaticJava" + MID + IS_REPLACED + " " +  END;
-    public static final String TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*reason" + END;
-    public static final String PREDICATE_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*predicate" + END;
-    public static final String UNSTABLE_IF_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*unstable_if" + END;
-    public static final String CLASS_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*class_check" + END;
-    public static final String NULL_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*null_check" + END;
-    public static final String NULL_ASSERT_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*null_assert" + END;
-    public static final String RANGE_CHECK_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*range_check" + END;
-    public static final String UNHANDLED_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*unhandled" + END;
-    public static final String INTRINSIC_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*intrinsic" + END;
-    public static final String DIV_BY_ZERO_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*div0_check" + END;
-    // Does not work for VM builds without JVMCI like x86_32 (a rule containing this regex will be skipped without having JVMCI built).
-    public static final String INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP = START + "CallStaticJava" + MID + "uncommon_trap.*intrinsic_or_type_checked_inlining" + END;
-
-    public static final String SCOPE_OBJECT = "(.*# ScObj.*" + END;
-    public static final String MEMBAR = START + "MemBar" + MID + END;
-    public static final String MEMBAR_STORESTORE = START + "MemBarStoreStore" + MID + END;
-    public static final String SAFEPOINT = START + "SafePoint" + MID + END;
-
-    public static final String CMOVEI = START + "CMoveI" + MID + END;
-    public static final String ABS_I = START + "AbsI" + MID + END;
-    public static final String ABS_L = START + "AbsL" + MID + END;
-    public static final String ABS_F = START + "AbsF" + MID + END;
-    public static final String ABS_D = START + "AbsD" + MID + END;
-    public static final String AND = START + "And(I|L)" + MID + END;
-    public static final String AND_I = START + "AndI" + MID + END;
-    public static final String AND_L = START + "AndL" + MID + END;
-    public static final String XOR_I = START + "XorI" + MID + END;
-    public static final String XOR_L = START + "XorL" + MID + END;
-    public static final String LSHIFT = START + "LShift(I|L)" + MID + END;
-    public static final String LSHIFT_I = START + "LShiftI" + MID + END;
-    public static final String LSHIFT_L = START + "LShiftL" + MID + END;
-    public static final String RSHIFT = START + "RShift(I|L)" + MID + END;
-    public static final String RSHIFT_I = START + "RShiftI" + MID + END;
-    public static final String RSHIFT_L = START + "RShiftL" + MID + END;
-    public static final String RSHIFT_VB = START + "RShiftVB" + MID + END;
-    public static final String RSHIFT_VS = START + "RShiftVS" + MID + END;
-    public static final String URSHIFT = START + "URShift(B|S|I|L)" + MID + END;
-    public static final String URSHIFT_I = START + "URShiftI" + MID + END;
-    public static final String URSHIFT_L = START + "URShiftL" + MID + END;
-    public static final String ADD = START + "Add(I|L|F|D|P)" + MID + END;
-    public static final String ADD_I = START + "AddI" + MID + END;
-    public static final String ADD_L = START + "AddL" + MID + END;
-    public static final String ADD_VD = START + "AddVD" + MID + END;
-    public static final String ADD_VI = START + "AddVI" + MID + END;
-    public static final String SUB = START + "Sub(I|L|F|D)" + MID + END;
-    public static final String SUB_I = START + "SubI" + MID + END;
-    public static final String SUB_L = START + "SubL" + MID + END;
-    public static final String SUB_F = START + "SubF" + MID + END;
-    public static final String SUB_D = START + "SubD" + MID + END;
-    public static final String CMP_U = START + "CmpU" + MID + END;
-    public static final String CMP_UL = START + "CmpUL" + MID + END;
-    public static final String CMP_U3 = START + "CmpU3" + MID + END;
-    public static final String CMP_UL3 = START + "CmpUL3" + MID + END;
-    public static final String MUL = START + "Mul(I|L|F|D)" + MID + END;
-    public static final String MUL_I = START + "MulI" + MID + END;
-    public static final String MUL_L = START + "MulL" + MID + END;
-    public static final String MUL_F = START + "MulF" + MID + END;
-    public static final String DIV = START + "Div(I|L|F|D)" + MID + END;
-    public static final String DIV_L = START + "DivL" + MID + END;
-    public static final String CON_I = START + "ConI" + MID + END;
-    public static final String CON_L = START + "ConL" + MID + END;
-    public static final String CONV_I2L = START + "ConvI2L" + MID + END;
-    public static final String CONV_L2I = START + "ConvL2I" + MID + END;
-    public static final String CAST_II = START + "CastII" + MID + END;
-    public static final String CAST_LL = START + "CastLL" + MID + END;
-    public static final String POPCOUNT_L = START + "PopCountL" + MID + END;
-    public static final String PHI = START + "Phi" + MID + END;
-
-    public static final String AND_V = START + "AndV" + MID + END;
-    public static final String OR_V = START + "OrV" + MID + END;
-    public static final String XOR_V = START + "XorV" + MID + END;
-    public static final String AND_V_MASK = START + "AndVMask" + MID + END;
-    public static final String OR_V_MASK = START + "OrVMask" + MID + END;
-    public static final String XOR_V_MASK = START + "XorVMask" + MID + END;
-
-    public static final String VECTOR_CAST_B2X = START + "VectorCastB2X" + MID + END;
-    public static final String VECTOR_CAST_S2X = START + "VectorCastS2X" + MID + END;
-    public static final String VECTOR_CAST_I2X = START + "VectorCastI2X" + MID + END;
-    public static final String VECTOR_CAST_L2X = START + "VectorCastL2X" + MID + END;
-    public static final String VECTOR_CAST_F2X = START + "VectorCastF2X" + MID + END;
-    public static final String VECTOR_CAST_D2X = START + "VectorCastD2X" + MID + END;
-    public static final String VECTOR_UCAST_B2X = START + "VectorUCastB2X" + MID + END;
-    public static final String VECTOR_UCAST_S2X = START + "VectorUCastS2X" + MID + END;
-    public static final String VECTOR_UCAST_I2X = START + "VectorUCastI2X" + MID + END;
-    public static final String VECTOR_REINTERPRET = START + "VectorReinterpret" + MID + END;
-    public static final String VECTOR_BLEND = START + "VectorBlend" + MID + END;
-    public static final String REVERSE_BYTES_V = START + "ReverseBytesV" + MID + END;
-
-    public static final String Min_I = START + "MinI" + MID + END;
-    public static final String Max_I = START + "MaxI" + MID + END;
-    public static final String Min_V = START + "MinV" + MID + END;
-    public static final String Max_V = START + "MaxV" + MID + END;
-
-    public static final String FAST_LOCK   = START + "FastLock" + MID + END;
-    public static final String FAST_UNLOCK = START + "FastUnlock" + MID + END;
-
-    public static final String POPULATE_INDEX = START + "PopulateIndex" + MID + END;
-
-    /**
-     * Called by {@link IRMatcher} to merge special composite nodes together with additional user-defined input.
+    /*
+     * List of IR node placeholder strings for which at least one default regex exists. Such an IR node must start with
+     * PREFIX (normal IR nodes) or COMPOSITE_PREFIX (for composite IR nodes) and end with POSTFIX.
+     * The mappings from these placeholder strings to regexes are defined in class
+     * compiler.lib.ir_framework.driver.irmatching.mapping.IRNodeMappings.
      */
-    public static List<String> mergeNodes(String[] nodes) {
-        List<String> mergedNodes = new ArrayList<>();
-        for (int i = 0; i < nodes.length; i += 2) {
-            String node = nodes[i];
-            if (node.startsWith(COMPOSITE_PREFIX)) {
-                if (i + 1 == nodes.length) {
-                    reportMissingCompositeValue(node, i);
-                }
-                // Replace placeholder with user defined string.
-                node = node.substring(COMPOSITE_PREFIX.length()).replaceAll(IS_REPLACED, nodes[i + 1]);
-            } else {
-                i--; // No composite node, do not increment by 2.
-            }
-            mergedNodes.add(node);
-        }
-        return mergedNodes;
+    public static final String ABS_D = PREFIX + "ABS_D" + POSTFIX;
+    public static final String ABS_F = PREFIX + "ABS_F" + POSTFIX;
+    public static final String ABS_I = PREFIX + "ABS_I" + POSTFIX;
+    public static final String ABS_L = PREFIX + "ABS_L" + POSTFIX;
+    public static final String ADD = PREFIX + "ADD" + POSTFIX;
+    public static final String ADD_I = PREFIX + "ADD_I" + POSTFIX;
+    public static final String ADD_L = PREFIX + "ADD_L" + POSTFIX;
+    public static final String ADD_VD = PREFIX + "ADD_VD" + POSTFIX;
+    public static final String ADD_VI = PREFIX + "ADD_VI" + POSTFIX;
+    public static final String ALLOC = PREFIX + "ALLOC" + POSTFIX;
+    public static final String ALLOC_ARRAY = PREFIX + "ALLOC_ARRAY" + POSTFIX;
+    public static final String ALLOC_ARRAY_OF = COMPOSITE_PREFIX + "ALLOC_ARRAY_OF" + POSTFIX;
+    public static final String ALLOC_OF = COMPOSITE_PREFIX + "ALLOC_OF" + POSTFIX;
+    public static final String AND = PREFIX + "AND" + POSTFIX;
+    public static final String AND_I = PREFIX + "AND_I" + POSTFIX;
+    public static final String AND_L = PREFIX + "AND_L" + POSTFIX;
+    public static final String AND_V = PREFIX + "AND_V" + POSTFIX;
+    public static final String AND_V_MASK = PREFIX + "AND_V_MASK" + POSTFIX;
+    public static final String CALL = PREFIX + "CALL" + POSTFIX;
+    public static final String CALL_OF_METHOD = COMPOSITE_PREFIX + "CALL_OF_METHOD" + POSTFIX;
+    public static final String CAST_II = PREFIX + "CAST_II" + POSTFIX;
+    public static final String CAST_LL = PREFIX + "CAST_LL" + POSTFIX;
+    public static final String CHECKCAST_ARRAY = PREFIX + "CHECKCAST_ARRAY" + POSTFIX;
+    // Does not work on s390 (a rule containing this regex will be skipped on s390).
+    public static final String CHECKCAST_ARRAYCOPY = PREFIX + "CHECKCAST_ARRAYCOPY" + POSTFIX;
+    public static final String CHECKCAST_ARRAY_OF = COMPOSITE_PREFIX + "CHECKCAST_ARRAY_OF" + POSTFIX;
+    public static final String CLASS_CHECK_TRAP = PREFIX + "CLASS_CHECK_TRAP" + POSTFIX;
+    public static final String CMOVE_I = PREFIX + "CMOVE_I" + POSTFIX;
+    public static final String CMP_I = PREFIX + "CMP_I" + POSTFIX;
+    public static final String CMP_L = PREFIX + "CMP_L" + POSTFIX;
+    public static final String CMP_U = PREFIX + "CMP_U" + POSTFIX;
+    public static final String CMP_U3 = PREFIX + "CMP_U3" + POSTFIX;
+    public static final String CMP_UL = PREFIX + "CMP_UL" + POSTFIX;
+    public static final String CMP_UL3 = PREFIX + "CMP_UL3" + POSTFIX;
+    public static final String COMPRESS_BITS = PREFIX + "COMPRESS_BITS" + POSTFIX;
+    public static final String CONV_I2L = PREFIX + "CONV_I2L" + POSTFIX;
+    public static final String CONV_L2I = PREFIX + "CONV_L2I" + POSTFIX;
+    public static final String CON_I = PREFIX + "CON_I" + POSTFIX;
+    public static final String CON_L = PREFIX + "CON_L" + POSTFIX;
+    public static final String COUNTED_LOOP = PREFIX + "COUNTED_LOOP" + POSTFIX;
+    public static final String COUNTED_LOOP_MAIN = PREFIX + "COUNTED_LOOP_MAIN" + POSTFIX;
+    public static final String DIV = PREFIX + "DIV" + POSTFIX;
+    public static final String DIV_BY_ZERO_TRAP = PREFIX + "DIV_BY_ZERO_TRAP" + POSTFIX;
+    public static final String DIV_L = PREFIX + "DIV_L" + POSTFIX;
+    public static final String DYNAMIC_CALL_OF_METHOD = COMPOSITE_PREFIX + "DYNAMIC_CALL_OF_METHOD" + POSTFIX;
+    public static final String EXPAND_BITS = PREFIX + "EXPAND_BITS" + POSTFIX;
+    public static final String FAST_LOCK = PREFIX + "FAST_LOCK" + POSTFIX;
+    public static final String FAST_UNLOCK = PREFIX + "FAST_UNLOCK" + POSTFIX;
+    public static final String FIELD_ACCESS = PREFIX + "FIELD_ACCESS" + POSTFIX;
+    public static final String IF = PREFIX + "IF" + POSTFIX;
+    // Does not work for VM builds without JVMCI like x86_32 (a rule containing this regex will be skipped without having JVMCI built).
+    public static final String INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP = PREFIX + "INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP" + POSTFIX;
+    public static final String INTRINSIC_TRAP = PREFIX + "INTRINSIC_TRAP" + POSTFIX;
+    public static final String LOAD = PREFIX + "LOAD" + POSTFIX;
+    public static final String LOAD_B = PREFIX + "LOAD_B" + POSTFIX;
+    public static final String LOAD_B_OF_CLASS = COMPOSITE_PREFIX + "LOAD_B_OF_CLASS" + POSTFIX;
+    public static final String LOAD_D = PREFIX + "LOAD_D" + POSTFIX;
+    public static final String LOAD_D_OF_CLASS = COMPOSITE_PREFIX + "LOAD_D_OF_CLASS" + POSTFIX;
+    public static final String LOAD_F = PREFIX + "LOAD_F" + POSTFIX;
+    public static final String LOAD_F_OF_CLASS = COMPOSITE_PREFIX + "LOAD_F_OF_CLASS" + POSTFIX;
+    public static final String LOAD_I = PREFIX + "LOAD_I" + POSTFIX;
+    public static final String LOAD_I_OF_CLASS = COMPOSITE_PREFIX + "LOAD_I_OF_CLASS" + POSTFIX;
+    public static final String LOAD_KLASS = PREFIX + "LOAD_KLASS" + POSTFIX;
+    public static final String LOAD_L = PREFIX + "LOAD_L" + POSTFIX;
+    public static final String LOAD_L_OF_CLASS = COMPOSITE_PREFIX + "LOAD_L_OF_CLASS" + POSTFIX;
+    public static final String LOAD_N = PREFIX + "LOAD_N" + POSTFIX;
+    public static final String LOAD_N_OF_CLASS = COMPOSITE_PREFIX + "LOAD_N_OF_CLASS" + POSTFIX;
+    public static final String LOAD_OF_CLASS = COMPOSITE_PREFIX + "LOAD_OF_CLASS" + POSTFIX;
+    public static final String LOAD_OF_FIELD = COMPOSITE_PREFIX + "LOAD_OF_FIELD" + POSTFIX;
+    public static final String LOAD_P = PREFIX + "LOAD_P" + POSTFIX;
+    public static final String LOAD_P_OF_CLASS = COMPOSITE_PREFIX + "LOAD_P_OF_CLASS" + POSTFIX;
+    public static final String LOAD_S = PREFIX + "LOAD_S" + POSTFIX;
+    public static final String LOAD_S_OF_CLASS = COMPOSITE_PREFIX + "LOAD_S_OF_CLASS" + POSTFIX;
+    public static final String LOAD_UB = PREFIX + "LOAD_UB" + POSTFIX;
+    public static final String LOAD_UB_OF_CLASS = COMPOSITE_PREFIX + "LOAD_UB_OF_CLASS" + POSTFIX;
+    public static final String LOAD_US = PREFIX + "LOAD_US" + POSTFIX;
+    public static final String LOAD_US_OF_CLASS = COMPOSITE_PREFIX + "LOAD_US_OF_CLASS" + POSTFIX;
+    public static final String LOAD_VECTOR = PREFIX + "LOAD_VECTOR" + POSTFIX;
+    public static final String LONG_COUNTED_LOOP = PREFIX + "LONG_COUNTED_LOOP" + POSTFIX;
+    public static final String LOOP = PREFIX + "LOOP" + POSTFIX;
+    public static final String LSHIFT = PREFIX + "LSHIFT" + POSTFIX;
+    public static final String LSHIFT_I = PREFIX + "LSHIFT_I" + POSTFIX;
+    public static final String LSHIFT_L = PREFIX + "LSHIFT_L" + POSTFIX;
+    public static final String MAX_I = PREFIX + "MAX_I" + POSTFIX;
+    public static final String MAX_V = PREFIX + "MAX_V" + POSTFIX;
+    public static final String MEMBAR = PREFIX + "MEMBAR" + POSTFIX;
+    public static final String MEMBAR_STORESTORE = PREFIX + "MEMBAR_STORESTORE" + POSTFIX;
+    public static final String MIN_I = PREFIX + "MIN_I" + POSTFIX;
+    public static final String MIN_V = PREFIX + "MIN_V" + POSTFIX;
+    public static final String MUL = PREFIX + "MUL" + POSTFIX;
+    public static final String MUL_F = PREFIX + "MUL_F" + POSTFIX;
+    public static final String MUL_I = PREFIX + "MUL_I" + POSTFIX;
+    public static final String MUL_L = PREFIX + "MUL_L" + POSTFIX;
+    public static final String NULL_ASSERT_TRAP = PREFIX + "NULL_ASSERT_TRAP" + POSTFIX;
+    public static final String NULL_CHECK_TRAP = PREFIX + "NULL_CHECK_TRAP" + POSTFIX;
+    public static final String OR_V = PREFIX + "OR_V" + POSTFIX;
+    public static final String OR_V_MASK = PREFIX + "OR_V_MASK" + POSTFIX;
+    public static final String OUTER_STRIP_MINED_LOOP = PREFIX + "OUTER_STRIP_MINED_LOOP" + POSTFIX;
+    public static final String PHI = PREFIX + "PHI" + POSTFIX;
+    public static final String POPCOUNT_L = PREFIX + "POPCOUNT_L" + POSTFIX;
+    public static final String POPULATE_INDEX = PREFIX + "POPULATE_INDEX" + POSTFIX;
+    public static final String PREDICATE_TRAP = PREFIX + "PREDICATE_TRAP" + POSTFIX;
+    public static final String RANGE_CHECK_TRAP = PREFIX + "RANGE_CHECK_TRAP" + POSTFIX;
+    public static final String REVERSE_BYTES_V = PREFIX + "REVERSE_BYTES_V" + POSTFIX;
+    public static final String REVERSE_I = PREFIX + "REVERSE_I" + POSTFIX;
+    public static final String REVERSE_L = PREFIX + "REVERSE_L" + POSTFIX;
+    public static final String REVERSE_V = PREFIX + "REVERSE_V" + POSTFIX;
+    public static final String ROUND_VD = PREFIX + "ROUND_VD" + POSTFIX;
+    public static final String ROUND_VF = PREFIX + "ROUND_VF" + POSTFIX;
+    public static final String RSHIFT = PREFIX + "RSHIFT" + POSTFIX;
+    public static final String RSHIFT_I = PREFIX + "RSHIFT_I" + POSTFIX;
+    public static final String RSHIFT_L = PREFIX + "RSHIFT_L" + POSTFIX;
+    public static final String RSHIFT_VB = PREFIX + "RSHIFT_VB" + POSTFIX;
+    public static final String RSHIFT_VS = PREFIX + "RSHIFT_VS" + POSTFIX;
+    public static final String SAFEPOINT = PREFIX + "SAFEPOINT" + POSTFIX;
+    public static final String SCOPE_OBJECT = PREFIX + "SCOPE_OBJECT" + POSTFIX;
+    public static final String SIGNUM_VD = PREFIX + "SIGNUM_VD" + POSTFIX;
+    public static final String SIGNUM_VF = PREFIX + "SIGNUM_VF" + POSTFIX;
+    public static final String STATIC_CALL_OF_METHOD = COMPOSITE_PREFIX + "STATIC_CALL_OF_METHOD" + POSTFIX;
+    public static final String STORE = PREFIX + "STORE" + POSTFIX;
+    public static final String STORE_B = PREFIX + "STORE_B" + POSTFIX;
+    public static final String STORE_B_OF_CLASS = COMPOSITE_PREFIX + "STORE_B_OF_CLASS" + POSTFIX;
+    public static final String STORE_C = PREFIX + "STORE_C" + POSTFIX;
+    public static final String STORE_C_OF_CLASS = COMPOSITE_PREFIX + "STORE_C_OF_CLASS" + POSTFIX;
+    public static final String STORE_D = PREFIX + "STORE_D" + POSTFIX;
+    public static final String STORE_D_OF_CLASS = COMPOSITE_PREFIX + "STORE_D_OF_CLASS" + POSTFIX;
+    public static final String STORE_F = PREFIX + "STORE_F" + POSTFIX;
+    public static final String STORE_F_OF_CLASS = COMPOSITE_PREFIX + "STORE_F_OF_CLASS" + POSTFIX;
+    public static final String STORE_I = PREFIX + "STORE_I" + POSTFIX;
+    public static final String STORE_I_OF_CLASS = COMPOSITE_PREFIX + "STORE_I_OF_CLASS" + POSTFIX;
+    public static final String STORE_L = PREFIX + "STORE_L" + POSTFIX;
+    public static final String STORE_L_OF_CLASS = COMPOSITE_PREFIX + "STORE_L_OF_CLASS" + POSTFIX;
+    public static final String STORE_N = PREFIX + "STORE_N" + POSTFIX;
+    public static final String STORE_N_OF_CLASS = COMPOSITE_PREFIX + "STORE_N_OF_CLASS" + POSTFIX;
+    public static final String STORE_OF_CLASS = COMPOSITE_PREFIX + "STORE_OF_CLASS" + POSTFIX;
+    public static final String STORE_OF_FIELD = COMPOSITE_PREFIX + "STORE_OF_FIELD" + POSTFIX;
+    public static final String STORE_P = PREFIX + "STORE_P" + POSTFIX;
+    public static final String STORE_P_OF_CLASS = COMPOSITE_PREFIX + "STORE_P_OF_CLASS" + POSTFIX;
+    public static final String STORE_VECTOR = PREFIX + "STORE_VECTOR" + POSTFIX;
+    public static final String SUB = PREFIX + "SUB" + POSTFIX;
+    public static final String SUB_D = PREFIX + "SUB_D" + POSTFIX;
+    public static final String SUB_F = PREFIX + "SUB_F" + POSTFIX;
+    public static final String SUB_I = PREFIX + "SUB_I" + POSTFIX;
+    public static final String SUB_L = PREFIX + "SUB_L" + POSTFIX;
+    public static final String TRAP = PREFIX + "TRAP" + POSTFIX;
+    public static final String UDIV_I = PREFIX + "UDIV_I" + POSTFIX;
+    public static final String UDIV_L = PREFIX + "UDIV_L" + POSTFIX;
+    public static final String UDIV_MOD_I = PREFIX + "UDIV_MOD_I" + POSTFIX;
+    public static final String UDIV_MOD_L = PREFIX + "UDIV_MOD_L" + POSTFIX;
+    public static final String UMOD_I = PREFIX + "UMOD_I" + POSTFIX;
+    public static final String UMOD_L = PREFIX + "UMOD_L" + POSTFIX;
+    public static final String UNHANDLED_TRAP = PREFIX + "UNHANDLED_TRAP" + POSTFIX;
+    public static final String UNSTABLE_IF_TRAP = PREFIX + "UNSTABLE_IF_TRAP" + POSTFIX;
+    public static final String URSHIFT = PREFIX + "URSHIFT" + POSTFIX;
+    public static final String URSHIFT_I = PREFIX + "URSHIFT_I" + POSTFIX;
+    public static final String URSHIFT_L = PREFIX + "URSHIFT_L" + POSTFIX;
+    public static final String VECTOR_BLEND = PREFIX + "VECTOR_BLEND" + POSTFIX;
+    public static final String VECTOR_CAST_B2X = PREFIX + "VECTOR_CAST_B2X" + POSTFIX;
+    public static final String VECTOR_CAST_D2X = PREFIX + "VECTOR_CAST_D2X" + POSTFIX;
+    public static final String VECTOR_CAST_F2X = PREFIX + "VECTOR_CAST_F2X" + POSTFIX;
+    public static final String VECTOR_CAST_I2X = PREFIX + "VECTOR_CAST_I2X" + POSTFIX;
+    public static final String VECTOR_CAST_L2X = PREFIX + "VECTOR_CAST_L2X" + POSTFIX;
+    public static final String VECTOR_CAST_S2X = PREFIX + "VECTOR_CAST_S2X" + POSTFIX;
+    public static final String VECTOR_REINTERPRET = PREFIX + "VECTOR_REINTERPRET" + POSTFIX;
+    public static final String VECTOR_UCAST_B2X = PREFIX + "VECTOR_UCAST_B2X" + POSTFIX;
+    public static final String VECTOR_UCAST_I2X = PREFIX + "VECTOR_UCAST_I2X" + POSTFIX;
+    public static final String VECTOR_UCAST_S2X = PREFIX + "VECTOR_UCAST_S2X" + POSTFIX;
+    public static final String XOR_I = PREFIX + "XOR_I" + POSTFIX;
+    public static final String XOR_L = PREFIX + "XOR_L" + POSTFIX;
+    public static final String XOR_V = PREFIX + "XOR_V" + POSTFIX;
+    public static final String XOR_V_MASK = PREFIX + "XOR_V_MASK" + POSTFIX;
+
+
+    public static boolean isCompositeIRNode(String node) {
+        return node.startsWith(COMPOSITE_PREFIX);
+    }
+
+    public static boolean isIRNode(String node) {
+        return node.startsWith(PREFIX);
+    }
+
+    public static String getCompositeNodeName(String irNodeString) {
+        TestFramework.check(irNodeString.length() > COMPOSITE_PREFIX.length() + POSTFIX.length(),
+                            "Invalid composite node placeholder: " + irNodeString);
+        return irNodeString.substring(COMPOSITE_PREFIX.length(), irNodeString.length() - POSTFIX.length());
     }
 
     /**
-     * Is default regex supported on current platform, used VM build, etc.?
+     * Is this IR node supported on current platform, used VM build, etc.?
      * Throws a {@link CheckedTestFrameworkException} if the default regex is unsupported.
      */
-    public static void checkDefaultRegexSupported(String node) throws CheckedTestFrameworkException {
+    public static void checkDefaultIRNodeSupported(String node) throws CheckedTestFrameworkException {
         switch (node) {
             case INTRINSIC_OR_TYPE_CHECKED_INLINING_TRAP -> {
                 if (!WhiteBox.getWhiteBox().isJVMCISupportedByGC()) {
@@ -258,42 +274,7 @@ public class IRNode {
                     throw new CheckedTestFrameworkException("CHECKCAST_ARRAYCOPY is unsupported on s390.");
                 }
             }
-            // default: do nothing -> default regex is supported
+            // default: do nothing -> IR node is supported and can be used by the user.
         }
-    }
-
-    /**
-     * Mapping from string variable value to string variable name for better error reporting.
-     */
-    private static void reportMissingCompositeValue(String node, int i) {
-        String varName = switch (node) {
-            case ALLOC_OF -> "ALLOC_OF";
-            case ALLOC_ARRAY_OF -> "ALLOC_ARRAY_OF";
-            case CHECKCAST_ARRAY_OF -> "CHECKCAST_ARRAY_OF";
-            case STORE_OF_CLASS -> "STORE_OF_CLASS";
-            case STORE_B_OF_CLASS -> "STORE_B_OF_CLASS";
-            case STORE_C_OF_CLASS -> "STORE_C_OF_CLASS";
-            case STORE_D_OF_CLASS -> "STORE_D_OF_CLASS";
-            case STORE_F_OF_CLASS -> "STORE_F_OF_CLASS";
-            case STORE_I_OF_CLASS -> "STORE_I_OF_CLASS";
-            case STORE_L_OF_CLASS -> "STORE_L_OF_CLASS";
-            case STORE_N_OF_CLASS -> "STORE_N_OF_CLASS";
-            case STORE_P_OF_CLASS -> "STORE_P_OF_CLASS";
-            case STORE_OF_FIELD -> "STORE_OF_FIELD";
-            case LOAD_OF_CLASS -> "LOAD_OF_CLASS";
-            case LOAD_B_OF_CLASS -> "LOAD_B_OF_CLASS";
-            case LOAD_UB_OF_CLASS -> "LOAD_UB_OF_CLASS";
-            case LOAD_D_OF_CLASS -> "LOAD_D_OF_CLASS";
-            case LOAD_F_OF_CLASS -> "LOAD_F_OF_CLASS";
-            case LOAD_I_OF_CLASS -> "LOAD_I_OF_CLASS";
-            case LOAD_L_OF_CLASS -> "LOAD_L_OF_CLASS";
-            case LOAD_N_OF_CLASS -> "LOAD_N_OF_CLASS";
-            case LOAD_P_OF_CLASS -> "LOAD_P_OF_CLASS";
-            case LOAD_S_OF_CLASS -> "LOAD_S_OF_CLASS";
-            case LOAD_US_OF_CLASS -> "LOAD_US_OF_CLASS";
-            case LOAD_OF_FIELD -> "LOAD_OF_FIELD";
-            default -> throw new TestFrameworkException("Missing variable mapping for " + node);
-        };
-        TestFormat.fail("Must provide additional value at index " + (i + 1) + " right after " + varName);
     }
 }

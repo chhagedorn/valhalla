@@ -31,7 +31,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+import static compiler.valhalla.inlinetypes.InlineTypeIRNode.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.rI;
 import static compiler.valhalla.inlinetypes.InlineTypes.rL;
 
@@ -385,10 +385,8 @@ public class TestIntrinsics {
         }
     }
 
-    protected static final String CALL_Unsafe = START + "CallStaticJava" + MID + "# Static  jdk.internal.misc.Unsafe::" + END;
-
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public int test21(MyValue1 v) {
        return U.getInt(v, X_OFFSET);
     }
@@ -402,7 +400,7 @@ public class TestIntrinsics {
 
     MyValue1 test22_vt;
     @Test
-    @IR(failOn = {CALL_Unsafe, ALLOC})
+    @IR(failOn = {CALL_UNSAFE, ALLOC})
     public void test22(MyValue1 v) {
         v = U.makePrivateBuffer(v);
         U.putInt(v, X_OFFSET, rI);
@@ -418,7 +416,7 @@ public class TestIntrinsics {
     }
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public int test23(MyValue1 v, long offset) {
         return U.getInt(v, offset);
     }
@@ -433,7 +431,7 @@ public class TestIntrinsics {
     MyValue1 test24_vt = MyValue1.createWithFieldsInline(rI, rL);
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public int test24(long offset) {
         return U.getInt(test24_vt, offset);
     }
@@ -497,7 +495,7 @@ public class TestIntrinsics {
     }
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue1.ref test27() {
         return (MyValue1.ref)U.getReference(this, TEST27_OFFSET);
     }
@@ -514,7 +512,7 @@ public class TestIntrinsics {
 
     // Mismatched type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public int test28(MyValue1 v) {
         return U.getByte(v, X_OFFSET);
     }
@@ -532,7 +530,7 @@ public class TestIntrinsics {
 
     // Wrong alignment
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public long test29(MyValue1 v) {
         // Read the field that's guaranteed to not be last in the
         // inline type so we don't read out of bounds.
@@ -563,7 +561,7 @@ public class TestIntrinsics {
 
     // getValue to retrieve flattened field from inline type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue2 test30(MyValue1 v) {
         if (V1_FLATTENED) {
             return U.getValue(v, V1_OFFSET, MyValue2.class.asValueType());
@@ -593,7 +591,7 @@ public class TestIntrinsics {
 
     // getValue to retrieve flattened field from object
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue1 test31() {
         if (TEST31_VT_FLATTENED) {
             return U.getValue(this, TEST31_VT_OFFSET, MyValue1.class.asValueType());
@@ -610,7 +608,7 @@ public class TestIntrinsics {
 
     // putValue to set flattened field in object
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public void test32(MyValue1 vt) {
         if (TEST31_VT_FLATTENED) {
             U.putValue(this, TEST31_VT_OFFSET, MyValue1.class.asValueType(), vt);
@@ -641,7 +639,7 @@ public class TestIntrinsics {
     }
     // getValue to retrieve flattened field from array
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue1 test33(MyValue1[] arr) {
         if (TEST33_FLATTENED_ARRAY) {
             return U.getValue(arr, TEST33_BASE_OFFSET + TEST33_INDEX_SCALE, MyValue1.class.asValueType());
@@ -660,7 +658,7 @@ public class TestIntrinsics {
 
     // putValue to set flattened field in array
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public void test34(MyValue1[] arr, MyValue1 vt) {
         if (TEST33_FLATTENED_ARRAY) {
             U.putValue(arr, TEST33_BASE_OFFSET + TEST33_INDEX_SCALE, MyValue1.class.asValueType(), vt);
@@ -680,7 +678,7 @@ public class TestIntrinsics {
     // getValue to retrieve flattened field from object with unknown
     // container type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue1 test35(Object o) {
         if (TEST31_VT_FLATTENED) {
             return U.getValue(o, TEST31_VT_OFFSET, MyValue1.class.asValueType());
@@ -698,7 +696,7 @@ public class TestIntrinsics {
     // getValue to retrieve flattened field from object at unknown
     // offset
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue1 test36(long offset) {
         if (TEST31_VT_FLATTENED) {
             return U.getValue(this, offset, MyValue1.class.asValueType());
@@ -716,7 +714,7 @@ public class TestIntrinsics {
     // putValue to set flattened field in object with unknown
     // container
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public void test37(Object o, MyValue1 vt) {
         if (TEST31_VT_FLATTENED) {
             U.putValue(o, TEST31_VT_OFFSET, MyValue1.class.asValueType(), vt);
@@ -736,7 +734,7 @@ public class TestIntrinsics {
     // putValue to set flattened field in object, non inline argument
     // to store
     @Test
-    @IR(counts = {CALL_Unsafe, "= 1"})
+    @IR(counts = {CALL_UNSAFE, "= 1"})
     public void test38(Object o) {
         if (TEST31_VT_FLATTENED) {
             U.putValue(this, TEST31_VT_OFFSET, MyValue1.class.asValueType(), o);
@@ -754,7 +752,7 @@ public class TestIntrinsics {
     }
 
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue1 test39(MyValue1 v) {
         v = U.makePrivateBuffer(v);
         U.putInt(v, X_OFFSET, rI);
@@ -1098,7 +1096,7 @@ public class TestIntrinsics {
 
     // Same as test30 but with constant field holder
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue2 test55() {
         if (V1_FLATTENED) {
             return U.getValue(test55_vt, V1_OFFSET, MyValue2.class.asValueType());
@@ -1453,7 +1451,7 @@ public class TestIntrinsics {
 
     // getValue to retrieve flattened field from (nullable) inline type
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue2 test71(boolean b, MyValue1.val v1, MyValue1.ref v2) {
         if (b) {
             if (V1_FLATTENED) {
@@ -1477,7 +1475,7 @@ public class TestIntrinsics {
 
     // Same as test71 but with non-constant offset
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue2 test72(boolean b, MyValue1.val v1, MyValue1.ref v2, long offset) {
         if (b) {
             if (V1_FLATTENED) {
@@ -1504,7 +1502,7 @@ public class TestIntrinsics {
 
     // Same as test72 but with constant base
     @Test
-    @IR(failOn = {CALL_Unsafe})
+    @IR(failOn = {CALL_UNSAFE})
     public MyValue2 test73(boolean b, long offset) {
         if (b) {
             if (V1_FLATTENED) {

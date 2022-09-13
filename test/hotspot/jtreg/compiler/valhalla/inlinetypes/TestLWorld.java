@@ -34,7 +34,7 @@ import java.lang.reflect.Method;
 import jdk.experimental.bytecode.TypeTag;
 import java.util.Arrays;
 
-import static compiler.valhalla.inlinetypes.InlineTypes.IRNode.*;
+import static compiler.valhalla.inlinetypes.InlineTypeIRNode.*;
 import static compiler.valhalla.inlinetypes.InlineTypes.*;
 
 /*

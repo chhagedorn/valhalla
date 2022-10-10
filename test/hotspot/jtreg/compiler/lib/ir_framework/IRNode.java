@@ -405,6 +405,17 @@ public class IRNode {
         trapNodes(INTRINSIC_TRAP,"intrinsic");
     }
 
+    // Is only supported on riscv64.
+    public static final String IS_FINITE_D = PREFIX + "IS_FINITE_D" + POSTFIX;
+    static {
+        beforeMatchingNameRegex(IS_FINITE_D, "IsFiniteD");
+    }
+
+    public static final String IS_INFINITE_D = PREFIX + "IS_INFINITE_D" + POSTFIX;
+    static {
+        beforeMatchingNameRegex(IS_INFINITE_D, "IsInfiniteD");
+    }
+
     public static final String LOAD = PREFIX + "LOAD" + POSTFIX;
     static {
         beforeMatchingNameRegex(LOAD, "Load(B|UB|S|US|I|L|F|D|P|N)");
@@ -662,6 +673,11 @@ public class IRNode {
     public static final String POPCOUNT_L = PREFIX + "POPCOUNT_L" + POSTFIX;
     static {
         beforeMatchingNameRegex(POPCOUNT_L, "PopCountL");
+    }
+
+    public static final String POPCOUNT_VL = PREFIX + "POPCOUNT_VL" + POSTFIX;
+    static {
+        superWordNodes(POPCOUNT_VL, "PopCountVL");
     }
 
     public static final String POPULATE_INDEX = PREFIX + "POPULATE_INDEX" + POSTFIX;
@@ -1167,7 +1183,7 @@ public class IRNode {
 
     /**
      * Is this IR node supported on current platform, used VM build, etc.?
-     * Throws a {@link CheckedTestFrameworkException} if the default regex is unsupported.
+     * Throws a {@link CheckedTestFrameworkException} if the IR node is unsupported.
      */
     public static void checkIRNodeSupported(String node) throws CheckedTestFrameworkException {
         switch (node) {
@@ -1180,6 +1196,11 @@ public class IRNode {
             case CHECKCAST_ARRAYCOPY -> {
                 if (Platform.isS390x()) {
                     throw new CheckedTestFrameworkException("CHECKCAST_ARRAYCOPY is unsupported on s390.");
+                }
+            }
+            case IS_INFINITE_D -> {
+                if (!Platform.isRISCV64()) {
+                    throw new CheckedTestFrameworkException("IS_INFINITE_D is only supported on riscv64.");
                 }
             }
             // default: do nothing -> IR node is supported and can be used by the user.

@@ -2926,31 +2926,46 @@ public final class Unsafe {
         int scale = arrayInstanceIndexScale(expectedArray);
         putFlatValue(expectedArray, base, layout, valueType, expected);
         putFlatValue(xArray, base, layout, valueType, x);
-        switch (scale) {
-            case 1: {
-                byte expectedByte = getByte(expectedArray, base);
-                byte xByte = getByte(xArray, base);
-                return compareAndSetByte(o, offset, expectedByte, xByte);
-            }
-            case 2: {
-                short expectedShort = getShort(expectedArray, base);
-                short xShort = getShort(xArray, base);
-                return compareAndSetShort(o, offset, expectedShort, xShort);
-            }
-            case 4: {
-                int expectedInt = getInt(expectedArray, base);
-                int xInt = getInt(xArray, base);
-                return compareAndSetInt(o, offset, expectedInt, xInt);
-            }
-            case 8: {
-                long expectedLong = getLong(expectedArray, base);
-                long xLong = getLong(xArray, base);
-                return compareAndSetLong(o, offset, expectedLong, xLong);
-            }
-            default: {
-                throw new UnsupportedOperationException();
-            }
+        // The following code is reduced/simplified to the long case which reveals the issue with TestIntrinsics.java.
+        String e6 = String.format("0x%08x", getInt(expectedArray, 20));
+        String x6 = String.format("0x%08x", getInt(xArray, 20));
+        if (!e6.equals(x6)) {
+            String e1 = String.format("0x%08x", getInt(expectedArray, 0));
+            String e2 = String.format("0x%08x", getInt(expectedArray, 4));
+            String e3 = String.format("0x%08x", getInt(expectedArray, 8));
+            String e4 = String.format("0x%08x", getInt(expectedArray, 12));
+            String e5 = String.format("0x%08x", getInt(expectedArray, 16));
+            String x1 = String.format("0x%08x", getInt(xArray, 0));
+            String x2 = String.format("0x%08x", getInt(xArray, 4));
+            String x3 = String.format("0x%08x", getInt(xArray, 8));
+            String x4 = String.format("0x%08x", getInt(xArray, 12));
+            String x5 = String.format("0x%08x", getInt(xArray, 16));
+            System.out.println("expected:");
+            System.out.println(expected);
+            System.out.println(e1);
+            System.out.println(e2);
+            System.out.println(e3);
+            System.out.println(e4);
+            System.out.println(e5);
+            System.out.println(e6);
+            System.out.println();
+            System.out.println("xArray:");
+            System.out.println(x);
+            System.out.println(x1);
+            System.out.println(x2);
+            System.out.println(x3);
+            System.out.println(x4);
+            System.out.println(x5);
+            System.out.println(x6);
+            String payloadExpected = String.format("0x%016x", getLong(expectedArray, 16));
+            String payloadXArray = String.format("0x%016x", getLong(xArray, 16));
+            throw new RuntimeException(System.lineSeparator() + "expectedArray: " + payloadExpected + ", xArray: " + payloadXArray + System.lineSeparator());
         }
+
+        long expectedLong = getLong(expectedArray, base);
+        long xLong = getLong(xArray, base);
+        boolean result = compareAndSetLong(o, offset, expectedLong, xLong);
+        return result;
     }
 
     /**

@@ -1193,16 +1193,23 @@ static void replace_allocation(PhaseIterGVN* igvn, Node* res, Node* dom) {
 
 Node* InlineTypeNode::Ideal(PhaseGVN* phase, bool can_reshape) {
   Node* oop = get_oop();
-  if (oop->isa_InlineType() && !phase->type(oop)->maybe_null()) {
-    InlineTypeNode* vtptr = oop->as_InlineType();
-    assert(inline_klass() == vtptr->inline_klass(), "inconsistent types");
-    set_oop(*phase, vtptr->get_oop());
-    set_is_buffered(*phase);
-    set_null_marker(*phase);
-    for (uint i = Values; i < vtptr->req(); ++i) {
-      set_req(i, vtptr->in(i));
+  if (oop->isa_InlineType()) {
+    const Type* oop_type = phase->type(oop);
+    InlineTypeNode* inline_type_oop = oop->as_InlineType();
+    assert(inline_klass() == inline_type_oop->inline_klass(), "inconsistent types");
+    if (!phase->type(oop)->maybe_null()) {
+      set_oop(*phase, inline_type_oop->get_oop());
+      set_is_buffered(*phase);
+      set_null_marker(*phase);
+      for (uint i = Values; i < inline_type_oop->req(); ++i) {
+        set_req(i, inline_type_oop->in(i));
+      }
+      return this;
     }
-    return this;
+    if (oop_type->isa_oop_ptr() && get_null_marker()->find_int_con(1) == 0) {
+      set_oop(*phase, phase->zerocon(T_OBJECT));
+      return this;
+    }
   }
 
   // Use base oop if fields are loaded from memory, don't do so if base is the CheckCastPP of an
